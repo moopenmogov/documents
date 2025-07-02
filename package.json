@@ -1,0 +1,28 @@
+{
+  "name": "document-collaboration-platform",
+  "version": "1.0.0",
+  "description": "Real-time document collaboration with Word add-in and web viewer",
+  "private": true,
+  "workspaces": [
+    "backend",
+    "word-addin",
+    "web-viewer",
+    "shared"
+  ],
+  "scripts": {
+    "dev": "concurrently \"npm run dev:backend\" \"npm run dev:web\"",
+    "dev:backend": "cd backend && npm run dev",
+    "dev:web": "cd web-viewer && npm run dev",
+    "dev:word": "cd word-addin && npm run start",
+    "install:all": "npm install && npm run install:backend && npm run install:web && npm run install:word",
+    "install:backend": "cd backend && npm install",
+    "install:web": "cd web-viewer && npm install",
+    "install:word": "cd word-addin && npm install"
+  },
+  "devDependencies": {
+    "concurrently": "^7.6.0"
+  },
+  "engines": {
+    "node": ">=16.0.0"
+  }
+} 
