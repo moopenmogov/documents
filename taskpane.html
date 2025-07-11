@@ -255,14 +255,39 @@
                     let currentSection = null;
                     let currentSubsection = null;
                     
+                    console.log(`Processing ${paragraphs.items.length} paragraphs`);
+                    
                     for (let i = 0; i < paragraphs.items.length; i++) {
                         const paragraph = paragraphs.items[i];
                         const text = paragraph.text.trim();
                         
                         if (!text) continue;
                         
-                        // Check if this is a heading
-                        if (paragraph.styleBuiltIn === Word.Style.heading1) {
+                        // Get the style name for debugging
+                        const styleName = paragraph.style ? paragraph.style.toLowerCase() : '';
+                        console.log(`Paragraph ${i}: "${text}" - Style: "${styleName}"`);
+                        
+                        // Check if this is a heading using multiple approaches
+                        const isHeading1 = styleName.includes('heading 1') || 
+                                          styleName.includes('heading1') ||
+                                          styleName === 'heading 1' ||
+                                          styleName === 'heading1' ||
+                                          paragraph.styleBuiltIn === Word.Style.heading1;
+                                          
+                        const isHeading2 = styleName.includes('heading 2') || 
+                                          styleName.includes('heading2') ||
+                                          styleName === 'heading 2' ||
+                                          styleName === 'heading2' ||
+                                          paragraph.styleBuiltIn === Word.Style.heading2;
+                                          
+                        const isHeading3 = styleName.includes('heading 3') || 
+                                          styleName.includes('heading3') ||
+                                          styleName === 'heading 3' ||
+                                          styleName === 'heading3' ||
+                                          paragraph.styleBuiltIn === Word.Style.heading3;
+                        
+                        if (isHeading1) {
+                            console.log(`Found Heading 1: "${text}"`);
                             currentSection = {
                                 id: `section-${i}`,
                                 title: text,
@@ -274,7 +299,8 @@
                             };
                             sections.push(currentSection);
                             currentSubsection = null;
-                        } else if (paragraph.styleBuiltIn === Word.Style.heading2) {
+                        } else if (isHeading2) {
+                            console.log(`Found Heading 2: "${text}"`);
                             if (currentSection) {
                                 currentSubsection = {
                                     id: `subsection-${i}`,
@@ -287,7 +313,8 @@
                                 };
                                 currentSection.subsections.push(currentSubsection);
                             }
-                        } else if (paragraph.styleBuiltIn === Word.Style.heading3) {
+                        } else if (isHeading3) {
+                            console.log(`Found Heading 3: "${text}"`);
                             if (currentSubsection) {
                                 const subSubsection = {
                                     id: `subsubsection-${i}`,
@@ -316,6 +343,7 @@
                         }
                     }
                     
+                    console.log(`Found ${sections.length} sections total`);
                     renderSections();
                     updateStatus(`Found ${sections.length} sections`);
                 });
@@ -323,7 +351,7 @@
                 console.error('Error loading sections:', error);
                 updateStatus('Error loading sections');
                 document.getElementById('sectionsContent').innerHTML = 
-                    '<div class="empty-state">Error loading sections. Please try refreshing.</div>';
+                    '<div class="empty-state">Error loading sections. Please try refreshing.<br><small>Check browser console for details.</small></div>';
             }
         }
 
