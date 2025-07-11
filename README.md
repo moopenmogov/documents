@@ -1,108 +1,38 @@
-# Document Collaboration Platform
+# Hello Moti Word Add-in
 
-Real-time document collaboration with Word add-in and web viewer using ProseMirror backend.
+A simple Word add-in that displays "Hello Moti!" and can insert text into your document.
 
-## Features
+## Quick Start
 
-- **Real-time sync** between Word add-in and web editor
-- **Variable synchronization** - update variables in one place, sync everywhere
-- **Hierarchical locking** - document and section-level check-out system
-- **Permission management** - admin/user roles with section-level access control
-- **Suggestion mode** - collaborative feedback without check-out
-- **ProseMirror-based** - leveraging superdoc's node-based architecture
+1. **Start the development server:**
+   ```
+   npm start
+   ```
 
-## Architecture
+2. **Sideload the add-in in Word:**
+   - Open Microsoft Word
+   - Go to **Insert** > **Add-ins** > **My Add-ins**
+   - Click **Upload My Add-in**
+   - Select the `manifest.xml` file from this folder
+   - Click **Upload**
 
-```
-├── backend/           # Node.js + ProseMirror + WebSockets
-├── word-addin/        # Office.js Word add-in
-├── web-viewer/        # React/Vue web editor
-├── shared/            # Shared types and utilities
-└── docs/              # Documentation
-```
+3. **Use the add-in:**
+   - Look for the "Hello Group" in the Home tab of Word
+   - Click the "Hello Moti" button
+   - The task pane will open with your greeting!
+   - Click "Insert Hello Message" to add text to your document
 
-## Tech Stack
+## Files
 
-- **Backend**: Node.js, ProseMirror, WebSockets, PostgreSQL
-- **Word Add-in**: Office.js, TypeScript
-- **Web Viewer**: React, ProseMirror, TypeScript
-- **Real-time**: Socket.io or native WebSockets
-- **Database**: PostgreSQL for document storage
+- `manifest.xml` - Defines the add-in for Office
+- `taskpane.html` - Main task pane UI
+- `commands.html` - Required commands file
+- `assets/` - Icon files
+- `package.json` - Development server configuration
 
-## Document Structure
+## Requirements
 
-ProseMirror node-based hierarchy:
-- Document → Sections → Subsections → Paragraphs
-- Custom node types: `variable_node`, `locked_section`, `suggestion`
-- Each node has UUID for precise targeting
+- Microsoft Word (Office 365 or Office 2016+)
+- Node.js (for the development server)
 
-## Getting Started
-
-```bash
-# Install dependencies
-npm install
-
-# Start backend
-cd backend && npm run dev
-
-# Start web viewer
-cd web-viewer && npm run dev
-
-# Sideload Word add-in
-cd word-addin && npm run start
-```
-
-## Development Phases
-
-### Phase 1: MVP
-- [ ] Basic ProseMirror backend
-- [ ] Simple web viewer
-- [ ] Variable sync system
-- [ ] Basic Word add-in
-
-### Phase 2: Collaboration
-- [ ] Real-time sync
-- [ ] Section locking
-- [ ] User permissions
-- [ ] Suggestion mode
-
-### Phase 3: Advanced
-- [ ] Document structure manipulation
-- [ ] Advanced permissions
-- [ ] Embedding capabilities
-- [ ] Production deployment
-
-## API Design
-
-### Variables
-```javascript
-// Sync variable across all instances
-PUT /api/variables/{name}
-{ "value": "new value" }
-
-// Get all variables
-GET /api/variables
-```
-
-### Document Operations
-```javascript
-// Check out document/section
-POST /api/documents/{id}/checkout
-{ "section_id": "optional", "user_id": "required" }
-
-// Apply changes
-POST /api/documents/{id}/changes
-{ "operations": [...], "section_id": "optional" }
-```
-
-## Contributing
-
-This is a prototype for learning document collaboration patterns. Focus on:
-1. Understanding ProseMirror's node system
-2. Real-time synchronization challenges
-3. Permission system design
-4. Word add-in integration patterns
-
-## License
-
-MIT 
+That's it! Your simple Word add-in is ready to go! 🎉 
