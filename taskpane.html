@@ -197,33 +197,328 @@
         .navigate-icon:hover {
             background: #e1f5fe;
         }
+        
+        /* Tab Styles */
+        .tab-container {
+            display: flex;
+            background: #f8f9fa;
+            border-bottom: 2px solid #e1dfdd;
+            margin: -16px -16px 16px -16px;
+        }
+        
+        .tab-button {
+            flex: 1;
+            padding: 12px 16px;
+            background: none;
+            border: none;
+            font-size: 14px;
+            font-weight: 600;
+            color: #605e5c;
+            cursor: pointer;
+            transition: all 0.2s;
+            border-bottom: 3px solid transparent;
+        }
+        
+        .tab-button:hover {
+            background: #f0f0f0;
+            color: #0078d4;
+        }
+        
+        .tab-button.active {
+            color: #0078d4;
+            border-bottom-color: #0078d4;
+            background: white;
+        }
+        
+        .tab-content {
+            display: none;
+        }
+        
+        .tab-content.active {
+            display: block;
+        }
+        
+        /* Variables Styles */
+        .variables-container {
+            background: white;
+            border-radius: 8px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+            overflow: hidden;
+        }
+        
+        .variable-form {
+            padding: 20px;
+            background: #f8f9fa;
+            border-bottom: 1px solid #e1dfdd;
+        }
+        
+        .variable-form h3 {
+            margin: 0 0 16px 0;
+            color: #323130;
+            font-size: 16px;
+        }
+        
+        .form-group {
+            margin-bottom: 12px;
+        }
+        
+        .form-group label {
+            display: block;
+            margin-bottom: 4px;
+            font-weight: 600;
+            color: #323130;
+            font-size: 12px;
+        }
+        
+        .form-group input {
+            width: 100%;
+            padding: 8px 12px;
+            border: 1px solid #d1d1d1;
+            border-radius: 4px;
+            font-size: 14px;
+            box-sizing: border-box;
+        }
+        
+        .form-group input:focus {
+            outline: none;
+            border-color: #0078d4;
+            box-shadow: 0 0 0 1px #0078d4;
+        }
+        
+        .add-button {
+            background: #0078d4;
+            color: white;
+            border: none;
+            padding: 10px 16px;
+            border-radius: 4px;
+            font-size: 14px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: background-color 0.2s;
+            width: 100%;
+        }
+        
+        .add-button:hover {
+            background: #106ebe;
+        }
+        
+        .variables-list {
+            padding: 20px;
+        }
+        
+        .list-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 16px;
+        }
+        
+        .list-header h3 {
+            margin: 0;
+            color: #323130;
+            font-size: 16px;
+        }
+        
+        .toggle-container {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+        
+        .toggle-label {
+            font-size: 12px;
+            color: #605e5c;
+            font-weight: 600;
+        }
+        
+        /* Toggle Switch */
+        .toggle-switch {
+            position: relative;
+            display: inline-block;
+            width: 44px;
+            height: 24px;
+        }
+        
+        .toggle-switch input {
+            opacity: 0;
+            width: 0;
+            height: 0;
+        }
+        
+        .slider {
+            position: absolute;
+            cursor: pointer;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background-color: #ccc;
+            transition: .4s;
+            border-radius: 24px;
+        }
+        
+        .slider:before {
+            position: absolute;
+            content: "";
+            height: 18px;
+            width: 18px;
+            left: 3px;
+            bottom: 3px;
+            background-color: white;
+            transition: .4s;
+            border-radius: 50%;
+        }
+        
+        input:checked + .slider {
+            background-color: #0078d4;
+        }
+        
+        input:checked + .slider:before {
+            transform: translateX(20px);
+        }
+        
+        .variable-item {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 12px 16px;
+            background: #fafafa;
+            border: 1px solid #e1dfdd;
+            border-radius: 6px;
+            margin-bottom: 8px;
+            transition: background-color 0.2s;
+        }
+        
+        .variable-item:hover {
+            background: #f0f8ff;
+        }
+        
+        .variable-info {
+            flex: 1;
+        }
+        
+        .variable-name {
+            font-weight: 600;
+            color: #0078d4;
+            font-size: 14px;
+            margin-bottom: 2px;
+        }
+        
+        .variable-value {
+            color: #605e5c;
+            font-size: 12px;
+        }
+        
+        .variable-controls {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+        
+        .insert-button {
+            background: #28a745;
+            color: white;
+            border: none;
+            padding: 6px 12px;
+            border-radius: 4px;
+            font-size: 11px;
+            cursor: pointer;
+            transition: background-color 0.2s;
+        }
+        
+        .insert-button:hover {
+            background: #218838;
+        }
+        
+        .delete-button {
+            background: #dc3545;
+            color: white;
+            border: none;
+            padding: 6px 8px;
+            border-radius: 4px;
+            font-size: 11px;
+            cursor: pointer;
+            transition: background-color 0.2s;
+        }
+        
+        .delete-button:hover {
+            background: #c82333;
+        }
     </style>
 </head>
 
 <body>
     <div class="header">
-        📖 Document Sections
+        📖 Document Navigator & Variables
     </div>
     
-    <div class="sections-container">
-        <div id="sectionsContent">
-            <div class="loading">Loading sections...</div>
+    <!-- Tab Navigation -->
+    <div class="tab-container">
+        <button class="tab-button active" onclick="switchTab('sections')">📋 Sections</button>
+        <button class="tab-button" onclick="switchTab('variables')">🔧 Variables</button>
+    </div>
+    
+    <!-- Sections Tab -->
+    <div id="sectionsTab" class="tab-content active">
+        <div class="sections-container">
+            <div id="sectionsContent">
+                <div class="loading">Loading sections...</div>
+            </div>
+        </div>
+        
+        <div class="status-bar">
+            <span id="statusText">Ready</span> | 
+            <button class="refresh-button" onclick="refreshSections()">↻ Refresh</button>
         </div>
     </div>
     
-    <div class="status-bar">
-        <span id="statusText">Ready</span> | 
-        <button class="refresh-button" onclick="refreshSections()">↻ Refresh</button>
+    <!-- Variables Tab -->
+    <div id="variablesTab" class="tab-content">
+        <div class="variables-container">
+            <!-- Variable Form -->
+            <div class="variable-form">
+                <h3>Add Variable</h3>
+                <div class="form-group">
+                    <label for="varName">Variable Name:</label>
+                    <input type="text" id="varName" placeholder="e.g., clientName, date, amount" />
+                </div>
+                <div class="form-group">
+                    <label for="varValue">Value:</label>
+                    <input type="text" id="varValue" placeholder="e.g., John Smith, 2024-01-15, $500" />
+                </div>
+                <button class="add-button" onclick="addVariable()">➕ Add Variable</button>
+            </div>
+            
+            <!-- Variables List -->
+            <div class="variables-list">
+                <div class="list-header">
+                    <h3>Variables</h3>
+                    <div class="toggle-container">
+                        <label class="toggle-switch">
+                            <input type="checkbox" id="showValuesToggle" onchange="toggleVariableDisplay()">
+                            <span class="slider"></span>
+                        </label>
+                        <span class="toggle-label">Show Values in Document</span>
+                    </div>
+                </div>
+                <div id="variablesList">
+                    <div class="empty-state">No variables defined yet.</div>
+                </div>
+            </div>
+        </div>
     </div>
 
     <script>
         let sections = [];
         let updateTimer = null;
+        let variables = {};
+        let showValues = false;
         
         Office.onReady((info) => {
             if (info.host === Office.HostType.Word) {
-                console.log('Document Sections add-in is ready!');
+                console.log('Document Navigator & Variables add-in is ready!');
                 loadSections();
+                loadVariables();
                 
                 // Set up automatic updates
                 Word.run(function (context) {
@@ -233,6 +528,181 @@
                     console.log('Error setting up content change listener:', error);
                 });
             }
+        });
+
+        // Tab Management
+        function switchTab(tabName) {
+            // Remove active class from all tabs and content
+            document.querySelectorAll('.tab-button').forEach(btn => btn.classList.remove('active'));
+            document.querySelectorAll('.tab-content').forEach(content => content.classList.remove('active'));
+            
+            // Add active class to selected tab and content
+            event.target.classList.add('active');
+            document.getElementById(tabName + 'Tab').classList.add('active');
+        }
+
+        // Variable Management
+        function loadVariables() {
+            // Load variables from document properties or initialize empty
+            variables = {
+                'clientName': 'John Smith',
+                'projectName': 'Website Redesign', 
+                'dueDate': '2024-02-15',
+                'amount': '$2,500'
+            }; // Example variables
+            renderVariables();
+        }
+
+        function addVariable() {
+            const nameInput = document.getElementById('varName');
+            const valueInput = document.getElementById('varValue');
+            
+            const name = nameInput.value.trim();
+            const value = valueInput.value.trim();
+            
+            if (!name || !value) {
+                alert('Please enter both variable name and value.');
+                return;
+            }
+            
+            if (name in variables) {
+                if (!confirm(`Variable "${name}" already exists. Do you want to update it?`)) {
+                    return;
+                }
+            }
+            
+            variables[name] = value;
+            nameInput.value = '';
+            valueInput.value = '';
+            
+            renderVariables();
+            updateVariablesInDocument();
+        }
+
+        function deleteVariable(name) {
+            if (confirm(`Are you sure you want to delete variable "${name}"?`)) {
+                delete variables[name];
+                renderVariables();
+                updateVariablesInDocument();
+            }
+        }
+
+        function renderVariables() {
+            const container = document.getElementById('variablesList');
+            
+            if (Object.keys(variables).length === 0) {
+                container.innerHTML = '<div class="empty-state">No variables defined yet.</div>';
+                return;
+            }
+            
+            let html = '';
+            for (const [name, value] of Object.entries(variables)) {
+                html += `
+                    <div class="variable-item">
+                        <div class="variable-info">
+                            <div class="variable-name">{{${name}}}</div>
+                            <div class="variable-value">${escapeHtml(value)}</div>
+                        </div>
+                        <div class="variable-controls">
+                            <button class="insert-button" onclick="insertVariable('${name}')">📝 Insert</button>
+                            <button class="delete-button" onclick="deleteVariable('${name}')">🗑</button>
+                        </div>
+                    </div>
+                `;
+            }
+            
+            container.innerHTML = html;
+        }
+
+        async function insertVariable(name) {
+            if (!(name in variables)) {
+                alert('Variable not found.');
+                return;
+            }
+            
+            try {
+                await Word.run(async (context) => {
+                    const selection = context.document.getSelection();
+                    
+                    // Insert a content control for the variable
+                    const contentControl = selection.insertContentControl();
+                    contentControl.tag = `variable:${name}`;
+                    contentControl.title = `Variable: ${name}`;
+                    contentControl.appearance = Word.ContentControlAppearance.tags;
+                    
+                    // Set the text based on current display mode
+                    const displayText = showValues ? variables[name] : `{{${name}}}`;
+                    contentControl.insertText(displayText, Word.InsertLocation.replace);
+                    
+                    // Style the content control
+                    contentControl.font.color = '#0078d4';
+                    contentControl.font.bold = true;
+                    
+                    await context.sync();
+                });
+                
+                updateStatus(`Inserted variable: ${name}`);
+            } catch (error) {
+                console.error('Error inserting variable:', error);
+                updateStatus('Error inserting variable');
+            }
+        }
+
+        async function toggleVariableDisplay() {
+            const toggle = document.getElementById('showValuesToggle');
+            showValues = toggle.checked;
+            
+            try {
+                await updateVariablesInDocument();
+                updateStatus(showValues ? 'Showing variable values' : 'Showing variable names');
+            } catch (error) {
+                console.error('Error toggling variable display:', error);
+                updateStatus('Error updating variables');
+            }
+        }
+
+        async function updateVariablesInDocument() {
+            try {
+                await Word.run(async (context) => {
+                    const contentControls = context.document.contentControls;
+                    contentControls.load('tag,text');
+                    
+                    await context.sync();
+                    
+                    for (let i = 0; i < contentControls.items.length; i++) {
+                        const control = contentControls.items[i];
+                        
+                        if (control.tag && control.tag.startsWith('variable:')) {
+                            const varName = control.tag.substring(9); // Remove 'variable:' prefix
+                            
+                            if (varName in variables) {
+                                const displayText = showValues ? variables[varName] : `{{${varName}}}`;
+                                control.insertText(displayText, Word.InsertLocation.replace);
+                            }
+                        }
+                    }
+                    
+                    await context.sync();
+                });
+            } catch (error) {
+                console.error('Error updating variables in document:', error);
+            }
+        }
+
+        // Enhanced keyboard support
+        document.addEventListener('DOMContentLoaded', function() {
+            // Add Enter key support for variable form
+            document.getElementById('varName').addEventListener('keypress', function(e) {
+                if (e.key === 'Enter') {
+                    document.getElementById('varValue').focus();
+                }
+            });
+            
+            document.getElementById('varValue').addEventListener('keypress', function(e) {
+                if (e.key === 'Enter') {
+                    addVariable();
+                }
+            });
         });
 
         function onContentChanged() {

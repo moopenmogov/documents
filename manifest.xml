@@ -30,8 +30,15 @@
     <SourceLocation DefaultValue="http://localhost:3000/taskpane.html" />
   </DefaultSettings>
 
-  <!-- Permissions - Restricted -->
-  <Permissions>Restricted</Permissions>
+  <!-- Permissions - ReadWriteDocument to access document content -->
+  <Permissions>ReadWriteDocument</Permissions>
+
+  <!-- Requirements - Specify the minimum Office version and API sets required -->
+  <Requirements>
+    <Sets DefaultMinVersion="1.1">
+      <Set Name="WordApi" MinVersion="1.1" />
+    </Sets>
+  </Requirements>
 
   <!-- Version overrides - Used to specify behavior for specific Office versions -->
   <VersionOverrides xmlns="http://schemas.microsoft.com/office/taskpaneappversionoverrides" xsi:type="VersionOverridesV1_0">
