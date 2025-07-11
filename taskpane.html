@@ -265,14 +265,16 @@
                         
                         // Get the style name for debugging
                         const styleName = paragraph.style ? paragraph.style.toLowerCase() : '';
-                        console.log(`Paragraph ${i}: "${text}" - Style: "${styleName}"`);
+                        console.log(`Paragraph ${i}: "${text}" - Style: "${styleName}" - StyleBuiltIn: ${paragraph.styleBuiltIn}`);
                         
-                        // Check if this is a heading using multiple approaches
+                        // Check if this is a heading using multiple approaches - include more styles for testing
                         const isHeading1 = styleName.includes('heading 1') || 
                                           styleName.includes('heading1') ||
                                           styleName === 'heading 1' ||
                                           styleName === 'heading1' ||
-                                          paragraph.styleBuiltIn === Word.Style.heading1;
+                                          styleName === 'heading' ||
+                                          paragraph.styleBuiltIn === Word.Style.heading1 ||
+                                          paragraph.styleBuiltIn === Word.Style.heading;
                                           
                         const isHeading2 = styleName.includes('heading 2') || 
                                           styleName.includes('heading2') ||
@@ -286,8 +288,11 @@
                                           styleName === 'heading3' ||
                                           paragraph.styleBuiltIn === Word.Style.heading3;
                         
-                        if (isHeading1) {
-                            console.log(`Found Heading 1: "${text}"`);
+                        // Fallback detection: if no sections found yet and text looks like a heading, treat as heading
+                        const possibleHeading = sections.length === 0 && text.length > 0 && text.length < 100;
+                        
+                        if (isHeading1 || (possibleHeading && !isHeading2 && !isHeading3)) {
+                            console.log(`Found Heading 1: "${text}" (Style: ${styleName}, BuiltIn: ${paragraph.styleBuiltIn}, Fallback: ${possibleHeading})`);
                             currentSection = {
                                 id: `section-${i}`,
                                 title: text,
@@ -344,6 +349,21 @@
                     }
                     
                     console.log(`Found ${sections.length} sections total`);
+                    
+                    // If no sections found, add a test section to verify the UI works
+                    if (sections.length === 0 && paragraphs.items.length > 0) {
+                        console.log('No sections detected, adding test section');
+                        sections.push({
+                            id: 'test-section',
+                            title: '📋 TEST: No sections detected',
+                            content: ['Use Word\'s Styles gallery to apply Heading 1, Heading 2, or Heading 3 styles to your text.', 'Or try typing some text and this add-in will auto-detect it.'],
+                            subsections: [],
+                            paragraphIndex: 0,
+                            level: 1,
+                            expanded: true
+                        });
+                    }
+                    
                     renderSections();
                     updateStatus(`Found ${sections.length} sections`);
                 });
