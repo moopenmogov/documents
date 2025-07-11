@@ -4,7 +4,7 @@
     <meta charset="UTF-8" />
     <meta http-equiv="X-UA-Compatible" content="IE=Edge" />
     <meta name="viewport" content="width=device-width, initial-scale=1">
-    <title>Hello Moti</title>
+    <title>Document Sections</title>
     
     <!-- Office JavaScript API -->
     <script type="text/javascript" src="https://appsforoffice.microsoft.com/lib/1/hosted/office.js"></script>
@@ -13,88 +13,444 @@
         body {
             font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
             margin: 0;
-            padding: 20px;
+            padding: 16px;
             background-color: #f3f2f1;
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            justify-content: center;
-            min-height: 100vh;
+            font-size: 14px;
+            color: #323130;
         }
         
-        .container {
+        .header {
+            background: #0078d4;
+            color: white;
+            padding: 16px;
+            margin: -16px -16px 16px -16px;
+            border-radius: 0;
             text-align: center;
+            font-size: 18px;
+            font-weight: 600;
+        }
+        
+        .sections-container {
             background: white;
-            padding: 40px;
             border-radius: 8px;
             box-shadow: 0 2px 8px rgba(0,0,0,0.1);
-            max-width: 400px;
-            width: 100%;
+            overflow: hidden;
         }
         
-        h1 {
+        .section-item {
+            border-bottom: 1px solid #e1dfdd;
+            transition: background-color 0.2s;
+        }
+        
+        .section-item:last-child {
+            border-bottom: none;
+        }
+        
+        .section-header {
+            padding: 16px;
+            cursor: pointer;
+            background: #fafafa;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            font-weight: 600;
             color: #0078d4;
-            font-size: 2.5em;
-            margin-bottom: 20px;
-            font-weight: 300;
+            transition: background-color 0.2s;
         }
         
-        p {
-            color: #323130;
-            font-size: 1.2em;
-            margin-bottom: 30px;
+        .section-header:hover {
+            background: #f0f8ff;
         }
         
-        .emoji {
-            font-size: 3em;
-            margin-bottom: 20px;
+        .section-header.level-1 {
+            background: #f8f9fa;
+            font-size: 16px;
+            padding: 18px 16px;
         }
         
-        button {
-            background-color: #0078d4;
+        .section-header.level-2 {
+            background: #fbfbfb;
+            font-size: 14px;
+            padding: 14px 16px 14px 32px;
+            color: #106ebe;
+        }
+        
+        .section-header.level-3 {
+            background: #fdfdfd;
+            font-size: 13px;
+            padding: 12px 16px 12px 48px;
+            color: #005a9e;
+        }
+        
+        .section-title {
+            flex: 1;
+            text-align: left;
+            word-wrap: break-word;
+            overflow: hidden;
+        }
+        
+        .section-controls {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+        
+        .expand-icon {
+            font-size: 12px;
+            transition: transform 0.2s;
+            color: #605e5c;
+        }
+        
+        .expand-icon.expanded {
+            transform: rotate(90deg);
+        }
+        
+        .section-content {
+            padding: 16px;
+            background: white;
+            border-top: 1px solid #e1dfdd;
+            font-size: 13px;
+            line-height: 1.5;
+            color: #605e5c;
+            max-height: 200px;
+            overflow-y: auto;
+        }
+        
+        .section-content.level-1 {
+            padding: 16px;
+        }
+        
+        .section-content.level-2 {
+            padding: 12px 16px 12px 32px;
+        }
+        
+        .section-content.level-3 {
+            padding: 12px 16px 12px 48px;
+        }
+        
+        .section-content p {
+            margin: 0 0 8px 0;
+        }
+        
+        .section-content p:last-child {
+            margin-bottom: 0;
+        }
+        
+        .subsections {
+            background: white;
+        }
+        
+        .empty-state {
+            text-align: center;
+            padding: 40px 20px;
+            color: #605e5c;
+            font-style: italic;
+        }
+        
+        .loading {
+            text-align: center;
+            padding: 20px;
+            color: #605e5c;
+        }
+        
+        .refresh-button {
+            background: #0078d4;
             color: white;
             border: none;
-            padding: 12px 24px;
+            padding: 8px 16px;
             border-radius: 4px;
-            font-size: 16px;
+            font-size: 12px;
             cursor: pointer;
             transition: background-color 0.2s;
         }
         
-        button:hover {
-            background-color: #106ebe;
+        .refresh-button:hover {
+            background: #106ebe;
+        }
+        
+        .status-bar {
+            padding: 8px 16px;
+            background: #f8f9fa;
+            border-top: 1px solid #e1dfdd;
+            font-size: 11px;
+            color: #605e5c;
+            text-align: center;
+        }
+        
+        .section-hierarchy {
+            display: none;
+        }
+        
+        .section-hierarchy.visible {
+            display: block;
+        }
+        
+        .navigate-icon {
+            font-size: 14px;
+            color: #0078d4;
+            cursor: pointer;
+            padding: 4px;
+            border-radius: 2px;
+            transition: background-color 0.2s;
+        }
+        
+        .navigate-icon:hover {
+            background: #e1f5fe;
         }
     </style>
 </head>
 
 <body>
-    <div class="container">
-        <div class="emoji">👋</div>
-        <h1>Hello Moti!</h1>
-        <p>Your Word add-in is working perfectly!</p>
-        <button onclick="insertText()">Insert Hello Message</button>
+    <div class="header">
+        📖 Document Sections
+    </div>
+    
+    <div class="sections-container">
+        <div id="sectionsContent">
+            <div class="loading">Loading sections...</div>
+        </div>
+    </div>
+    
+    <div class="status-bar">
+        <span id="statusText">Ready</span> | 
+        <button class="refresh-button" onclick="refreshSections()">↻ Refresh</button>
     </div>
 
     <script>
+        let sections = [];
+        let updateTimer = null;
+        
         Office.onReady((info) => {
             if (info.host === Office.HostType.Word) {
-                console.log('Word add-in is ready!');
+                console.log('Document Sections add-in is ready!');
+                loadSections();
+                
+                // Set up automatic updates
+                Word.run(function (context) {
+                    context.document.onContentChanged.add(onContentChanged);
+                    return context.sync();
+                }).catch(function (error) {
+                    console.log('Error setting up content change listener:', error);
+                });
             }
         });
 
-        function insertText() {
-            Word.run(function (context) {
-                // Insert text at the cursor location
-                var range = context.document.getSelection();
-                range.insertText('Hello Moti! This text was inserted by your Word add-in! 🎉', Word.InsertLocation.replace);
+        function onContentChanged() {
+            // Debounce updates to avoid too many calls
+            clearTimeout(updateTimer);
+            updateTimer = setTimeout(loadSections, 1000);
+        }
 
-                return context.sync();
-            }).catch(function (error) {
-                console.log('Error: ' + JSON.stringify(error));
-                if (error instanceof OfficeExtension.Error) {
-                    console.log('Debug info: ' + JSON.stringify(error.debugInfo));
-                }
+        async function loadSections() {
+            try {
+                updateStatus('Loading sections...');
+                
+                await Word.run(async (context) => {
+                    const paragraphs = context.document.body.paragraphs;
+                    paragraphs.load('style,text,styleBuiltIn');
+                    
+                    await context.sync();
+                    
+                    sections = [];
+                    let currentSection = null;
+                    let currentSubsection = null;
+                    
+                    for (let i = 0; i < paragraphs.items.length; i++) {
+                        const paragraph = paragraphs.items[i];
+                        const text = paragraph.text.trim();
+                        
+                        if (!text) continue;
+                        
+                        // Check if this is a heading
+                        if (paragraph.styleBuiltIn === Word.Style.heading1) {
+                            currentSection = {
+                                id: `section-${i}`,
+                                title: text,
+                                content: [],
+                                subsections: [],
+                                paragraphIndex: i,
+                                level: 1,
+                                expanded: false
+                            };
+                            sections.push(currentSection);
+                            currentSubsection = null;
+                        } else if (paragraph.styleBuiltIn === Word.Style.heading2) {
+                            if (currentSection) {
+                                currentSubsection = {
+                                    id: `subsection-${i}`,
+                                    title: text,
+                                    content: [],
+                                    subsections: [],
+                                    paragraphIndex: i,
+                                    level: 2,
+                                    expanded: false
+                                };
+                                currentSection.subsections.push(currentSubsection);
+                            }
+                        } else if (paragraph.styleBuiltIn === Word.Style.heading3) {
+                            if (currentSubsection) {
+                                const subSubsection = {
+                                    id: `subsubsection-${i}`,
+                                    title: text,
+                                    content: [],
+                                    subsections: [],
+                                    paragraphIndex: i,
+                                    level: 3,
+                                    expanded: false
+                                };
+                                currentSubsection.subsections.push(subSubsection);
+                            }
+                        } else {
+                            // Regular content
+                            if (currentSubsection && currentSubsection.subsections.length > 0) {
+                                // Add to the last sub-subsection
+                                const lastSubSub = currentSubsection.subsections[currentSubsection.subsections.length - 1];
+                                lastSubSub.content.push(text);
+                            } else if (currentSubsection) {
+                                // Add to current subsection
+                                currentSubsection.content.push(text);
+                            } else if (currentSection) {
+                                // Add to current section
+                                currentSection.content.push(text);
+                            }
+                        }
+                    }
+                    
+                    renderSections();
+                    updateStatus(`Found ${sections.length} sections`);
+                });
+            } catch (error) {
+                console.error('Error loading sections:', error);
+                updateStatus('Error loading sections');
+                document.getElementById('sectionsContent').innerHTML = 
+                    '<div class="empty-state">Error loading sections. Please try refreshing.</div>';
+            }
+        }
+
+        function renderSections() {
+            const container = document.getElementById('sectionsContent');
+            
+            if (sections.length === 0) {
+                container.innerHTML = '<div class="empty-state">No sections found.<br>Use Heading 1 style to create sections.</div>';
+                return;
+            }
+            
+            let html = '';
+            sections.forEach((section, index) => {
+                html += renderSection(section, index);
             });
+            
+            container.innerHTML = html;
+        }
+
+        function renderSection(section, index) {
+            const contentPreview = section.content.slice(0, 3).join(' ').substring(0, 200);
+            const hasContent = section.content.length > 0;
+            const hasSubsections = section.subsections.length > 0;
+            
+            let html = `
+                <div class="section-item">
+                    <div class="section-header level-${section.level}" onclick="toggleSection('${section.id}')">
+                        <div class="section-title">${escapeHtml(section.title)}</div>
+                        <div class="section-controls">
+                            <span class="navigate-icon" onclick="navigateToSection(${section.paragraphIndex}); event.stopPropagation();" title="Go to section">📍</span>
+                            ${hasContent || hasSubsections ? '<span class="expand-icon" id="icon-' + section.id + '">▶</span>' : ''}
+                        </div>
+                    </div>
+                    
+                    <div class="section-hierarchy" id="content-${section.id}">
+                        ${hasContent ? `<div class="section-content level-${section.level}">${formatContent(section.content)}</div>` : ''}
+                        ${hasSubsections ? renderSubsections(section.subsections) : ''}
+                    </div>
+                </div>
+            `;
+            
+            return html;
+        }
+
+        function renderSubsections(subsections) {
+            let html = '<div class="subsections">';
+            subsections.forEach(subsection => {
+                const contentPreview = subsection.content.slice(0, 2).join(' ').substring(0, 150);
+                const hasContent = subsection.content.length > 0;
+                const hasSubsections = subsection.subsections.length > 0;
+                
+                html += `
+                    <div class="section-item">
+                        <div class="section-header level-${subsection.level}" onclick="toggleSection('${subsection.id}')">
+                            <div class="section-title">${escapeHtml(subsection.title)}</div>
+                            <div class="section-controls">
+                                <span class="navigate-icon" onclick="navigateToSection(${subsection.paragraphIndex}); event.stopPropagation();" title="Go to section">📍</span>
+                                ${hasContent || hasSubsections ? '<span class="expand-icon" id="icon-' + subsection.id + '">▶</span>' : ''}
+                            </div>
+                        </div>
+                        
+                        <div class="section-hierarchy" id="content-${subsection.id}">
+                            ${hasContent ? `<div class="section-content level-${subsection.level}">${formatContent(subsection.content)}</div>` : ''}
+                            ${hasSubsections ? renderSubsections(subsection.subsections) : ''}
+                        </div>
+                    </div>
+                `;
+            });
+            html += '</div>';
+            return html;
+        }
+
+        function formatContent(content) {
+            return content.slice(0, 5).map(text => `<p>${escapeHtml(text)}</p>`).join('');
+        }
+
+        function escapeHtml(text) {
+            const div = document.createElement('div');
+            div.textContent = text;
+            return div.innerHTML;
+        }
+
+        function toggleSection(sectionId) {
+            const content = document.getElementById(`content-${sectionId}`);
+            const icon = document.getElementById(`icon-${sectionId}`);
+            
+            if (content && icon) {
+                const isVisible = content.classList.contains('visible');
+                
+                if (isVisible) {
+                    content.classList.remove('visible');
+                    icon.classList.remove('expanded');
+                } else {
+                    content.classList.add('visible');
+                    icon.classList.add('expanded');
+                }
+            }
+        }
+
+        async function navigateToSection(paragraphIndex) {
+            try {
+                await Word.run(async (context) => {
+                    const paragraphs = context.document.body.paragraphs;
+                    const targetParagraph = paragraphs.items[paragraphIndex];
+                    
+                    if (targetParagraph) {
+                        const range = targetParagraph.getRange();
+                        range.select();
+                        context.document.getSelection().scrollIntoView();
+                    }
+                    
+                    await context.sync();
+                });
+                
+                updateStatus('Navigated to section');
+            } catch (error) {
+                console.error('Error navigating to section:', error);
+                updateStatus('Error navigating to section');
+            }
+        }
+
+        function refreshSections() {
+            loadSections();
+        }
+
+        function updateStatus(message) {
+            document.getElementById('statusText').textContent = message;
         }
     </script>
 </body>
