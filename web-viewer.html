@@ -1,0 +1,1149 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Document Web Viewer</title>
+    <style>
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            margin: 0;
+            padding: 0;
+            background-color: #f5f5f5;
+            display: flex;
+            height: 100vh;
+        }
+        
+        .sidebar {
+            width: 300px;
+            background: white;
+            border-right: 1px solid #e1dfdd;
+            display: flex;
+            flex-direction: column;
+            box-shadow: 2px 0 8px rgba(0,0,0,0.1);
+        }
+        
+        .sidebar-header {
+            background: #0078d4;
+            color: white;
+            padding: 16px;
+            font-size: 18px;
+            font-weight: 600;
+            text-align: center;
+        }
+        
+        .sidebar-content {
+            flex: 1;
+            overflow-y: auto;
+            padding: 16px;
+        }
+        
+        .main-content {
+            flex: 1;
+            background: white;
+            padding: 40px;
+            overflow-y: auto;
+            max-width: 800px;
+            margin: 0 auto;
+        }
+        
+        .document-content {
+            line-height: 1.6;
+            color: #333;
+        }
+        
+        .editable-content {
+            outline: none;
+            border: 1px solid transparent;
+            padding: 4px;
+            border-radius: 4px;
+            transition: border-color 0.2s;
+        }
+        
+        .editable-content:hover {
+            border-color: #e1e1e1;
+        }
+        
+        .editable-content:focus {
+            border-color: #0078d4;
+            background-color: #f8f9fa;
+        }
+        
+        .table-container {
+            overflow-x: auto;
+            margin-bottom: 16px;
+        }
+        
+        .document-table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-bottom: 16px;
+            font-size: 14px;
+        }
+        
+        .document-table th,
+        .document-table td {
+            border: 1px solid #d1d5db;
+            padding: 8px 12px;
+            text-align: left;
+            vertical-align: top;
+        }
+        
+        .document-table th {
+            background-color: #f8f9fa;
+            font-weight: 600;
+            color: #374151;
+        }
+        
+        .document-table tr:nth-child(even) {
+            background-color: #f8f9fa;
+        }
+        
+        .document-table tr:hover {
+            background-color: #e5f3ff;
+        }
+        
+        .editable-section {
+            margin-bottom: 24px;
+            padding: 16px;
+            border: 1px solid #e1e1e1;
+            border-radius: 8px;
+            background: white;
+        }
+        
+        .editable-section:hover {
+            border-color: #0078d4;
+        }
+        
+        .section-controls {
+            display: flex;
+            gap: 8px;
+            margin-top: 12px;
+            opacity: 0;
+            transition: opacity 0.2s;
+        }
+        
+        .editable-section:hover .section-controls {
+            opacity: 1;
+        }
+        
+        .control-button {
+            padding: 4px 8px;
+            background: #0078d4;
+            color: white;
+            border: none;
+            border-radius: 4px;
+            font-size: 12px;
+            cursor: pointer;
+            transition: background-color 0.2s;
+        }
+        
+        .control-button:hover {
+            background: #106ebe;
+        }
+        
+        .control-button.secondary {
+            background: #6c757d;
+        }
+        
+        .control-button.secondary:hover {
+            background: #5a6268;
+        }
+        
+        .save-indicator {
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            background: #28a745;
+            color: white;
+            padding: 8px 16px;
+            border-radius: 4px;
+            font-size: 14px;
+            transform: translateX(100%);
+            transition: transform 0.3s;
+        }
+        
+        .save-indicator.show {
+            transform: translateX(0);
+        }
+        
+        .editing-indicator {
+            position: fixed;
+            top: 20px;
+            left: 20px;
+            background: #ffc107;
+            color: #212529;
+            padding: 8px 16px;
+            border-radius: 4px;
+            font-size: 14px;
+            opacity: 0;
+            transition: opacity 0.3s;
+        }
+        
+        .editing-indicator.show {
+            opacity: 1;
+        }
+        
+        .document-content h1 {
+            color: #0078d4;
+            font-size: 28px;
+            margin-bottom: 16px;
+            padding-bottom: 8px;
+            border-bottom: 2px solid #0078d4;
+        }
+        
+        .document-content h2 {
+            color: #106ebe;
+            font-size: 22px;
+            margin-top: 32px;
+            margin-bottom: 12px;
+        }
+        
+        .document-content h3 {
+            color: #005a9e;
+            font-size: 18px;
+            margin-top: 24px;
+            margin-bottom: 10px;
+        }
+        
+        .document-content p {
+            margin-bottom: 12px;
+            text-align: justify;
+        }
+        
+        .section-nav {
+            background: #f8f9fa;
+            border-radius: 8px;
+            padding: 12px;
+            margin-bottom: 16px;
+        }
+        
+        .section-nav h4 {
+            margin: 0 0 8px 0;
+            color: #0078d4;
+            font-size: 14px;
+        }
+        
+        .nav-item {
+            display: block;
+            padding: 8px 12px;
+            color: #605e5c;
+            text-decoration: none;
+            border-radius: 4px;
+            margin-bottom: 4px;
+            font-size: 13px;
+            transition: background-color 0.2s;
+        }
+        
+        .nav-item:hover {
+            background: #e1f5fe;
+            color: #0078d4;
+        }
+        
+        .nav-item.active {
+            background: #0078d4;
+            color: white;
+        }
+        
+        .nav-item.level-2 {
+            margin-left: 16px;
+        }
+        
+        .nav-item.level-3 {
+            margin-left: 32px;
+        }
+        
+        .sync-controls {
+            padding: 16px;
+            border-top: 1px solid #e1dfdd;
+            background: #f8f9fa;
+        }
+        
+        .sync-button {
+            width: 100%;
+            padding: 12px;
+            background: #0078d4;
+            color: white;
+            border: none;
+            border-radius: 4px;
+            font-size: 14px;
+            cursor: pointer;
+            transition: background-color 0.2s;
+        }
+        
+        .sync-button:hover {
+            background: #106ebe;
+        }
+        
+        .sync-button:disabled {
+            background: #ccc;
+            cursor: not-allowed;
+        }
+        
+        .status-indicator {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            margin-top: 12px;
+            font-size: 12px;
+            color: #605e5c;
+        }
+        
+        .status-dot {
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+            background: #ccc;
+        }
+        
+        .status-dot.connected {
+            background: #107c10;
+        }
+        
+        .status-dot.syncing {
+            background: #ff8c00;
+            animation: pulse 1s infinite;
+        }
+        
+        @keyframes pulse {
+            0% { opacity: 1; }
+            50% { opacity: 0.5; }
+            100% { opacity: 1; }
+        }
+        
+        .toolbar {
+            background: #f8f9fa;
+            border-bottom: 1px solid #e1dfdd;
+            padding: 12px 16px;
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+        
+        .toolbar button {
+            padding: 6px 12px;
+            background: white;
+            border: 1px solid #e1dfdd;
+            border-radius: 4px;
+            font-size: 12px;
+            cursor: pointer;
+            transition: background-color 0.2s;
+        }
+        
+        .toolbar button:hover {
+            background: #f0f0f0;
+        }
+        
+        .empty-state {
+            text-align: center;
+            padding: 60px 20px;
+            color: #605e5c;
+        }
+        
+        .empty-state h3 {
+            color: #0078d4;
+            margin-bottom: 16px;
+        }
+        
+        .loading {
+            text-align: center;
+            padding: 40px;
+            color: #605e5c;
+        }
+        
+        .loading::after {
+            content: '...';
+            animation: dots 1.5s infinite;
+        }
+        
+        @keyframes dots {
+            0% { content: ''; }
+            33% { content: '.'; }
+            66% { content: '..'; }
+            100% { content: '...'; }
+        }
+    </style>
+</head>
+<body>
+    <div class="sidebar">
+        <div class="sidebar-header">
+            📄 Document Navigator
+        </div>
+        <div class="sidebar-content">
+            <div class="section-nav">
+                <h4>Document Sections</h4>
+                <div id="navigationItems">
+                    <div class="loading">Loading sections</div>
+                </div>
+            </div>
+        </div>
+        <div class="sync-controls">
+            <button class="sync-button" id="syncButton" onclick="syncWithAddin()">
+                🔄 Pull from Word
+            </button>
+            <div class="status-indicator">
+                <div class="status-dot" id="statusDot"></div>
+                <span id="statusText">Ready to sync</span>
+            </div>
+        </div>
+    </div>
+    
+    <div class="main-content">
+        <div class="toolbar">
+            <button onclick="openFile()">📂 Open File</button>
+            <button onclick="refreshContent()">🔄 Refresh</button>
+            <button onclick="saveChanges()" id="saveButton" disabled>💾 Save Changes</button>
+            <button onclick="addNewSection()">➕ Add Section</button>
+            <button onclick="sendToWord()">📝 Push to Word</button>
+            <button onclick="exportContent()">📤 Export</button>
+            <button onclick="toggleFullscreen()">🖼️ Fullscreen</button>
+        </div>
+        
+        <div class="document-content" id="documentContent">
+            <div class="empty-state">
+                <h3>Welcome to Document Web Viewer</h3>
+                <p>Click "Pull from Word" to load your document content from the Word add-in.</p>
+                <p>The document will appear here and stay synchronized with your Word document.</p>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Editing indicators -->
+    <div class="editing-indicator" id="editingIndicator">
+        📝 Editing mode - Click anywhere to edit
+    </div>
+    
+    <div class="save-indicator" id="saveIndicator">
+        ✅ Changes saved!
+    </div>
+
+    <script>
+        let documentSections = [];
+        let syncInterval = null;
+        let isConnected = false;
+        let hasUnsavedChanges = false;
+        let isEditingMode = false;
+        
+        // Initialize the web viewer
+        window.addEventListener('DOMContentLoaded', function() {
+            initializeViewer();
+        });
+        
+        function initializeViewer() {
+            updateStatus('Initializing viewer...');
+            
+            // Try to connect to the add-in server
+            checkConnection();
+            
+            // Set up periodic sync (every 5 seconds)
+            syncInterval = setInterval(syncWithAddin, 5000);
+            
+            updateStatus('Ready to sync');
+        }
+        
+        async function checkConnection() {
+            try {
+                const response = await fetch('http://localhost:3001/api/health');
+                isConnected = response.ok;
+                updateConnectionStatus(isConnected);
+            } catch (error) {
+                console.log('Connection check failed:', error);
+                isConnected = false;
+                updateConnectionStatus(false);
+            }
+        }
+        
+        async function syncWithAddin() {
+            if (!isConnected) {
+                await checkConnection();
+                if (!isConnected) return;
+            }
+            
+            updateStatus('Syncing with Word...', 'syncing');
+            
+            try {
+                // Try to get document data from the add-in
+                const response = await fetch('http://localhost:3001/api/document-sections');
+                
+                if (response.ok) {
+                    const data = await response.json();
+                    documentSections = data.sections || [];
+                    renderDocument();
+                    renderNavigation();
+                    updateStatus(`Synced - ${documentSections.length} sections loaded`);
+                } else {
+                    throw new Error('Failed to fetch document data');
+                }
+            } catch (error) {
+                console.error('Sync failed:', error);
+                updateStatus('Sync failed - will retry');
+                
+                // Fallback: create sample content for demonstration
+                createSampleContent();
+            }
+        }
+        
+        function createSampleContent() {
+            // Create sample content to demonstrate the viewer
+            documentSections = [
+                {
+                    id: 'section-1',
+                    title: '📋 Introduction',
+                    content: [
+                        'Welcome to the Document Web Viewer! This tool provides a synchronized view of your Word document.',
+                        'You can navigate through sections, view content, and keep everything in sync with your Word add-in.'
+                    ],
+                    level: 1,
+                    subsections: [
+                        {
+                            id: 'section-1-1',
+                            title: 'Getting Started',
+                            content: [
+                                'To begin using the viewer, make sure your Word add-in is running.',
+                                'The viewer will automatically sync with your document content.'
+                            ],
+                            level: 2,
+                            subsections: []
+                        }
+                    ]
+                },
+                {
+                    id: 'section-2',
+                    title: '🔄 Synchronization Features',
+                    content: [
+                        'The web viewer provides real-time synchronization with your Word document.',
+                        'Changes made in Word will be reflected here automatically.'
+                    ],
+                    level: 1,
+                    subsections: []
+                }
+            ];
+            
+            renderDocument();
+            renderNavigation();
+            updateStatus('Sample content loaded');
+        }
+        
+        function renderDocument() {
+            const container = document.getElementById('documentContent');
+            
+            if (documentSections.length === 0) {
+                container.innerHTML = `
+                    <div class="empty-state">
+                        <h3>No Document Content</h3>
+                        <p>Open a Word document with headings and sync to see content here.</p>
+                    </div>
+                `;
+                return;
+            }
+            
+            let html = '';
+            
+            documentSections.forEach(section => {
+                html += renderSection(section);
+            });
+            
+            container.innerHTML = html;
+        }
+        
+        function renderSection(section) {
+            const headingTag = `h${section.level}`;
+            let html = `
+                <div class="editable-section" data-section-id="${section.id}">
+                    <${headingTag} 
+                        class="editable-content" 
+                        contenteditable="true"
+                        data-field="title"
+                        data-section-id="${section.id}"
+                        onblur="updateSectionData(this)"
+                        onkeydown="handleKeyDown(event)"
+                    >${escapeHtml(section.title)}</${headingTag}>
+            `;
+            
+            // Add section content
+            if (section.content && section.content.length > 0) {
+                section.content.forEach((paragraph, index) => {
+                    // Check if this is HTML content (contains tables)
+                    if (paragraph.includes('<table') || paragraph.includes('<tr') || paragraph.includes('<td')) {
+                        html += `
+                            <div class="editable-content table-container" 
+                               contenteditable="true"
+                               data-field="content"
+                               data-section-id="${section.id}"
+                               data-paragraph-index="${index}"
+                               onblur="updateSectionData(this)"
+                               onkeydown="handleKeyDown(event)"
+                            >${paragraph}</div>
+                        `;
+                    } else {
+                        html += `
+                            <p class="editable-content" 
+                               contenteditable="true"
+                               data-field="content"
+                               data-section-id="${section.id}"
+                               data-paragraph-index="${index}"
+                               onblur="updateSectionData(this)"
+                               onkeydown="handleKeyDown(event)"
+                            >${escapeHtml(paragraph)}</p>
+                        `;
+                    }
+                });
+            }
+            
+            // Add section controls
+            html += `
+                <div class="section-controls">
+                    <button class="control-button" onclick="addParagraph('${section.id}')">➕ Add Paragraph</button>
+                    <button class="control-button secondary" onclick="deleteSection('${section.id}')">🗑️ Delete Section</button>
+                </div>
+            `;
+            
+            // Add subsections
+            if (section.subsections && section.subsections.length > 0) {
+                section.subsections.forEach(subsection => {
+                    html += renderSection(subsection);
+                });
+            }
+            
+            html += `</div>`;
+            
+            return html;
+        }
+        
+        function renderNavigation() {
+            const container = document.getElementById('navigationItems');
+            
+            if (documentSections.length === 0) {
+                container.innerHTML = '<div class="loading">No sections found</div>';
+                return;
+            }
+            
+            let html = '';
+            
+            documentSections.forEach(section => {
+                html += renderNavItem(section);
+            });
+            
+            container.innerHTML = html;
+        }
+        
+        function renderNavItem(section) {
+            let html = `
+                <a href="#${section.id}" class="nav-item level-${section.level}" onclick="scrollToSection('${section.id}')">
+                    ${escapeHtml(section.title)}
+                </a>
+            `;
+            
+            if (section.subsections && section.subsections.length > 0) {
+                section.subsections.forEach(subsection => {
+                    html += renderNavItem(subsection);
+                });
+            }
+            
+            return html;
+        }
+        
+        function scrollToSection(sectionId) {
+            const element = document.getElementById(sectionId);
+            if (element) {
+                element.scrollIntoView({ behavior: 'smooth' });
+                
+                // Update active navigation item
+                document.querySelectorAll('.nav-item').forEach(item => {
+                    item.classList.remove('active');
+                });
+                
+                const navItem = document.querySelector(`a[href="#${sectionId}"]`);
+                if (navItem) {
+                    navItem.classList.add('active');
+                }
+            }
+        }
+        
+        function updateStatus(message, type = 'ready') {
+            const statusText = document.getElementById('statusText');
+            const statusDot = document.getElementById('statusDot');
+            
+            statusText.textContent = message;
+            
+            statusDot.className = 'status-dot';
+            if (type === 'syncing') {
+                statusDot.classList.add('syncing');
+            } else if (type === 'connected') {
+                statusDot.classList.add('connected');
+            }
+        }
+        
+        function updateConnectionStatus(connected) {
+            isConnected = connected;
+            if (connected) {
+                updateStatus('Connected to Word add-in', 'connected');
+            } else {
+                updateStatus('Disconnected from Word add-in');
+            }
+        }
+        
+        function escapeHtml(text) {
+            const div = document.createElement('div');
+            div.textContent = text;
+            return div.innerHTML;
+        }
+        
+        function refreshContent() {
+            syncWithAddin();
+        }
+        
+        function exportContent() {
+            const content = document.getElementById('documentContent').innerHTML;
+            const blob = new Blob([`
+                <!DOCTYPE html>
+                <html>
+                <head>
+                    <title>Exported Document</title>
+                    <style>
+                        body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; max-width: 800px; margin: 0 auto; padding: 40px; }
+                        h1 { color: #0078d4; }
+                        h2 { color: #106ebe; }
+                        h3 { color: #005a9e; }
+                    </style>
+                </head>
+                <body>
+                    ${content}
+                </body>
+                </html>
+            `], { type: 'text/html' });
+            
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = 'document-export.html';
+            a.click();
+            URL.revokeObjectURL(url);
+        }
+        
+        function toggleFullscreen() {
+            if (document.fullscreenElement) {
+                document.exitFullscreen();
+            } else {
+                document.documentElement.requestFullscreen();
+            }
+        }
+        
+        async function sendToWord() {
+            updateStatus('Sending document to Word...', 'syncing');
+            
+            try {
+                const response = await fetch('http://localhost:3001/api/send-to-word', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({
+                        sections: documentSections,
+                        action: 'replace'
+                    })
+                });
+                
+                if (response.ok) {
+                    const result = await response.json();
+                    updateStatus('Document sent to Word successfully!', 'connected');
+                    console.log('Document sent to Word:', result);
+                } else {
+                    throw new Error('Failed to send document to Word');
+                }
+            } catch (error) {
+                console.error('Error sending document to Word:', error);
+                updateStatus('Failed to send document to Word');
+            }
+        }
+        
+        // Editing functionality
+        function enableEditingMode() {
+            isEditingMode = true;
+            document.getElementById('editingIndicator').classList.add('show');
+            setTimeout(() => {
+                document.getElementById('editingIndicator').classList.remove('show');
+            }, 3000);
+        }
+        
+        function updateSectionData(element) {
+            const sectionId = element.getAttribute('data-section-id');
+            const field = element.getAttribute('data-field');
+            const newValue = element.textContent;
+            
+            // Find the section in our data
+            const section = findSectionById(sectionId);
+            if (!section) return;
+            
+            if (field === 'title') {
+                section.title = newValue;
+            } else if (field === 'content') {
+                const paragraphIndex = parseInt(element.getAttribute('data-paragraph-index'));
+                if (section.content && section.content[paragraphIndex] !== undefined) {
+                    section.content[paragraphIndex] = newValue;
+                }
+            }
+            
+            markAsChanged();
+        }
+        
+        function findSectionById(id) {
+            function searchSections(sections) {
+                for (let section of sections) {
+                    if (section.id === id) return section;
+                    if (section.subsections) {
+                        const found = searchSections(section.subsections);
+                        if (found) return found;
+                    }
+                }
+                return null;
+            }
+            return searchSections(documentSections);
+        }
+        
+        function markAsChanged() {
+            hasUnsavedChanges = true;
+            document.getElementById('saveButton').disabled = false;
+            document.getElementById('saveButton').textContent = '💾 Save Changes*';
+        }
+        
+        function handleKeyDown(event) {
+            if (event.key === 'Enter' && event.ctrlKey) {
+                event.preventDefault();
+                saveChanges();
+            } else if (event.key === 'Escape') {
+                event.target.blur();
+            }
+            
+            // Enable editing mode on first keystroke
+            if (!isEditingMode) {
+                enableEditingMode();
+            }
+        }
+        
+        function addParagraph(sectionId) {
+            const section = findSectionById(sectionId);
+            if (!section) return;
+            
+            if (!section.content) section.content = [];
+            section.content.push('New paragraph - click to edit');
+            
+            renderDocument();
+            markAsChanged();
+        }
+        
+        function deleteSection(sectionId) {
+            if (!confirm('Are you sure you want to delete this section?')) return;
+            
+            function removeSection(sections) {
+                for (let i = 0; i < sections.length; i++) {
+                    if (sections[i].id === sectionId) {
+                        sections.splice(i, 1);
+                        return true;
+                    }
+                    if (sections[i].subsections) {
+                        if (removeSection(sections[i].subsections)) return true;
+                    }
+                }
+                return false;
+            }
+            
+            if (removeSection(documentSections)) {
+                renderDocument();
+                markAsChanged();
+            }
+        }
+        
+        function addNewSection() {
+            const newSectionNumber = documentSections.length + 1;
+            const newSection = {
+                id: `section-${newSectionNumber}`,
+                title: `${newSectionNumber}. NEW SECTION - CLICK TO EDIT`,
+                content: ['This is a new section. Click to edit this content.'],
+                level: 1,
+                paragraphIndex: documentSections.length + 1,
+                expanded: false,
+                subsections: []
+            };
+            
+            documentSections.push(newSection);
+            renderDocument();
+            renderNavigation();
+            markAsChanged();
+        }
+        
+        async function saveChanges() {
+            if (!hasUnsavedChanges) return;
+            
+            updateStatus('Saving changes...', 'syncing');
+            
+            try {
+                const response = await fetch('http://localhost:3001/api/document-sections', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({
+                        title: 'Software Development Agreement',
+                        sections: documentSections
+                    })
+                });
+                
+                if (response.ok) {
+                    hasUnsavedChanges = false;
+                    document.getElementById('saveButton').disabled = true;
+                    document.getElementById('saveButton').textContent = '💾 Save Changes';
+                    
+                    // Show save indicator
+                    document.getElementById('saveIndicator').classList.add('show');
+                    setTimeout(() => {
+                        document.getElementById('saveIndicator').classList.remove('show');
+                    }, 2000);
+                    
+                    updateStatus('Changes saved successfully!', 'connected');
+                } else {
+                    throw new Error('Failed to save changes');
+                }
+            } catch (error) {
+                console.error('Error saving changes:', error);
+                updateStatus('Failed to save changes');
+            }
+        }
+        
+        // Auto-save every 30 seconds if there are unsaved changes
+        setInterval(() => {
+            if (hasUnsavedChanges) {
+                saveChanges();
+            }
+        }, 30000);
+        
+        // Open file function for web viewer
+        function openFile() {
+            const fileInput = document.createElement('input');
+            fileInput.type = 'file';
+            fileInput.accept = '.docx,.doc,.txt,.html';
+            fileInput.style.display = 'none';
+            
+            fileInput.onchange = function(e) {
+                const file = e.target.files[0];
+                if (file) {
+                    updateStatus(`Reading ${file.name}...`);
+                    
+                    const reader = new FileReader();
+                    reader.onload = function(event) {
+                        try {
+                            const content = event.target.result;
+                            
+                            // Parse the content based on file type
+                            if (file.name.endsWith('.txt')) {
+                                parseTextFile(content, file.name);
+                            } else if (file.name.endsWith('.html')) {
+                                parseHtmlFile(content, file.name);
+                            } else if (file.name.endsWith('.docx') || file.name.endsWith('.doc')) {
+                                updateStatus(`${file.name} loaded - please use Word add-in to sync content`);
+                                alert(`Word documents should be opened through the Word add-in.\n\nTo sync:\n1. Open ${file.name} in Word\n2. Use the Word add-in to sync content`);
+                            } else {
+                                // Try to parse as text
+                                parseTextFile(content, file.name);
+                            }
+                        } catch (error) {
+                            console.error('Error reading file:', error);
+                            updateStatus('Error reading file');
+                        }
+                    };
+                    
+                    if (file.name.endsWith('.docx') || file.name.endsWith('.doc')) {
+                        reader.readAsArrayBuffer(file);
+                    } else {
+                        reader.readAsText(file);
+                    }
+                }
+            };
+            
+            document.body.appendChild(fileInput);
+            fileInput.click();
+            document.body.removeChild(fileInput);
+        }
+        
+        // Parse text file content
+        function parseTextFile(content, filename) {
+            const lines = content.split('\n');
+            const sections = [];
+            let currentSection = null;
+            let currentSubsection = null;
+            
+            for (let line of lines) {
+                line = line.trim();
+                if (!line) continue;
+                
+                // Check if it's a main heading (numbered or all caps)
+                if (line.match(/^\d+\.\s+/) || (line === line.toUpperCase() && line.length > 5)) {
+                    // Save previous section
+                    if (currentSection) {
+                        sections.push(currentSection);
+                    }
+                    
+                    currentSection = {
+                        id: `section-${sections.length + 1}`,
+                        title: line,
+                        content: [],
+                        subsections: [],
+                        level: 1,
+                        lastUpdated: new Date().toISOString()
+                    };
+                    currentSubsection = null;
+                }
+                // Check if it's a subsection (numbered like 1.1, 1.2, etc.)
+                else if (line.match(/^\d+\.\d+\s+/)) {
+                    if (currentSection) {
+                        currentSubsection = {
+                            id: `subsection-${currentSection.subsections.length + 1}`,
+                            title: line,
+                            content: [],
+                            subsections: [],
+                            level: 2,
+                            lastUpdated: new Date().toISOString()
+                        };
+                        currentSection.subsections.push(currentSubsection);
+                    }
+                }
+                // Regular content
+                else {
+                    if (currentSubsection) {
+                        currentSubsection.content.push(line);
+                    } else if (currentSection) {
+                        currentSection.content.push(line);
+                    }
+                }
+            }
+            
+            // Add the last section
+            if (currentSection) {
+                sections.push(currentSection);
+            }
+            
+            // Update the document with parsed content
+            documentSections = sections;
+            renderDocument();
+            renderNavigation();
+            updateStatus(`Loaded ${filename} - ${sections.length} sections found`);
+            
+            // Send to API server
+            sendToApiServer();
+        }
+        
+        // Parse HTML file content
+        function parseHtmlFile(content, filename) {
+            const parser = new DOMParser();
+            const doc = parser.parseFromString(content, 'text/html');
+            const sections = [];
+            
+            // Find headings (h1, h2, h3, etc.)
+            const headings = doc.querySelectorAll('h1, h2, h3, h4, h5, h6');
+            let currentSection = null;
+            
+            headings.forEach((heading, index) => {
+                const level = parseInt(heading.tagName.charAt(1));
+                
+                if (level === 1) {
+                    // Save previous section
+                    if (currentSection) {
+                        sections.push(currentSection);
+                    }
+                    
+                    currentSection = {
+                        id: `section-${sections.length + 1}`,
+                        title: heading.textContent.trim(),
+                        content: [],
+                        subsections: [],
+                        level: 1,
+                        lastUpdated: new Date().toISOString()
+                    };
+                    
+                    // Get content until next heading
+                    let nextElement = heading.nextElementSibling;
+                    while (nextElement && !nextElement.matches('h1, h2, h3, h4, h5, h6')) {
+                        if (nextElement.textContent.trim()) {
+                            currentSection.content.push(nextElement.textContent.trim());
+                        }
+                        nextElement = nextElement.nextElementSibling;
+                    }
+                }
+                else if (level === 2 && currentSection) {
+                    const subsection = {
+                        id: `subsection-${currentSection.subsections.length + 1}`,
+                        title: heading.textContent.trim(),
+                        content: [],
+                        subsections: [],
+                        level: 2,
+                        lastUpdated: new Date().toISOString()
+                    };
+                    
+                    // Get content until next heading
+                    let nextElement = heading.nextElementSibling;
+                    while (nextElement && !nextElement.matches('h1, h2, h3, h4, h5, h6')) {
+                        if (nextElement.textContent.trim()) {
+                            subsection.content.push(nextElement.textContent.trim());
+                        }
+                        nextElement = nextElement.nextElementSibling;
+                    }
+                    
+                    currentSection.subsections.push(subsection);
+                }
+            });
+            
+            // Add the last section
+            if (currentSection) {
+                sections.push(currentSection);
+            }
+            
+            // Update the document with parsed content
+            documentSections = sections;
+            renderDocument();
+            renderNavigation();
+            updateStatus(`Loaded ${filename} - ${sections.length} sections found`);
+            
+            // Send to API server
+            sendToApiServer();
+        }
+        
+        // Send parsed content to API server
+        async function sendToApiServer() {
+            try {
+                const response = await fetch('http://localhost:3001/api/document-sections', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({
+                        sections: documentSections,
+                        lastUpdated: new Date().toISOString(),
+                        title: 'Imported Document'
+                    })
+                });
+                
+                if (response.ok) {
+                    updateStatus('Document synced to API server');
+                } else {
+                    console.error('Failed to sync to API server');
+                }
+            } catch (error) {
+                console.error('Error syncing to API server:', error);
+            }
+        }
+
+        // Warn user about unsaved changes
+        window.addEventListener('beforeunload', function(event) {
+            if (hasUnsavedChanges) {
+                event.preventDefault();
+                event.returnValue = 'You have unsaved changes. Are you sure you want to leave?';
+                return event.returnValue;
+            }
+            
+            if (syncInterval) {
+                clearInterval(syncInterval);
+            }
+        });
+    </script>
+</body>
+</html> 

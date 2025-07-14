@@ -1,0 +1,183 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Word Add-in Setup Guide</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 900px;
+            margin: 0 auto;
+            padding: 20px;
+            line-height: 1.6;
+        }
+        .step {
+            background-color: #f8f9fa;
+            padding: 20px;
+            margin-bottom: 20px;
+            border-radius: 8px;
+            border-left: 4px solid #28a745;
+        }
+        .step h2 {
+            color: #28a745;
+            margin-top: 0;
+        }
+        .warning {
+            background-color: #fff3cd;
+            border: 1px solid #ffeaa7;
+            border-radius: 5px;
+            padding: 15px;
+            margin: 15px 0;
+        }
+        .warning h3 {
+            color: #856404;
+            margin-top: 0;
+        }
+        .code {
+            background-color: #f1f3f4;
+            padding: 10px;
+            border-radius: 5px;
+            font-family: monospace;
+            margin: 10px 0;
+        }
+        .success {
+            background-color: #d4edda;
+            border: 1px solid #c3e6cb;
+            border-radius: 5px;
+            padding: 15px;
+            margin: 15px 0;
+        }
+        .success h3 {
+            color: #155724;
+            margin-top: 0;
+        }
+        ul {
+            padding-left: 20px;
+        }
+        li {
+            margin-bottom: 8px;
+        }
+    </style>
+</head>
+<body>
+    <h1>🚀 Word Add-in Setup Guide</h1>
+    <p>Follow these steps to properly set up and test your Word add-in.</p>
+
+    <div class="step">
+        <h2>Step 1: Start Your Servers</h2>
+        <p>Make sure both servers are running:</p>
+        <div class="code">npm run run-all</div>
+        <p>You should see:</p>
+        <ul>
+            <li>✅ Web server running on port 3000</li>
+            <li>✅ API server running on port 3001</li>
+            <li>✅ Installation instructions displayed</li>
+        </ul>
+    </div>
+
+    <div class="step">
+        <h2>Step 2: Create a Test Document</h2>
+        <p>Instead of using the old document file:</p>
+        <ol>
+            <li>Open <a href="http://localhost:3000/clean-sample-document.html" target="_blank">http://localhost:3000/clean-sample-document.html</a></li>
+            <li>Copy ALL the content from the white box</li>
+            <li>Open Microsoft Word</li>
+            <li>Paste the content</li>
+            <li>Save as "test-document.docx"</li>
+        </ol>
+    </div>
+
+    <div class="step">
+        <h2>Step 3: Install the Add-in</h2>
+        <p>With your test document open in Word:</p>
+        <ol>
+            <li>Click on the <strong>Insert</strong> tab</li>
+            <li>Click <strong>Get Add-ins</strong></li>
+            <li>Click <strong>My Add-ins</strong></li>
+            <li>Click <strong>Upload My Add-in</strong></li>
+            <li>Browse to your project folder: <code>C:\Users\msokrin\Document project</code></li>
+            <li>Select <strong>manifest.xml</strong></li>
+            <li>Click <strong>Upload</strong></li>
+        </ol>
+    </div>
+
+    <div class="success">
+        <h3>✅ Success Indicators</h3>
+        <p>You should see:</p>
+        <ul>
+            <li>A new "Hello Group" section in the Home ribbon</li>
+            <li>A "Hello Moti" button in that section</li>
+            <li>When clicked, a task pane opens on the right side</li>
+        </ul>
+    </div>
+
+    <div class="step">
+        <h2>Step 4: Test the Add-in</h2>
+        <p>In the Word add-in task pane:</p>
+        <ol>
+            <li>Click the <strong>Hello Moti</strong> button in the ribbon</li>
+            <li>The task pane should open on the right</li>
+            <li>Try clicking <strong>🔄 Pull from Word</strong> to read the document</li>
+            <li>Check the <strong>Navigation</strong> tab for sections</li>
+        </ol>
+    </div>
+
+    <div class="step">
+        <h2>Step 5: Test Web Viewer Sync</h2>
+        <p>Open the web viewer and test sync:</p>
+        <ol>
+            <li>Open <a href="http://localhost:3000/web-viewer.html" target="_blank">http://localhost:3000/web-viewer.html</a></li>
+            <li>In Word add-in: Click <strong>🔄 Pull from Word</strong></li>
+            <li>In web viewer: Click <strong>🔄 Refresh</strong></li>
+            <li>You should see the document sections appear</li>
+        </ol>
+    </div>
+
+    <div class="warning">
+        <h3>⚠️ Troubleshooting</h3>
+        <p><strong>If the add-in doesn't appear:</strong></p>
+        <ul>
+            <li>Make sure both servers are running</li>
+            <li>Check if you can access <a href="http://localhost:3000/taskpane.html" target="_blank">http://localhost:3000/taskpane.html</a> in your browser</li>
+            <li>Try restarting Word and checking the ribbon again</li>
+        </ul>
+        
+        <p><strong>If content is unreadable:</strong></p>
+        <ul>
+            <li>Use the clean document from Step 2</li>
+            <li>Make sure you're pasting plain text, not formatted HTML</li>
+            <li>Try creating a completely new Word document</li>
+        </ul>
+        
+        <p><strong>If sync doesn't work:</strong></p>
+        <ul>
+            <li>Check the browser console for errors</li>
+            <li>Make sure the API server shows "Updated document data" messages</li>
+            <li>Try refreshing both the web viewer and Word task pane</li>
+        </ul>
+    </div>
+
+    <div class="step">
+        <h2>Step 6: Quick Test Links</h2>
+        <p>Test these URLs to make sure everything is working:</p>
+        <ul>
+            <li><a href="http://localhost:3000/taskpane.html" target="_blank">Task Pane</a> - Should show the Word add-in interface</li>
+            <li><a href="http://localhost:3000/web-viewer.html" target="_blank">Web Viewer</a> - Should show the document viewer</li>
+            <li><a href="http://localhost:3001/api/health" target="_blank">API Health</a> - Should return {"status":"ok"}</li>
+            <li><a href="http://localhost:3001/api/document-sections" target="_blank">Document Sections</a> - Should return the document data</li>
+        </ul>
+    </div>
+
+    <div class="success">
+        <h3>🎉 You're All Set!</h3>
+        <p>Once everything is working, you can:</p>
+        <ul>
+            <li>Open any Word document and the add-in will be there</li>
+            <li>Use the sync features to coordinate with the web viewer</li>
+            <li>Edit content in both Word and the web viewer</li>
+            <li>Export documents in different formats</li>
+        </ul>
+    </div>
+</body>
+</html> 

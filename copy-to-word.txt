@@ -1,0 +1,132 @@
+SOFTWARE DEVELOPMENT AGREEMENT
+
+This Software Development Agreement ("Agreement") is entered into on January 15, 2024, between TechCorp Solutions, Inc., a Delaware corporation with its principal place of business at 123 Technology Drive, San Francisco, CA 94105 ("Company"), and Digital Innovations LLC, a California limited liability company with its principal place of business at 456 Innovation Way, Palo Alto, CA 94301 ("Developer").
+
+RECITALS
+
+WHEREAS, Company desires to engage Developer to develop custom software solutions for its business operations;
+
+WHEREAS, Developer has the expertise, experience, and resources necessary to provide the software development services described herein;
+
+WHEREAS, the parties wish to set forth the terms and conditions of their agreement;
+
+NOW, THEREFORE, in consideration of the mutual covenants and agreements contained herein, the parties agree as follows:
+
+1. PROJECT SCOPE AND SPECIFICATIONS
+
+1.1 Overview
+Developer shall design, develop, and deliver a comprehensive customer relationship management (CRM) system tailored to Company's specific business requirements. The system shall include modules for customer data management, sales tracking, inventory control, and financial reporting.
+
+1.2 Functional Requirements
+The CRM system shall provide the following core functionalities:
+• Customer database with advanced search and filtering capabilities
+• Lead generation and conversion tracking
+• Sales pipeline management with customizable stages
+• Automated email marketing integration
+• Real-time reporting and analytics dashboard
+• Mobile-responsive web interface
+• Integration with existing accounting software
+• Multi-user access with role-based permissions
+
+1.3 Technical Specifications
+The system shall be built using modern web technologies including React.js for the frontend, Node.js for the backend, and PostgreSQL for data storage. The application shall be cloud-hosted on AWS infrastructure with SSL encryption and regular automated backups.
+
+2. DEVELOPMENT TIMELINE
+
+2.1 Project Phases
+The development shall be completed in four distinct phases:
+Phase 1: Requirements analysis and system design (4 weeks)
+Phase 2: Core functionality development (8 weeks)
+Phase 3: Integration and testing (4 weeks)
+Phase 4: Deployment and training (2 weeks)
+
+2.2 Milestones and Deliverables
+Each phase shall conclude with specific deliverables subject to Company's approval. Developer shall provide weekly progress reports and maintain a shared project management dashboard accessible to Company stakeholders.
+
+3. PAYMENT TERMS
+
+3.1 Total Project Cost
+The total cost for the development project is $185,000 USD, payable according to the schedule outlined in Section 3.2.
+
+3.2 Payment Schedule
+Payments shall be made as follows:
+• 25% ($46,250) upon execution of this Agreement
+• 25% ($46,250) upon completion of Phase 1
+• 25% ($46,250) upon completion of Phase 2
+• 25% ($46,250) upon final delivery and acceptance
+
+3.3 Payment Methods
+All payments shall be made via wire transfer or certified check within thirty (30) days of invoice date. Late payments shall incur a service charge of 1.5% per month.
+
+4. INTELLECTUAL PROPERTY RIGHTS
+
+4.1 Work Product Ownership
+All work product, including but not limited to source code, documentation, designs, and related materials created by Developer under this Agreement, shall be the exclusive property of Company.
+
+4.2 Developer Tools and Libraries
+Developer may utilize standard development tools, frameworks, and open-source libraries in the creation of the work product, provided such use does not infringe upon third-party rights or compromise the security of the system.
+
+4.3 Pre-existing Intellectual Property
+Each party shall retain ownership of its respective pre-existing intellectual property. Developer grants Company a non-exclusive license to use any pre-existing Developer IP incorporated into the work product.
+
+5. CONFIDENTIALITY
+
+5.1 Confidential Information
+Each party acknowledges that it may have access to confidential information of the other party. Confidential information shall include all non-public information disclosed by one party to the other.
+
+5.2 Obligations
+Each party agrees to maintain the confidentiality of the other party's confidential information and not to disclose such information to third parties without prior written consent.
+
+6. WARRANTIES AND REPRESENTATIONS
+
+6.1 Developer Warranties
+Developer warrants that the work product will be free from defects and will perform in accordance with the specifications for a period of ninety (90) days following delivery.
+
+6.2 Company Warranties
+Company warrants that it has the authority to enter into this Agreement and that the use of the work product will not violate any third-party rights.
+
+7. LIMITATION OF LIABILITY
+
+7.1 Limitation of Damages
+In no event shall either party be liable for any indirect, incidental, special, or consequential damages arising out of or relating to this Agreement.
+
+7.2 Maximum Liability
+Each party's total liability under this Agreement shall not exceed the total amount paid or payable under this Agreement.
+
+8. TERMINATION
+
+8.1 Termination for Convenience
+Either party may terminate this Agreement upon thirty (30) days written notice to the other party.
+
+8.2 Termination for Cause
+Either party may terminate this Agreement immediately upon written notice if the other party materially breaches this Agreement and fails to cure such breach within ten (10) days.
+
+9. GENERAL PROVISIONS
+
+9.1 Governing Law
+This Agreement shall be governed by and construed in accordance with the laws of the State of California.
+
+9.2 Entire Agreement
+This Agreement constitutes the entire agreement between the parties and supersedes all prior negotiations, representations, and agreements.
+
+9.3 Amendment
+This Agreement may only be amended in writing signed by both parties.
+
+9.4 Severability
+If any provision of this Agreement is held to be invalid or unenforceable, the remaining provisions shall continue in full force and effect.
+
+IN WITNESS WHEREOF, the parties have executed this Agreement as of the date first written above.
+
+TECHCORP SOLUTIONS, INC.
+
+By: _________________________
+Name: Sarah Johnson
+Title: Chief Executive Officer
+Date: January 15, 2024
+
+DIGITAL INNOVATIONS LLC
+
+By: _________________________
+Name: Michael Chen
+Title: Managing Partner
+Date: January 15, 2024 

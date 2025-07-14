@@ -1,0 +1,221 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Word Add-in Installation Guide</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            max-width: 900px;
+            margin: 0 auto;
+            padding: 20px;
+            line-height: 1.6;
+        }
+        .method {
+            background-color: #f8f9fa;
+            padding: 20px;
+            margin-bottom: 20px;
+            border-radius: 8px;
+            border-left: 4px solid #007bff;
+        }
+        .method h2 {
+            color: #007bff;
+            margin-top: 0;
+        }
+        .warning {
+            background-color: #fff3cd;
+            border: 1px solid #ffeaa7;
+            border-radius: 5px;
+            padding: 15px;
+            margin: 15px 0;
+        }
+        .warning h3 {
+            color: #856404;
+            margin-top: 0;
+        }
+        .success {
+            background-color: #d4edda;
+            border: 1px solid #c3e6cb;
+            border-radius: 5px;
+            padding: 15px;
+            margin: 15px 0;
+        }
+        .success h3 {
+            color: #155724;
+            margin-top: 0;
+        }
+        .code {
+            background-color: #f1f3f4;
+            padding: 10px;
+            border-radius: 5px;
+            font-family: monospace;
+            margin: 10px 0;
+        }
+        .steps {
+            background-color: #e3f2fd;
+            padding: 15px;
+            border-radius: 5px;
+            margin: 10px 0;
+        }
+        ul {
+            padding-left: 20px;
+        }
+        li {
+            margin-bottom: 8px;
+        }
+        .alternative {
+            background-color: #fff8e1;
+            border: 1px solid #ffcc02;
+            border-radius: 5px;
+            padding: 15px;
+            margin: 15px 0;
+        }
+        .alternative h3 {
+            color: #f57c00;
+            margin-top: 0;
+        }
+    </style>
+</head>
+<body>
+    <h1>📝 Word Add-in Installation Guide</h1>
+    <p>Different methods to install your Word add-in, depending on your Word version.</p>
+
+    <div class="method">
+        <h2>Method 1: Insert → Get Add-ins (Most Common)</h2>
+        <div class="steps">
+            <ol>
+                <li>Open Microsoft Word</li>
+                <li>Click the <strong>Insert</strong> tab in the ribbon</li>
+                <li>Look for <strong>Get Add-ins</strong> (or <strong>Office Add-ins</strong>)</li>
+                <li>Click <strong>My Add-ins</strong> at the top</li>
+                <li>Look for <strong>Upload My Add-in</strong> (usually at the bottom)</li>
+                <li>Browse to: <code>C:\Users\msokrin\Document project\manifest.xml</code></li>
+                <li>Click <strong>Upload</strong></li>
+            </ol>
+        </div>
+    </div>
+
+    <div class="method">
+        <h2>Method 2: Insert → Add-ins (Alternative)</h2>
+        <div class="steps">
+            <ol>
+                <li>Open Microsoft Word</li>
+                <li>Click the <strong>Insert</strong> tab</li>
+                <li>Click <strong>Add-ins</strong> (instead of Get Add-ins)</li>
+                <li>Click <strong>My Add-ins</strong></li>
+                <li>Look for <strong>Upload My Add-in</strong> or <strong>Sideload Add-in</strong></li>
+                <li>Select your manifest.xml file</li>
+            </ol>
+        </div>
+    </div>
+
+    <div class="method">
+        <h2>Method 3: Developer Tab (If Available)</h2>
+        <div class="steps">
+            <p>First, enable Developer tab:</p>
+            <ol>
+                <li>File → Options → Customize Ribbon</li>
+                <li>Check <strong>Developer</strong> in the right column</li>
+                <li>Click OK</li>
+            </ol>
+            <p>Then install add-in:</p>
+            <ol>
+                <li>Click <strong>Developer</strong> tab</li>
+                <li>Click <strong>Add-ins</strong></li>
+                <li>Look for upload or sideload option</li>
+            </ol>
+        </div>
+    </div>
+
+    <div class="alternative">
+        <h3>🔧 Alternative: Manual Registry Method</h3>
+        <p>If upload options are not available, try this:</p>
+        <ol>
+            <li>Close Word completely</li>
+            <li>Open Command Prompt as Administrator</li>
+            <li>Run: <code>reg add HKEY_CURRENT_USER\Software\Microsoft\Office\16.0\WEF\Developer /v AllowWebRequestsFromThisOrigin /t REG_SZ /d "*"</code></li>
+            <li>Run: <code>reg add HKEY_CURRENT_USER\Software\Microsoft\Office\16.0\WEF\Developer /v AllowHttpsRequestsFromThisOrigin /t REG_SZ /d "*"</code></li>
+            <li>Restart Word</li>
+            <li>Try the upload methods again</li>
+        </ol>
+    </div>
+
+    <div class="method">
+        <h2>Method 4: Office 365 Admin (If Available)</h2>
+        <div class="steps">
+            <p>For Office 365 Business users:</p>
+            <ol>
+                <li>Go to <a href="https://admin.microsoft.com" target="_blank">admin.microsoft.com</a></li>
+                <li>Settings → Integrated apps</li>
+                <li>Upload custom apps</li>
+                <li>Upload your manifest.xml</li>
+            </ol>
+        </div>
+    </div>
+
+    <div class="warning">
+        <h3>⚠️ If You Still Can't Find Upload Options</h3>
+        <p><strong>Check your Word version:</strong></p>
+        <ul>
+            <li>File → Account → About Word</li>
+            <li>Add-ins require Office 2016 or newer</li>
+            <li>Some enterprise versions disable sideloading</li>
+        </ul>
+        
+        <p><strong>Try different terminology:</strong></p>
+        <ul>
+            <li>Look for "Upload My Add-in"</li>
+            <li>Look for "Sideload Add-in"</li>
+            <li>Look for "Developer Add-ins"</li>
+            <li>Look for "Custom Add-ins"</li>
+        </ul>
+    </div>
+
+    <div class="alternative">
+        <h3>🌐 Web Version Alternative</h3>
+        <p>If desktop Word doesn't work, try Word Online:</p>
+        <ol>
+            <li>Go to <a href="https://office.com" target="_blank">office.com</a></li>
+            <li>Open Word Online</li>
+            <li>Insert → Add-ins → My Add-ins → Upload My Add-in</li>
+            <li>Upload your manifest.xml</li>
+        </ol>
+    </div>
+
+    <div class="success">
+        <h3>✅ Success Indicators</h3>
+        <p>Once installed, you should see:</p>
+        <ul>
+            <li>A new <strong>"Hello Group"</strong> section in the Home ribbon</li>
+            <li>A <strong>"Hello Moti"</strong> button in that section</li>
+            <li>Clicking it opens a task pane on the right</li>
+            <li>The add-in will appear in ALL Word documents</li>
+        </ul>
+    </div>
+
+    <div class="method">
+        <h2>Quick Test</h2>
+        <div class="steps">
+            <p>Before installing, verify these work:</p>
+            <ul>
+                <li><a href="http://localhost:3000/taskpane.html" target="_blank">Task Pane Test</a> - Should load the add-in interface</li>
+                <li><a href="http://localhost:3000/manifest.xml" target="_blank">Manifest Test</a> - Should download the manifest file</li>
+                <li><a href="http://localhost:3001/api/health" target="_blank">API Test</a> - Should return {"status":"ok"}</li>
+            </ul>
+        </div>
+    </div>
+
+    <div class="warning">
+        <h3>🔄 Still Having Issues?</h3>
+        <p>Try these additional steps:</p>
+        <ol>
+            <li>Restart Word completely</li>
+            <li>Check if you have admin rights</li>
+            <li>Try a different Word document</li>
+            <li>Check if your organization allows add-ins</li>
+            <li>Try Word in Safe Mode (hold Ctrl while starting)</li>
+        </ol>
+    </div>
+</body>
+</html> 
