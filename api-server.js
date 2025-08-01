@@ -1,295 +1,196 @@
 const express = require('express');
 const cors = require('cors');
+const multer = require('multer');
 const fs = require('fs');
 const path = require('path');
 
 const app = express();
 const PORT = 3001;
 
-// Enable CORS for all routes
+// Enable CORS and JSON parsing
 app.use(cors());
-app.use(express.json());
+app.use(express.json({ limit: '50mb' }));
 
-// Store document data (in a real app, this would be in a database)
-let documentData = {
-    sections: [],
-    lastUpdated: new Date().toISOString(),
-    title: 'Document Title'
+// Create uploads directory if it doesn't exist
+const uploadsDir = './uploads';
+if (!fs.existsSync(uploadsDir)) {
+    fs.mkdirSync(uploadsDir);
+}
+
+// Configure multer for file uploads
+const storage = multer.diskStorage({
+    destination: uploadsDir,
+    filename: (req, file, cb) => {
+        cb(null, `${Date.now()}-${file.originalname}`);
+    }
+});
+const upload = multer({ storage });
+
+// Store current document info
+let currentDocument = {
+    id: null,
+    filename: null,
+    filePath: null,
+    lastUpdated: null
 };
 
-// Store data to be sent to Word
-let wordInboundData = null;
-
-// Health check endpoint
+// Health check
 app.get('/api/health', (req, res) => {
     res.json({ status: 'ok', timestamp: new Date().toISOString() });
 });
 
-// Get document sections
-app.get('/api/document-sections', (req, res) => {
-    res.json({
-        sections: documentData.sections,
-        lastUpdated: documentData.lastUpdated,
-        title: documentData.title
-    });
-});
-
-// Update document sections (called by the add-in)
-app.post('/api/document-sections', (req, res) => {
+// Upload DOCX from Word add-in
+app.post('/api/upload-docx', (req, res) => {
     try {
-        const { sections, title } = req.body;
+        const { docx, filename } = req.body;
         
-        documentData.sections = sections || [];
-        documentData.title = title || 'Document Title';
-        documentData.lastUpdated = new Date().toISOString();
-        
-        console.log(`Updated document data: ${documentData.sections.length} sections`);
-        
-        res.json({ 
-            success: true, 
-            sectionsCount: documentData.sections.length,
-            lastUpdated: documentData.lastUpdated
-        });
-    } catch (error) {
-        console.error('Error updating document data:', error);
-        res.status(500).json({ error: 'Failed to update document data' });
-    }
-});
-
-// Get document content as HTML
-app.get('/api/document-html', (req, res) => {
-    try {
-        let html = '';
-        
-        documentData.sections.forEach(section => {
-            html += generateSectionHTML(section);
-        });
-        
-        res.json({ 
-            html: html,
-            lastUpdated: documentData.lastUpdated 
-        });
-    } catch (error) {
-        console.error('Error generating HTML:', error);
-        res.status(500).json({ error: 'Failed to generate HTML' });
-    }
-});
-
-// Export document as various formats
-app.get('/api/export/:format', (req, res) => {
-    const format = req.params.format;
-    
-    try {
-        switch (format) {
-            case 'json':
-                res.json(documentData);
-                break;
-            case 'html':
-                const html = generateFullHTML();
-                res.send(html);
-                break;
-            case 'markdown':
-                const markdown = generateMarkdown();
-                res.send(markdown);
-                break;
-            default:
-                res.status(400).json({ error: 'Unsupported format' });
+        if (!docx) {
+            return res.status(400).json({ error: 'No DOCX data provided' });
         }
-    } catch (error) {
-        console.error('Error exporting document:', error);
-        res.status(500).json({ error: 'Failed to export document' });
-    }
-});
-
-// Send document content to Word
-app.post('/api/send-to-word', (req, res) => {
-    try {
-        const { sections, action } = req.body;
         
-        // Store the sections to be sent to Word
-        wordInboundData = {
-            sections: sections || [],
-            action: action || 'replace',
-            timestamp: new Date().toISOString(),
-            status: 'pending'
+        // Convert base64 to file
+        const timestamp = Date.now();
+        const fileName = filename || `word-document-${timestamp}.docx`;
+        const filePath = path.join(uploadsDir, fileName);
+        
+        // Write base64 data to file
+        const buffer = Buffer.from(docx, 'base64');
+        fs.writeFileSync(filePath, buffer);
+        
+        // Update current document
+        currentDocument = {
+            id: `doc-${timestamp}`,
+            filename: fileName,
+            filePath: filePath,
+            lastUpdated: new Date().toISOString()
         };
         
-        console.log(`Prepared ${sections?.length || 0} sections to send to Word`);
+        console.log(`✅ DOCX uploaded: ${fileName} (${buffer.length} bytes)`);
         
-        res.json({ 
-            success: true, 
-            message: 'Document queued for Word',
-            sectionsCount: sections?.length || 0
+        res.json({
+            success: true,
+            documentId: currentDocument.id,
+            filename: fileName,
+            message: 'Document uploaded successfully'
         });
+        
     } catch (error) {
-        console.error('Error preparing document for Word:', error);
-        res.status(500).json({ error: 'Failed to prepare document for Word' });
+        console.error('❌ Upload error:', error);
+        res.status(500).json({ error: error.message });
     }
 });
 
-// Get document content to be sent to Word (for Word add-in to poll)
-app.get('/api/word-inbound', (req, res) => {
+// Serve DOCX file to SuperDoc viewer
+app.get('/api/document/:documentId', (req, res) => {
     try {
-        if (wordInboundData && wordInboundData.status === 'pending') {
-            // Mark as sent
-            wordInboundData.status = 'sent';
-            wordInboundData.sentAt = new Date().toISOString();
+        if (!currentDocument.filePath || !fs.existsSync(currentDocument.filePath)) {
+            return res.status(404).json({ error: 'Document not found' });
+        }
+        
+        res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.wordprocessingml.document');
+        res.setHeader('Content-Disposition', `inline; filename="${currentDocument.filename}"`);
+        
+        const fileStream = fs.createReadStream(currentDocument.filePath);
+        fileStream.pipe(res);
+        
+    } catch (error) {
+        console.error('❌ Document serve error:', error);
+        res.status(500).json({ error: error.message });
+    }
+});
+
+// Get current document info
+app.get('/api/current-document', (req, res) => {
+    res.json(currentDocument);
+});
+
+// Update document from web viewer (placeholder for future bidirectional sync)
+app.post('/api/update-document', upload.single('docx'), (req, res) => {
+    try {
+        if (!req.file) {
+            return res.status(400).json({ error: 'No file uploaded' });
+        }
+        
+        // Update current document reference
+        currentDocument.filePath = req.file.path;
+        currentDocument.filename = req.file.originalname;
+        currentDocument.lastUpdated = new Date().toISOString();
+        
+        console.log(`✅ Document updated: ${req.file.originalname}`);
+        
+        res.json({
+            success: true,
+            message: 'Document updated successfully'
+        });
+        
+    } catch (error) {
+        console.error('❌ Update error:', error);
+        res.status(500).json({ error: error.message });
+    }
+});
+
+// Get updated document for Word add-in
+app.get('/api/get-updated-docx', (req, res) => {
+    try {
+        if (!currentDocument.filePath || !fs.existsSync(currentDocument.filePath)) {
+            return res.status(404).json({ error: 'No document available' });
+        }
+        
+        // Read file and convert to base64
+        const fileBuffer = fs.readFileSync(currentDocument.filePath);
+        const base64 = fileBuffer.toString('base64');
+        
+        res.json({
+            docx: base64,
+            filename: currentDocument.filename,
+            lastUpdated: currentDocument.lastUpdated
+        });
+        
+    } catch (error) {
+        console.error('❌ Get document error:', error);
+        res.status(500).json({ error: error.message });
+    }
+});
+
+// Update document from web viewer (JSON version)
+app.post('/api/update-document-json', (req, res) => {
+    try {
+        const { docx, filename, saveType } = req.body;
+        
+
+        
+        if (!docx) {
+            return res.status(400).json({ error: 'No DOCX data provided' });
+        }
+        
+        // Update the current document file
+        if (currentDocument.filePath) {
+            // Write base64 data to existing file path
+            const buffer = Buffer.from(docx, 'base64');
+            fs.writeFileSync(currentDocument.filePath, buffer);
+            
+            // Update metadata
+            currentDocument.lastUpdated = new Date().toISOString();
+            currentDocument.filename = filename || currentDocument.filename;
+            
+            console.log(`📝 Document updated: ${currentDocument.filename} (${buffer.length} bytes)`);
             
             res.json({
                 success: true,
-                data: wordInboundData
+                filename: currentDocument.filename,
+                lastUpdated: currentDocument.lastUpdated,
+                message: 'Document updated successfully'
             });
         } else {
-            res.json({
-                success: false,
-                message: 'No pending data for Word'
-            });
+            res.status(404).json({ error: 'No current document to update' });
         }
+        
     } catch (error) {
-        console.error('Error getting Word inbound data:', error);
-        res.status(500).json({ error: 'Failed to get Word inbound data' });
+        console.error('❌ Update document error:', error);
+        res.status(500).json({ error: error.message });
     }
 });
 
-// WebSocket-like endpoint for real-time updates (using Server-Sent Events)
-app.get('/api/stream', (req, res) => {
-    res.writeHead(200, {
-        'Content-Type': 'text/event-stream',
-        'Cache-Control': 'no-cache',
-        'Connection': 'keep-alive',
-        'Access-Control-Allow-Origin': '*'
-    });
-    
-    // Send initial data
-    res.write(`data: ${JSON.stringify(documentData)}\n\n`);
-    
-    // Keep connection alive
-    const keepAlive = setInterval(() => {
-        res.write(`data: ${JSON.stringify({ type: 'ping', timestamp: new Date().toISOString() })}\n\n`);
-    }, 30000);
-    
-    // Handle client disconnect
-    req.on('close', () => {
-        clearInterval(keepAlive);
-    });
-});
-
-// Helper function to generate HTML for a section
-function generateSectionHTML(section) {
-    const headingTag = `h${section.level}`;
-    let html = `<${headingTag} id="${section.id}">${escapeHtml(section.title)}</${headingTag}>\n`;
-    
-    if (section.content && section.content.length > 0) {
-        section.content.forEach(paragraph => {
-            html += `<p>${escapeHtml(paragraph)}</p>\n`;
-        });
-    }
-    
-    if (section.subsections && section.subsections.length > 0) {
-        section.subsections.forEach(subsection => {
-            html += generateSectionHTML(subsection);
-        });
-    }
-    
-    return html;
-}
-
-// Helper function to generate full HTML document
-function generateFullHTML() {
-    let bodyHTML = '';
-    
-    documentData.sections.forEach(section => {
-        bodyHTML += generateSectionHTML(section);
-    });
-    
-    return `
-<!DOCTYPE html>
-<html>
-<head>
-    <meta charset="UTF-8">
-    <title>${escapeHtml(documentData.title)}</title>
-    <style>
-        body { 
-            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; 
-            max-width: 800px; 
-            margin: 0 auto; 
-            padding: 40px; 
-            line-height: 1.6;
-        }
-        h1 { color: #0078d4; border-bottom: 2px solid #0078d4; padding-bottom: 8px; }
-        h2 { color: #106ebe; margin-top: 32px; }
-        h3 { color: #005a9e; margin-top: 24px; }
-        p { margin-bottom: 12px; }
-    </style>
-</head>
-<body>
-    <h1>${escapeHtml(documentData.title)}</h1>
-    ${bodyHTML}
-    <hr>
-    <p><small>Generated on ${new Date().toLocaleString()}</small></p>
-</body>
-</html>
-    `;
-}
-
-// Helper function to generate Markdown
-function generateMarkdown() {
-    let markdown = `# ${documentData.title}\n\n`;
-    
-    documentData.sections.forEach(section => {
-        markdown += generateSectionMarkdown(section);
-    });
-    
-    markdown += `\n---\n*Generated on ${new Date().toLocaleString()}*\n`;
-    
-    return markdown;
-}
-
-function generateSectionMarkdown(section) {
-    const headingPrefix = '#'.repeat(section.level);
-    let markdown = `${headingPrefix} ${section.title}\n\n`;
-    
-    if (section.content && section.content.length > 0) {
-        section.content.forEach(paragraph => {
-            markdown += `${paragraph}\n\n`;
-        });
-    }
-    
-    if (section.subsections && section.subsections.length > 0) {
-        section.subsections.forEach(subsection => {
-            markdown += generateSectionMarkdown(subsection);
-        });
-    }
-    
-    return markdown;
-}
-
-// Helper function to escape HTML
-function escapeHtml(text) {
-    const map = {
-        '&': '&amp;',
-        '<': '&lt;',
-        '>': '&gt;',
-        '"': '&quot;',
-        "'": '&#039;'
-    };
-    return text.replace(/[&<>"']/g, (m) => map[m]);
-}
-
-// Start server
 app.listen(PORT, () => {
-    console.log(`API server running on http://localhost:${PORT}`);
-    console.log('Available endpoints:');
-    console.log('  GET  /api/health - Health check');
-    console.log('  GET  /api/document-sections - Get document sections');
-    console.log('  POST /api/document-sections - Update document sections');
-    console.log('  POST /api/send-to-word - Send content to Word');
-    console.log('  GET  /api/word-inbound - Get content for Word');
-    console.log('  GET  /api/document-html - Get document as HTML');
-    console.log('  GET  /api/export/json - Export as JSON');
-    console.log('  GET  /api/export/html - Export as HTML');
-    console.log('  GET  /api/export/markdown - Export as Markdown');
-    console.log('  GET  /api/stream - Real-time updates stream');
-});
-
-module.exports = app; 
+    console.log(`🔧 API Server running on http://localhost:${PORT}`);
+}); 

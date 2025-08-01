@@ -1,15 +1,15 @@
 const { spawn } = require('child_process');
 
-console.log('🚀 Starting Document Project...\n');
+console.log('🚀 Starting Word SuperDoc Add-in...\n');
 
-// Start the web server (port 3000)
+// Start the web server (port 3000) - serves static files including add-in
 console.log('📡 Starting web server on port 3000...');
 const webServer = spawn('npx', ['http-server', '.', '-p', '3000', '--cors'], {
     stdio: 'inherit',
     shell: true
 });
 
-// Start the API server (port 3001)
+// Start the API server (port 3001) - handles DOCX processing
 console.log('🔧 Starting API server on port 3001...');
 const apiServer = spawn('node', ['api-server.js'], {
     stdio: 'inherit',
@@ -22,25 +22,16 @@ setTimeout(() => {
     console.log('📡 Web server: http://localhost:3000');
     console.log('🔧 API server: http://localhost:3001');
     
-    // Register the add-in with Office
-    console.log('\n📝 Registering Word add-in...');
-    registerAddIn();
-}, 2000);
-
-function registerAddIn() {
-    console.log('📝 Add-in Installation Instructions:');
-    console.log('   1. Open Word');
+    console.log('\n📝 Word Add-in Installation:');
+    console.log('   1. Open Microsoft Word');
     console.log('   2. Go to Insert → Get Add-ins → My Add-ins');
     console.log('   3. Click "Upload My Add-in"');
-    console.log('   4. Select the manifest.xml file');
-    console.log('   5. The add-in will be available in ALL Word documents!');
+    console.log('   4. Select the manifest.xml file from this folder');
+    console.log('   5. The add-in will appear in your ribbon!');
     console.log('');
-    console.log('🌐 Web viewer: http://localhost:3000/web-viewer.html');
-    console.log('📄 Sample document: http://localhost:3000/create-sample-document.html');
-    console.log('');
-    console.log('💡 After installation, the add-in persists across ALL Word documents!');
-    console.log('🎉 No SSL certificates or Microsoft registration needed for local development!');
-}
+    console.log('🌐 Web viewer: http://localhost:3000/viewer.html');
+    console.log('💡 Add-in persists across all Word documents once installed');
+}, 2000);
 
 // Handle graceful shutdown
 process.on('SIGINT', () => {

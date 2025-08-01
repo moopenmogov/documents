@@ -2,108 +2,30 @@
 <OfficeApp 
     xmlns="http://schemas.microsoft.com/office/appforoffice/1.1" 
     xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" 
-    xmlns:bt="http://schemas.microsoft.com/office/officeappbasictypes/1.0" 
-    xmlns:ov="http://schemas.microsoft.com/office/taskpaneappversionoverrides" 
     xsi:type="TaskPaneApp">
 
-  <!-- Begin Basic Settings: Add-in metadata, used for all versions of Office unless override provided. -->
   <Id>12345678-1234-1234-1234-123456789012</Id>
   <Version>1.0.0.0</Version>
   <ProviderName>Moti</ProviderName>
   <DefaultLocale>en-US</DefaultLocale>
-  <DisplayName DefaultValue="Hello Moti Add-in" />
-  <Description DefaultValue="A simple add-in that says hello to Moti" />
+  <DisplayName DefaultValue="Word SuperDoc Sync" />
+  <Description DefaultValue="Sync Word documents with SuperDoc web viewer" />
   
-  <!-- Icon for your add-in. Used in installation screens and the add-in dialog. -->
-  <IconUrl DefaultValue="http://localhost:3000/assets/icon-32.png" />
-  <HighResolutionIconUrl DefaultValue="http://localhost:3000/assets/icon-80.png" />
+  <IconUrl DefaultValue="http://localhost:3000/icon.png" />
 
-  <!-- End Basic Settings. -->
-
-  <!-- Hosts - defines which Office applications can use this add-in -->
   <Hosts>
     <Host Name="Document" />
   </Hosts>
 
-  <!-- Permissions - defines what permissions the add-in requires -->
   <DefaultSettings>
     <SourceLocation DefaultValue="http://localhost:3000/taskpane.html" />
   </DefaultSettings>
 
-  <!-- Permissions - ReadWriteDocument to access document content -->
   <Permissions>ReadWriteDocument</Permissions>
 
-  <!-- Requirements - Specify the minimum Office version and API sets required -->
   <Requirements>
     <Sets DefaultMinVersion="1.1">
-      <Set Name="WordApi" MinVersion="1.1" />
+      <Set Name="WordApi" MinVersion="1.3" />
     </Sets>
   </Requirements>
-
-  <!-- Version overrides - Used to specify behavior for specific Office versions -->
-  <VersionOverrides xmlns="http://schemas.microsoft.com/office/taskpaneappversionoverrides" xsi:type="VersionOverridesV1_0">
-    <Hosts>
-      <Host xsi:type="Document">
-        <DesktopFormFactor>
-          <!-- Function file is a HTML page that includes the JavaScript code for running Commands -->
-          <FunctionFile resid="Contoso.Url.FunctionFileUrl" />
-
-          <!-- ExtensionPoint used to define where and how the add-in displays -->
-          <ExtensionPoint xsi:type="PrimaryCommandSurface">
-            <OfficeTab id="TabHome">
-              <Group id="Contoso.Group1">
-                <Label resid="Contoso.Group1Label" />
-                <Icon>
-                  <bt:Image size="16" resid="Contoso.tpicon_16x16" />
-                  <bt:Image size="32" resid="Contoso.tpicon_32x32" />
-                  <bt:Image size="80" resid="Contoso.tpicon_80x80" />
-                </Icon>
-
-                <!-- Control. Can be either a "Button" or "Menu". -->
-                <Control xsi:type="Button" id="Contoso.TaskpaneButton">
-                  <Label resid="Contoso.TaskpaneButton.Label" />
-                  <Supertip>
-                    <Title resid="Contoso.TaskpaneButton.Label" />
-                    <Description resid="Contoso.TaskpaneButton.Tooltip" />
-                  </Supertip>
-                  <Icon>
-                    <bt:Image size="16" resid="Contoso.tpicon_16x16" />
-                    <bt:Image size="32" resid="Contoso.tpicon_32x32" />
-                    <bt:Image size="80" resid="Contoso.tpicon_80x80" />
-                  </Icon>
-
-                  <!-- This is what happens when the command is triggered (E.g. click on the Ribbon). Supported actions are ExecuteFunction or ShowTaskpane. -->
-                  <Action xsi:type="ShowTaskpane">
-                    <TaskpaneId>ButtonId1</TaskpaneId>
-                    <!-- Provide a url resource id for the location that will be displayed on the task pane. -->
-                    <SourceLocation resid="Contoso.Url.TaskpaneUrl" />
-                  </Action>
-                </Control>
-              </Group>
-            </OfficeTab>
-          </ExtensionPoint>
-        </DesktopFormFactor>
-      </Host>
-    </Hosts>
-
-    <!-- You can use resources across hosts and form factors. -->
-    <Resources>
-      <bt:Images>
-        <bt:Image id="Contoso.tpicon_16x16" DefaultValue="http://localhost:3000/assets/icon-16.png" />
-        <bt:Image id="Contoso.tpicon_32x32" DefaultValue="http://localhost:3000/assets/icon-32.png" />
-        <bt:Image id="Contoso.tpicon_80x80" DefaultValue="http://localhost:3000/assets/icon-80.png" />
-      </bt:Images>
-      <bt:Urls>
-        <bt:Url id="Contoso.Url.FunctionFileUrl" DefaultValue="http://localhost:3000/commands.html" />
-        <bt:Url id="Contoso.Url.TaskpaneUrl" DefaultValue="http://localhost:3000/taskpane.html" />
-      </bt:Urls>
-      <bt:ShortStrings>
-        <bt:String id="Contoso.TaskpaneButton.Label" DefaultValue="Hello Moti" />
-        <bt:String id="Contoso.Group1Label" DefaultValue="Hello Group" />
-      </bt:ShortStrings>
-      <bt:LongStrings>
-        <bt:String id="Contoso.TaskpaneButton.Tooltip" DefaultValue="Click to open the Hello Moti task pane" />
-      </bt:LongStrings>
-    </Resources>
-  </VersionOverrides>
 </OfficeApp> 

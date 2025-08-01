@@ -1,19 +1,21 @@
 {
-  "name": "hello-moti-addin",
+  "name": "word-superdoc-addin",
   "version": "1.0.0",
-  "description": "A simple Word add-in that says hello to Moti",
+  "description": "Clean Word add-in with SuperDoc integration for DOCX sync",
   "scripts": {
-    "start": "npx http-server . -p 3000 --cors",
-    "dev": "npx http-server . -p 3000 --cors",
-    "api": "node api-server.js",
-    "viewer": "npx http-server . -p 3002 --cors",
-    "dev-all": "npm run api & npm run start & npm run viewer",
-    "run-all": "node start-all.js"
+    "start": "node start-all.js",
+    "dev": "node start-all.js",
+    "web": "npx http-server . -p 3000 --cors",
+    "api": "node api-server.js"
   },
   "dependencies": {
-    "cors": "^2.8.5",
     "express": "^4.18.2",
-    "node-fetch": "^3.3.2"
+    "cors": "^2.8.5",
+    "multer": "^2.0.1",
+    "@harbour-enterprises/superdoc": "^0.14.9"
+  },
+  "devDependencies": {
+    "http-server": "^14.1.1"
   },
   "author": "Moti",
   "license": "MIT"

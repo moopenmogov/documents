@@ -1,38 +1,22 @@
-# Hello Moti Word Add-in
+# Word SuperDoc Add-in
 
-A simple Word add-in that displays "Hello Moti!" and can insert text into your document.
+Clean Word add-in with SuperDoc integration for DOCX synchronization.
 
-## Quick Start
+## Features
 
-1. **Start the development server:**
-   ```
-   npm start
-   ```
+- Export Word documents to SuperDoc web viewer
+- Bidirectional sync preserving DOCX formatting
+- Minimal, focused codebase
 
-2. **Sideload the add-in in Word:**
-   - Open Microsoft Word
-   - Go to **Insert** > **Add-ins** > **My Add-ins**
-   - Click **Upload My Add-in**
-   - Select the `manifest.xml` file from this folder
-   - Click **Upload**
+## Setup
 
-3. **Use the add-in:**
-   - Look for the "Hello Group" in the Home tab of Word
-   - Click the "Hello Moti" button
-   - The task pane will open with your greeting!
-   - Click "Insert Hello Message" to add text to your document
+1. `npm install`
+2. `npm start`
+3. Load `manifest.xml` in Word
 
-## Files
+## Usage
 
-- `manifest.xml` - Defines the add-in for Office
-- `taskpane.html` - Main task pane UI
-- `commands.html` - Required commands file
-- `assets/` - Icon files
-- `package.json` - Development server configuration
-
-## Requirements
-
-- Microsoft Word (Office 365 or Office 2016+)
-- Node.js (for the development server)
-
-That's it! Your simple Word add-in is ready to go! 🎉 
+1. Open Word document
+2. Use add-in to sync to web viewer
+3. Edit in either Word or web viewer
+4. Sync changes back and forth 
