@@ -3,16 +3,83 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>SuperDoc Web Viewer</title>
+    <title>OpenGov Contract Docs - Web Viewer</title>
     <link rel="stylesheet" href="/node_modules/@harbour-enterprises/superdoc/dist/style.css">
     <style>
-        body {
-            font-family: Arial, sans-serif;
-            margin: 0;
-            padding: 20px;
-            background: #f5f5f5;
+        :root {
+            --opengov-blue: #2E5F94;
+            --opengov-light-blue: #4A7BB7;
+            --opengov-dark-blue: #1E3F64;
         }
+        
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            margin: 0;
+            padding: 0;
+            background: #f8f9fa;
+        }
+        
         .header {
+            background: linear-gradient(135deg, var(--opengov-blue), var(--opengov-light-blue));
+            color: white;
+            padding: 20px;
+            text-align: center;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+        }
+        
+        .logo-container {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            margin-bottom: 10px;
+        }
+        
+        .logo {
+            width: 40px;
+            height: 40px;
+            background: white;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            margin-right: 15px;
+        }
+        
+        .logo::after {
+            content: "▼";
+            color: var(--opengov-blue);
+            font-size: 16px;
+        }
+        
+        .company-name {
+            font-size: 28px;
+            font-weight: bold;
+            letter-spacing: 2px;
+        }
+        
+        .banner {
+            background: linear-gradient(45deg, #ff6b6b, #4ecdc4);
+            color: white;
+            font-size: 18px;
+            font-weight: bold;
+            padding: 12px;
+            text-align: center;
+            text-transform: uppercase;
+            letter-spacing: 2px;
+            animation: pulse 2s infinite;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.2);
+        }
+        
+        @keyframes pulse {
+            0% { opacity: 1; transform: scale(1); }
+            50% { opacity: 0.9; transform: scale(1.02); }
+            100% { opacity: 1; transform: scale(1); }
+        }
+        
+        .main-content {
+            padding: 30px 20px;
+        }
+        .page-header {
             text-align: center;
             margin-bottom: 30px;
         }
@@ -21,23 +88,29 @@
             margin-bottom: 30px;
         }
         .btn {
-            background: #4CAF50;
+            background: var(--opengov-blue);
             color: white;
             padding: 15px 30px;
             border: none;
-            border-radius: 5px;
+            border-radius: 8px;
             cursor: pointer;
             font-size: 16px;
             margin: 0 10px;
+            transition: all 0.3s ease;
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 1px;
         }
         .btn:hover {
-            background: #45a049;
+            background: var(--opengov-dark-blue);
+            transform: translateY(-2px);
+            box-shadow: 0 4px 8px rgba(0,0,0,0.2);
         }
         .btn-secondary {
-            background: #008CBA;
+            background: var(--opengov-light-blue);
         }
         .btn-secondary:hover {
-            background: #007B9A;
+            background: var(--opengov-blue);
         }
         .status {
             margin: 20px 0;
@@ -75,13 +148,25 @@
 </head>
 <body>
     <div class="header">
-        <h1>📄 SuperDoc Web Viewer</h1>
-        <div>
-            <span id="document-title">No document loaded</span>
+        <div class="logo-container">
+            <div class="logo"></div>
+            <div class="company-name">OPENGOV</div>
         </div>
     </div>
+    
+    <div class="banner">
+        🚀 Future of Contract Docs 🚀
+    </div>
+    
+    <div class="main-content">
+        <div class="page-header">
+            <h1>📄 Document Viewer & Editor</h1>
+            <div>
+                <span id="document-title">No document loaded</span>
+            </div>
+        </div>
 
-    <div class="controls">
+        <div class="controls">
         <button class="btn" onclick="loadCurrentDocument()">📂 Load Document</button>
         <button class="btn btn-secondary" onclick="saveDocument()">💾 Save Changes</button>
         <div id="status" class="status"></div>
@@ -91,11 +176,14 @@
         <div id="superdoc-toolbar"></div>
         <div id="superdoc">
             <div class="empty-state">
-                <h2>Welcome to SuperDoc Web Viewer</h2>
-                <p>Click "Load Document" to view the current document from Word.</p>
-                <p>Make your edits, then click "Save Changes" to sync back to Word.</p>
+                <h2>🚀 Welcome to the Future of Contract Docs</h2>
+                <p>🏛️ <strong>OpenGov</strong> - Transforming Government Contract Management</p>
+                <p>📂 Click "Load Document" to view your contract from Word</p>
+                <p>✏️ Make your edits in real-time, then click "Save Changes" to sync back</p>
+                <p>⚡ Seamless bidirectional document collaboration</p>
             </div>
         </div>
+    </div>
     </div>
 
     <!-- Load SuperDoc from local node_modules -->

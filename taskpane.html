@@ -3,14 +3,80 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Word SuperDoc Sync</title>
+    <title>OpenGov Contract Docs</title>
     <script src="https://appsforoffice.microsoft.com/lib/1/hosted/office.js"></script>
     <style>
+        :root {
+            --opengov-blue: #2E5F94;
+            --opengov-light-blue: #4A7BB7;
+            --opengov-dark-blue: #1E3F64;
+        }
+        
         body {
             font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
             margin: 0;
+            padding: 0;
+            background: #f8f9fa;
+        }
+        
+        .header {
+            background: linear-gradient(135deg, var(--opengov-blue), var(--opengov-light-blue));
+            color: white;
+            padding: 15px;
+            text-align: center;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+        }
+        
+        .logo-container {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            margin-bottom: 8px;
+        }
+        
+        .logo {
+            width: 24px;
+            height: 24px;
+            background: white;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            margin-right: 8px;
+        }
+        
+        .logo::after {
+            content: "▼";
+            color: var(--opengov-blue);
+            font-size: 10px;
+        }
+        
+        .company-name {
+            font-size: 16px;
+            font-weight: bold;
+            letter-spacing: 1px;
+        }
+        
+        .banner {
+            background: linear-gradient(45deg, #ff6b6b, #4ecdc4);
+            color: white;
+            font-size: 12px;
+            font-weight: bold;
+            padding: 6px;
+            text-align: center;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            animation: pulse 2s infinite;
+        }
+        
+        @keyframes pulse {
+            0% { opacity: 1; }
+            50% { opacity: 0.8; }
+            100% { opacity: 1; }
+        }
+        
+        .main-content {
             padding: 20px;
-            background: #f5f5f5;
         }
         
         .container {
@@ -44,13 +110,15 @@
         }
         
         .button-primary {
-            background: #0078d4;
+            background: var(--opengov-blue);
             color: white;
         }
         
         .button-primary:hover {
-            background: #106ebe;
+            background: var(--opengov-dark-blue);
         }
+        
+
         
         .button-secondary {
             background: #f3f2f1;
@@ -87,8 +155,20 @@
     </style>
 </head>
 <body>
-    <div class="container">
-        <h1>📄 SuperDoc Sync</h1>
+    <div class="header">
+        <div class="logo-container">
+            <div class="logo"></div>
+            <div class="company-name">OPENGOV</div>
+    </div>
+    </div>
+    
+    <div class="banner">
+        🚀 Future of Contract Docs 🚀
+        </div>
+        
+    <div class="main-content">
+        <div class="container">
+            <h1>📄 Document Sync</h1>
         
         <div class="sync-section">
             <h3>Send to Web Viewer</h3>
@@ -104,16 +184,17 @@
                 📥 Import from SuperDoc
             </button>
             <div id="importStatus" class="status" style="display: none;"></div>
-        </div>
-        
+            </div>
+            
         <div class="sync-section">
             <h3>Web Viewer</h3>
             <button class="button button-secondary" onclick="openWebViewer()">
                 🌐 Open Web Viewer
             </button>
         </div>
+        </div>
     </div>
-    
+
     <script>
         Office.onReady((info) => {
             if (info.host === Office.HostType.Word) {

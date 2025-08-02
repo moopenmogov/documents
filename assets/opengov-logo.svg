@@ -1,0 +1,18 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg viewBox="0 0 800 200" xmlns="http://www.w3.org/2000/svg">
+  <!-- OpenGov Logo Recreation -->
+  <defs>
+    <style>
+      .opengov-blue { fill: #2E5F94; }
+      .opengov-text { fill: #2E5F94; font-family: Arial, sans-serif; font-weight: bold; }
+    </style>
+  </defs>
+  
+  <!-- Circle with triangle symbol -->
+  <circle cx="100" cy="100" r="90" class="opengov-blue"/>
+  <circle cx="100" cy="100" r="60" fill="white"/>
+  <polygon points="100,70 130,120 70,120" class="opengov-blue"/>
+  
+  <!-- OPENGOV Text -->
+  <text x="220" y="130" class="opengov-text" font-size="72">OPENGOV</text>
+</svg>
