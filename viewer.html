@@ -3,105 +3,210 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>SuperDoc Web Viewer</title>
-    <link rel="stylesheet" href="/node_modules/@harbour-enterprises/superdoc/dist/style.css">
+    <title>OpenGov Contract Redlining - Web Viewer</title>
+    <link rel="stylesheet" href="./node_modules/@harbour-enterprises/superdoc/dist/style.css">
     <style>
         body {
-            font-family: Arial, sans-serif;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
             margin: 0;
-            padding: 20px;
-            background: #f5f5f5;
+            padding: 0;
+            background: #f8f9fa;
         }
-        .header {
+        
+        .opengov-header {
+            background: linear-gradient(135deg, #1e3a8a, #3b82f6);
+            color: white;
+            padding: 30px;
+            border-radius: 10px;
             text-align: center;
-            margin-bottom: 30px;
+            margin: 20px;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.15);
         }
+        
+        .opengov-logo {
+            margin-bottom: 20px;
+            display: flex;
+            justify-content: center;
+        }
+        
+        .opengov-text {
+            text-align: center;
+        }
+        
+        .main-title {
+            font-size: 26px;
+            font-weight: bold;
+            margin: 0 0 10px 0;
+            line-height: 1.3;
+        }
+        
+        .sub-header {
+            font-size: 16px;
+            margin: 0;
+            opacity: 0.9;
+            font-style: italic;
+            text-align: center;
+        }
+        
         .controls {
             text-align: center;
-            margin-bottom: 30px;
+            margin: 30px 20px;
         }
+        
         .btn {
-            background: #4CAF50;
+            background: #0078d4;
             color: white;
             padding: 15px 30px;
             border: none;
-            border-radius: 5px;
+            border-radius: 8px;
             cursor: pointer;
             font-size: 16px;
             margin: 0 10px;
+            transition: background-color 0.2s;
+            font-weight: 600;
         }
+        
         .btn:hover {
-            background: #45a049;
+            background: #106ebe;
         }
+        
         .btn-secondary {
-            background: #008CBA;
+            background: #6c757d;
         }
+        
         .btn-secondary:hover {
-            background: #007B9A;
+            background: #5a6268;
         }
+        
         .status {
-            margin: 20px 0;
-            padding: 10px;
-            border-radius: 5px;
+            margin: 20px auto;
+            padding: 15px;
+            border-radius: 8px;
             display: none;
             text-align: center;
+            max-width: 600px;
+            font-weight: 500;
         }
-        .status.success { background: #d4edda; color: #155724; }
-        .status.error { background: #f8d7da; color: #721c24; }
-        .status.info { background: #d1ecf1; color: #0c5460; }
+        
+        .status.success { 
+            background: #dff6dd; 
+            color: #0f5132; 
+            border: 1px solid #b7e4c7;
+        }
+        
+        .status.error { 
+            background: #f8d7da; 
+            color: #842029; 
+            border: 1px solid #f5c2c7;
+        }
+        
+        .status.info { 
+            background: #cce7ff; 
+            color: #084298; 
+            border: 1px solid #9ec5fe;
+        }
+        
         .viewer-container {
             background: white;
-            border-radius: 10px;
-            padding: 20px;
-            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+            border-radius: 12px;
+            padding: 30px;
+            box-shadow: 0 4px 16px rgba(0,0,0,0.1);
             min-height: 600px;
-            max-width: 1200px;
-            margin: 0 auto;
+            max-width: 1400px;
+            margin: 0 auto 40px auto;
+            margin-left: 20px;
+            margin-right: 20px;
         }
+        
         #superdoc-toolbar {
-            border-bottom: 1px solid #ddd;
+            border-bottom: 2px solid #e9ecef;
             margin-bottom: 20px;
-            padding-bottom: 10px;
+            padding-bottom: 15px;
         }
+        
         #superdoc {
             min-height: 500px;
         }
+        
         .empty-state {
             text-align: center;
-            color: #666;
+            color: #6c757d;
             margin-top: 100px;
+            padding: 40px;
+        }
+        
+        .empty-state h2 {
+            color: #0078d4;
+            margin-bottom: 20px;
+            font-size: 24px;
+        }
+        
+        .empty-state p {
+            font-size: 16px;
+            line-height: 1.6;
+            margin-bottom: 15px;
+        }
+        
+        .document-info {
+            background: #f8f9fa;
+            padding: 15px;
+            border-radius: 8px;
+            margin-bottom: 20px;
+            text-align: center;
+            border: 1px solid #dee2e6;
+        }
+        
+        .document-title {
+            font-size: 18px;
+            font-weight: 600;
+            color: #0078d4;
+            margin: 0;
         }
     </style>
 </head>
 <body>
-    <div class="header">
-        <h1>📄 SuperDoc Web Viewer</h1>
-        <div>
-            <span id="document-title">No document loaded</span>
+    <div class="opengov-header">
+        <div class="opengov-logo">
+            <svg width="140" height="36" viewBox="0 0 140 36" fill="none" xmlns="http://www.w3.org/2000/svg">
+                <rect width="140" height="36" rx="4" fill="#4F7FFF"/>
+                <text x="12" y="24" font-family="Arial, sans-serif" font-size="16" font-weight="bold" fill="white">OpenGov</text>
+                <polygon points="110,10 122,18 110,26" fill="white"/>
+            </svg>
+        </div>
+        <div class="opengov-text">
+            <h1 class="main-title">Redline Like You Mean It: The Future of Contracting</h1>
+            <p class="sub-header">By OpenGov</p>
         </div>
     </div>
 
+    <div class="document-info">
+        <p class="document-title" id="document-title">No document loaded</p>
+    </div>
+
     <div class="controls">
-        <button class="btn" onclick="loadCurrentDocument()">📂 Load Document</button>
-        <button class="btn btn-secondary" onclick="saveDocument()">💾 Save Changes</button>
+        <button class="btn" onclick="loadCurrentDocument()">📂 Load from Word</button>
+        <button class="btn btn-secondary" onclick="saveDocument()">💾 Save to Word</button>
+        <button class="btn" onclick="openNewFile()" style="background: #28a745;">📁 Open New File</button>
         <div id="status" class="status"></div>
     </div>
+    
+    <!-- Hidden file input -->
+    <input type="file" id="fileInput" accept=".docx,.doc" style="display: none;" onchange="handleFileSelect(event)">
 
     <div class="viewer-container">
         <div id="superdoc-toolbar"></div>
         <div id="superdoc">
             <div class="empty-state">
-                <h2>Welcome to SuperDoc Web Viewer</h2>
-                <p>Click "Load Document" to view the current document from Word.</p>
-                <p>Make your edits, then click "Save Changes" to sync back to Word.</p>
+                <h2>Welcome to OpenGov Contract Redlining</h2>
+                <p>Click "Load from Word" to view your current document from Word.</p>
+                <p>Make your edits here, then click "Save to Word" to sync back to Word.</p>
+                <p>Real-time collaboration and redlining - the future of contracting!</p>
             </div>
         </div>
     </div>
 
     <!-- Load SuperDoc from local node_modules -->
-    <script src="/node_modules/@harbour-enterprises/superdoc/dist/superdoc.umd.js"></script>
-    <!-- Cache buster -->
-    <script>console.log('Viewer loaded at:', new Date().toISOString());</script>
+    <script src="./node_modules/@harbour-enterprises/superdoc/dist/superdoc.umd.js"></script>
     <script>
         // SuperDoc variables
         let currentSuperdoc = null;
@@ -120,7 +225,7 @@
                 const response = await fetch('http://localhost:3001/api/current-document');
                 
                 if (!response.ok) {
-                    throw new Error('No document available from Word add-in');
+                    throw new Error('No document available from Word');
                 }
 
                 const docInfo = await response.json();
@@ -170,7 +275,7 @@
                     licenseKey: 'agplv3',
                     onReady: (event) => {
                         console.log('SuperDoc is ready', event);
-                        showStatus('Document loaded successfully!', 'success');
+                        showStatus('Document loaded successfully! Ready for redlining.', 'success');
                         currentDocumentId = documentId;
                     },
                     onEditorCreate: (event) => {
@@ -205,17 +310,10 @@
                     throw new Error('No SuperDoc instance available');
                 }
                 
-                // Use the correct SuperDoc export method (found via console testing)
+                // Use the correct SuperDoc export method
                 console.log('Using exportEditorsToDOCX...');
                 const docxResult = await currentSuperdoc.exportEditorsToDOCX();
                 console.log('Export result:', docxResult);
-                console.log('Export result type:', typeof docxResult);
-                console.log('Is Blob?', docxResult instanceof Blob);
-                console.log('Has arrayBuffer method?', docxResult && typeof docxResult.arrayBuffer === 'function');
-                console.log('Object keys:', Object.keys(docxResult));
-                console.log('Object properties:', Object.getOwnPropertyNames(docxResult));
-                console.log('Constructor name:', docxResult.constructor.name);
-                console.log('Object prototype:', Object.getPrototypeOf(docxResult));
                 
                 // Handle different return types
                 let base64;
@@ -225,22 +323,10 @@
                     const arrayBuffer = await docxResult.arrayBuffer();
                     const uint8Array = new Uint8Array(arrayBuffer);
                     base64 = btoa(String.fromCharCode.apply(null, uint8Array));
-                } else if (docxResult && typeof docxResult === 'string') {
-                    // It might be base64 already
-                    console.log('Processing as string...');
-                    base64 = docxResult;
-                } else if (docxResult && docxResult.constructor && docxResult.constructor.name === 'ArrayBuffer') {
-                    // It's an ArrayBuffer
-                    console.log('Processing as ArrayBuffer...');
-                    const uint8Array = new Uint8Array(docxResult);
-                    base64 = btoa(String.fromCharCode.apply(null, uint8Array));
                 } else if (docxResult && docxResult.length !== undefined && docxResult.constructor.name === 'Array') {
                     // It's an Array - SuperDoc returns array with Blob at index 0
                     console.log('Processing as Array - getting first element...');
                     const actualBlob = docxResult[0];
-                    console.log('First element:', actualBlob);
-                    console.log('First element type:', typeof actualBlob);
-                    console.log('First element is Blob?', actualBlob instanceof Blob);
                     
                     if (actualBlob instanceof Blob && typeof actualBlob.arrayBuffer === 'function') {
                         console.log('Converting first element as Blob...');
@@ -262,11 +348,6 @@
                     } else {
                         throw new Error('First array element is not a valid Blob');
                     }
-                } else if (docxResult && docxResult.length !== undefined) {
-                    // It might be a Uint8Array or similar
-                    console.log('Processing as array-like object...');
-                    const uint8Array = new Uint8Array(docxResult);
-                    base64 = btoa(String.fromCharCode.apply(null, uint8Array));
                 } else {
                     console.error('Unexpected export result format:', docxResult);
                     throw new Error('Export returned unexpected format: ' + (typeof docxResult));
@@ -291,7 +372,7 @@
                 }
                 
                 const result = await response.json();
-                showStatus('✅ Changes saved! Use "Import from SuperDoc" in Word to sync.', 'success');
+                showStatus('✅ Changes saved to Word! Use "Open from the Web" in Word to sync.', 'success');
                 
             } catch (error) {
                 console.error('Save error:', error);
@@ -308,16 +389,77 @@
             if (type === 'success') {
                 setTimeout(() => {
                     statusEl.style.display = 'none';
-                }, 3000);
+                }, 5000);
             }
+        }
+
+        function openNewFile() {
+            document.getElementById('fileInput').click();
+        }
+        
+        async function handleFileSelect(event) {
+            const file = event.target.files[0];
+            if (!file) return;
+            
+            if (!file.name.endsWith('.docx') && !file.name.endsWith('.doc')) {
+                showStatus('Please select a Word document (.docx or .doc)', 'error');
+                return;
+            }
+            
+            showStatus(`Loading ${file.name}...`, 'info');
+            
+            try {
+                // Read file as ArrayBuffer
+                const arrayBuffer = await file.arrayBuffer();
+                
+                // Convert to base64
+                const uint8Array = new Uint8Array(arrayBuffer);
+                let binaryString = '';
+                const chunkSize = 8192; // Process in chunks
+                
+                for (let i = 0; i < uint8Array.length; i += chunkSize) {
+                    const chunk = uint8Array.slice(i, i + chunkSize);
+                    binaryString += String.fromCharCode.apply(null, chunk);
+                }
+                
+                const base64 = btoa(binaryString);
+                
+                // Upload to API server
+                const response = await fetch('http://localhost:3001/api/upload-docx', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({
+                        docx: base64,
+                        filename: file.name
+                    })
+                });
+                
+                if (!response.ok) {
+                    throw new Error('Failed to upload file');
+                }
+                
+                const result = await response.json();
+                
+                // Load the uploaded document in SuperDoc
+                await loadSuperdoc(result.documentId, file.name);
+                
+            } catch (error) {
+                console.error('File open error:', error);
+                showStatus('Failed to open file: ' + error.message, 'error');
+            }
+            
+            // Clear the file input for next time
+            event.target.value = '';
         }
 
         // Auto-load document on page load
         window.addEventListener('load', () => {
-            console.log('SuperDoc Web Viewer initialized');
+            console.log('OpenGov Contract Redlining Web Viewer initialized');
             // Automatically try to load current document
             setTimeout(loadCurrentDocument, 1000);
         });
     </script>
 </body>
-</html> 
+</html>

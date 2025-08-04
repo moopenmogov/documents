@@ -157,8 +157,6 @@ app.post('/api/update-document-json', (req, res) => {
     try {
         const { docx, filename, saveType } = req.body;
         
-
-        
         if (!docx) {
             return res.status(400).json({ error: 'No DOCX data provided' });
         }
@@ -193,4 +191,4 @@ app.post('/api/update-document-json', (req, res) => {
 
 app.listen(PORT, () => {
     console.log(`🔧 API Server running on http://localhost:${PORT}`);
-}); 
+});
