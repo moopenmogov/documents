@@ -77,33 +77,107 @@
         .btn-secondary:hover {
             background: #5a6268;
         }
+
+        .btn-success {
+            background: #28a745;
+        }
+        
+        .btn-success:hover {
+            background: #218838;
+        }
+
+        .btn-info {
+            background: #17a2b8;
+        }
+        
+        .btn-info:hover {
+            background: #138496;
+        }
+
+
         
         .status {
-            margin: 20px auto;
-            padding: 15px;
-            border-radius: 8px;
+            position: relative;
+            margin: 10px auto;
+            padding: 12px 40px 12px 16px;
+            border-radius: 6px;
             display: none;
-            text-align: center;
-            max-width: 600px;
-            font-weight: 500;
+            text-align: left;
+            max-width: 500px;
+            font-weight: 400;
+            font-size: 14px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+            opacity: 0.95;
+            transition: all 0.3s ease;
         }
         
         .status.success { 
-            background: #dff6dd; 
-            color: #0f5132; 
-            border: 1px solid #b7e4c7;
+            background: #f0f9f0; 
+            color: #2d5a2d; 
+            border-left: 4px solid #28a745;
         }
         
         .status.error { 
-            background: #f8d7da; 
-            color: #842029; 
-            border: 1px solid #f5c2c7;
+            background: #fdf2f2; 
+            color: #721c24; 
+            border-left: 4px solid #dc3545;
         }
         
         .status.info { 
-            background: #cce7ff; 
-            color: #084298; 
-            border: 1px solid #9ec5fe;
+            background: #f0f8ff; 
+            color: #1e3a5f; 
+            border-left: 4px solid #17a2b8;
+        }
+
+        .status-close {
+            position: absolute;
+            top: 8px;
+            right: 8px;
+            background: transparent;
+            border: none;
+            font-size: 16px;
+            cursor: pointer;
+            color: inherit;
+            opacity: 0.6;
+            padding: 2px 6px;
+            border-radius: 3px;
+            transition: all 0.2s;
+        }
+
+        .status-close:hover {
+            opacity: 1;
+            background: rgba(0,0,0,0.1);
+        }
+
+        .checkout-status-indicator {
+            background: linear-gradient(135deg, #f8f9fa, #e9ecef);
+            border: 2px solid #0078d4;
+            border-radius: 8px;
+            padding: 15px 20px;
+            margin: 20px;
+            text-align: center;
+            font-size: 16px;
+            font-weight: 600;
+            color: #0078d4;
+            box-shadow: 0 2px 8px rgba(0, 120, 212, 0.1);
+        }
+
+        .checkout-status-indicator.available {
+            border-color: #28a745;
+            color: #28a745;
+            background: linear-gradient(135deg, #f8fff9, #e7f5e7);
+        }
+
+        .checkout-status-indicator.checked-out-by-me {
+            border-color: #17a2b8;
+            color: #17a2b8;
+            background: linear-gradient(135deg, #f1fcfd, #d4edda);
+        }
+
+        .checkout-status-indicator.checked-out-by-other {
+            border-color: #ffc107;
+            color: #856404;
+            background: linear-gradient(135deg, #fffdf5, #fff3cd);
         }
         
         .viewer-container {
@@ -152,8 +226,10 @@
             padding: 15px;
             border-radius: 8px;
             margin-bottom: 20px;
-            text-align: center;
             border: 1px solid #dee2e6;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
         }
         
         .document-title {
@@ -161,10 +237,51 @@
             font-weight: 600;
             color: #0078d4;
             margin: 0;
+            flex-grow: 1;
+        }
+
+        .btn-inline {
+            padding: 6px 12px;
+            font-size: 12px;
+            border-radius: 4px;
+            background: #6c757d;
+            color: white;
+            border: none;
+            cursor: pointer;
+            font-weight: 500;
+            transition: all 0.2s;
+            margin-left: 15px;
+        }
+
+        .btn-inline:hover {
+            background: #5a6268;
+            transform: translateY(-1px);
+        }
+
+        .read-only-banner {
+            background: linear-gradient(135deg, #dc3545, #c82333);
+            color: white;
+            padding: 15px 30px;
+            margin: 20px;
+            border-radius: 8px;
+            text-align: center;
+            font-size: 18px;
+            font-weight: bold;
+            box-shadow: 0 4px 12px rgba(220, 53, 69, 0.3);
+            border: 2px solid #dc3545;
+            animation: pulse 2s infinite;
+        }
+        
+        @keyframes pulse {
+            0% { box-shadow: 0 4px 12px rgba(220, 53, 69, 0.3); }
+            50% { box-shadow: 0 4px 20px rgba(220, 53, 69, 0.6); }
+            100% { box-shadow: 0 4px 12px rgba(220, 53, 69, 0.3); }
         }
     </style>
 </head>
 <body>
+
+
     <div class="opengov-header">
         <div class="opengov-logo">
             <svg width="140" height="36" viewBox="0 0 140 36" fill="none" xmlns="http://www.w3.org/2000/svg">
@@ -179,21 +296,36 @@
         </div>
     </div>
 
+    <!-- READ ONLY Banner (hidden by default) -->
+    <div id="readOnlyBanner" class="read-only-banner" style="display: none;">
+        🔒 READ ONLY MODE - Document checked out by <span id="readOnlyUser">another user</span>
+    </div>
+
+    <!-- Checkout Status Indicator -->
+    <div id="checkoutStatusIndicator" class="checkout-status-indicator available">
+        📄 Document available for checkout
+    </div>
+
     <div class="document-info">
         <p class="document-title" id="document-title">No document loaded</p>
+        <button class="btn-inline" onclick="openNewFile()">📁 Open New File</button>
     </div>
 
     <div class="controls">
         <!-- Checkout/Checkin buttons (shown/hidden based on state) -->
         <button id="checkoutBtn" class="btn" onclick="checkoutDocument()" style="display: none;">
-            🔒 Check-out Document
+            📥 Load from Word
         </button>
         
-        <button id="saveProgressBtn" class="btn btn-secondary" onclick="saveProgress()" style="display: none;">
+        <button id="loadLatestBtn" class="btn btn-secondary" onclick="loadLatestVersion()" style="display: none;">
+            🔄 Load Latest Version
+        </button>
+        
+        <button id="saveProgressBtn" class="btn btn-info" onclick="saveProgress()" style="display: none;">
             💾 Save Progress
         </button>
         
-        <button id="checkinBtn" class="btn" onclick="checkinDocument()" style="display: none;">
+        <button id="checkinBtn" class="btn btn-success" onclick="checkinDocument()" style="display: none;">
             ✅ Save & Check-in
         </button>
         
@@ -201,11 +333,9 @@
             ❌ Cancel Check-out
         </button>
         
-        <button id="viewOnlyBtn" class="btn btn-secondary" onclick="viewReadOnly()" style="display: none;">
-            👀 View Read-Only
-        </button>
+
         
-        <button class="btn" onclick="openNewFile()" style="background: #28a745;">📁 Open New File</button>
+
         
         <div id="documentStatus" class="status"></div>
         <div id="sseStatus" class="status"></div>
@@ -301,33 +431,53 @@
         // Update button visibility based on document state
         function updateButtonStates() {
             const checkoutBtn = document.getElementById('checkoutBtn');
+            const loadLatestBtn = document.getElementById('loadLatestBtn');
             const saveProgressBtn = document.getElementById('saveProgressBtn');
             const checkinBtn = document.getElementById('checkinBtn');
             const cancelBtn = document.getElementById('cancelBtn');
-            const viewOnlyBtn = document.getElementById('viewOnlyBtn');
+            const readOnlyBanner = document.getElementById('readOnlyBanner');
+            const statusIndicator = document.getElementById('checkoutStatusIndicator');
             
-            // Hide all buttons first
-            [checkoutBtn, saveProgressBtn, checkinBtn, cancelBtn, viewOnlyBtn].forEach(btn => {
+            // Hide all buttons and banner first
+            [checkoutBtn, loadLatestBtn, saveProgressBtn, checkinBtn, cancelBtn].forEach(btn => {
                 btn.style.display = 'none';
             });
+            readOnlyBanner.style.display = 'none';
             
-            if (!currentDocumentState.isCheckedOut) {
-                // Document is available for checkout
+            // Check if we have a document loaded
+            const hasDocument = currentDocumentState.currentDocument && currentDocumentState.currentDocument.filename;
+            
+            if (!hasDocument) {
+                // NULL STATE: No document loaded - only show "Load from Word"
+                checkoutBtn.innerHTML = '📥 Load from Word';
                 checkoutBtn.style.display = 'inline-block';
-                showStatus('📄 Document available for checkout', 'info');
-                updateSuperdocMode('editing'); // Allow editing when available
+                statusIndicator.textContent = '📥 Ready to load document from Word';
+                statusIndicator.className = 'checkout-status-indicator available';
+                updateSuperdocMode('editing');
+            } else if (!currentDocumentState.isCheckedOut) {
+                // Document loaded but available - show Load Latest and Check-out options
+                loadLatestBtn.style.display = 'inline-block';
+                checkoutBtn.innerHTML = '🔒 Check-out to Edit';
+                checkoutBtn.style.display = 'inline-block';
+                statusIndicator.textContent = '📄 Document available - load latest to refresh or check-out to edit';
+                statusIndicator.className = 'checkout-status-indicator available';
+                updateSuperdocMode('editing');
             } else if (currentDocumentState.checkedOutBy === 'web') {
                 // I have the document checked out
                 saveProgressBtn.style.display = 'inline-block';
                 checkinBtn.style.display = 'inline-block';
                 cancelBtn.style.display = 'inline-block';
-                showStatus('🔒 Document checked out by you', 'success');
-                updateSuperdocMode('editing'); // Allow editing when I have it
+                statusIndicator.textContent = '🔒 Document checked out by you - editing enabled';
+                statusIndicator.className = 'checkout-status-indicator checked-out-by-me';
+                updateSuperdocMode('editing');
             } else {
-                // Someone else has it checked out
-                viewOnlyBtn.style.display = 'inline-block';
-                showStatus(`🔒 Document checked out by ${currentDocumentState.checkedOutBy} - Document is READ-ONLY`, 'error');
-                updateSuperdocMode('viewing'); // Lock to read-only when someone else has it
+                // Someone else has it checked out - show READ ONLY banner and load latest option
+                readOnlyBanner.style.display = 'block';
+                document.getElementById('readOnlyUser').textContent = currentDocumentState.checkedOutBy;
+                loadLatestBtn.style.display = 'inline-block';
+                statusIndicator.textContent = `⏸️ Document checked out by ${currentDocumentState.checkedOutBy} - view only`;
+                statusIndicator.className = 'checkout-status-indicator checked-out-by-other';
+                updateSuperdocMode('viewing');
             }
         }
         
@@ -441,6 +591,41 @@
             }
         }
         
+        // Load latest version without checkout
+        async function loadLatestVersion() {
+            try {
+                showStatus('🔄 Loading latest version...', 'info');
+                
+                const response = await fetch('http://localhost:3001/api/status');
+                if (response.ok) {
+                    const data = await response.json();
+                    
+                    if (data.currentDocument && data.currentDocument.id) {
+                        // Load the latest document into the viewer
+                        await loadSuperdoc(data.currentDocument.id, data.currentDocument.filename);
+                        
+                        // Update our local state
+                        currentDocumentState.currentDocument = data.currentDocument;
+                        currentDocumentState.isCheckedOut = data.checkoutState.isCheckedOut;
+                        currentDocumentState.checkedOutBy = data.checkoutState.checkedOutBy;
+                        
+                        // Update UI
+                        updateButtonStates();
+                        
+                        showStatus('✅ Latest version loaded successfully', 'success');
+                    } else {
+                        showStatus('⚠️ No document available to load', 'error');
+                    }
+                } else {
+                    const error = await response.json();
+                    showStatus(`❌ ${error.error}`, 'error');
+                }
+            } catch (error) {
+                console.error('Load latest error:', error);
+                showStatus('❌ Load failed: ' + error.message, 'error');
+            }
+        }
+        
         // Save progress (keep checkout)
         async function saveProgress() {
             try {
@@ -520,28 +705,7 @@
             }
         }
         
-        // View read-only (load latest without checkout)
-        async function viewReadOnly() {
-            try {
-                showStatus('👀 Loading latest version...', 'info');
-                
-                const response = await fetch('http://localhost:3001/api/status');
-                if (response.ok) {
-                    const data = await response.json();
-                    if (data.currentDocument && data.currentDocument.id) {
-                        await loadSuperdoc(data.currentDocument.id, data.currentDocument.filename);
-                        showStatus('👀 Latest version loaded (read-only)', 'info');
-                    } else {
-                        showStatus('❌ No document available', 'error');
-                    }
-                } else {
-                    throw new Error('Failed to get document status');
-                }
-            } catch (error) {
-                console.error('View read-only error:', error);
-                showStatus('❌ Failed to load: ' + error.message, 'error');
-            }
-        }
+
 
         async function loadSuperdoc(documentId, fileName) {
             showStatus('Loading document in SuperDoc...', 'info');
@@ -609,15 +773,25 @@
 
         function showStatus(message, type, elementId = 'documentStatus') {
             const statusEl = document.getElementById(elementId);
-            statusEl.textContent = message;
+            
+            // Create status content with close button
+            statusEl.innerHTML = `
+                ${message}
+                <button class="status-close" onclick="this.parentElement.style.display='none'">×</button>
+            `;
             statusEl.className = `status ${type}`;
             statusEl.style.display = 'block';
 
-            if (type === 'success') {
-                setTimeout(() => {
-                    statusEl.style.display = 'none';
-                }, 5000);
-            }
+            // Auto-dismiss after 4 seconds
+            setTimeout(() => {
+                if (statusEl.style.display !== 'none') {
+                    statusEl.style.opacity = '0';
+                    setTimeout(() => {
+                        statusEl.style.display = 'none';
+                        statusEl.style.opacity = '0.95';
+                    }, 300);
+                }
+            }, 4000);
         }
 
         function openNewFile() {
