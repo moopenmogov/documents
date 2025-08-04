@@ -1,55 +1,267 @@
-<!-- Copyright (c) Microsoft Corporation. All rights reserved. Licensed under the MIT License. -->
-<!-- This file shows how to design a first-run page that provides a welcome screen to the user about the features of the add-in. -->
-
 <!DOCTYPE html>
 <html>
-
 <head>
     <meta charset="UTF-8" />
     <meta http-equiv="X-UA-Compatible" content="IE=Edge" />
     <meta name="viewport" content="width=device-width, initial-scale=1">
-    <title>Contoso Task Pane Add-in</title>
+    <title>OpenGov Contract Redlining</title>
 
     <!-- Office JavaScript API -->
     <script type="text/javascript" src="https://appsforoffice.microsoft.com/lib/1/hosted/office.js"></script>
 
-    <!-- For more information on Fluent UI, visit https://developer.microsoft.com/fluentui#/. -->
-    <link rel="stylesheet" href="https://res-1.cdn.office.net/files/fabric-cdn-prod_20230815.002/office-ui-fabric-core/11.1.0/css/fabric.min.css"/>
-
-    <!-- Template styles -->
-    <link href="taskpane.css" rel="stylesheet" type="text/css" />
+    <style>
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            margin: 0;
+            padding: 0;
+            background: #f8f9fa;
+        }
+        
+        .container {
+            max-width: 400px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+        
+        .opengov-header {
+            text-align: center;
+            margin-bottom: 30px;
+            padding: 20px;
+            background: linear-gradient(135deg, #1e3a8a, #3b82f6);
+            color: white;
+            border-radius: 8px;
+        }
+        
+        .opengov-logo {
+            margin-bottom: 15px;
+            display: flex;
+            justify-content: center;
+        }
+        
+        .opengov-text {
+            text-align: center;
+        }
+        
+        .main-title {
+            font-size: 16px;
+            font-weight: bold;
+            margin: 0 0 8px 0;
+            line-height: 1.3;
+        }
+        
+        .sub-header {
+            font-size: 12px;
+            margin: 0;
+            opacity: 0.9;
+            font-style: italic;
+            text-align: center;
+        }
+        
+        .sync-section {
+            background: white;
+            padding: 20px;
+            border-radius: 8px;
+            margin-bottom: 20px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+        
+        .button {
+            width: 100%;
+            padding: 12px;
+            font-size: 16px;
+            border: none;
+            border-radius: 6px;
+            cursor: pointer;
+            margin-bottom: 10px;
+            transition: background-color 0.2s;
+        }
+        
+        .button-primary {
+            background: #0078d4;
+            color: white;
+        }
+        
+        .button-primary:hover {
+            background: #106ebe;
+        }
+        
+        .button-secondary {
+            background: #f3f2f1;
+            color: #323130;
+            border: 1px solid #d2d0ce;
+        }
+        
+        .button-secondary:hover {
+            background: #edebe9;
+        }
+        
+        .status {
+            padding: 10px;
+            border-radius: 4px;
+            margin-top: 10px;
+            text-align: center;
+            font-size: 14px;
+            display: none;
+        }
+        
+        .status.success {
+            background: #dff6dd;
+            color: #107c10;
+        }
+        
+        .status.error {
+            background: #fde7e9;
+            color: #a80000;
+        }
+        
+        .status.info {
+            background: #deecf9;
+            color: #003a6b;
+        }
+    </style>
 </head>
-
-<body class="ms-font-m ms-welcome ms-Fabric">
-    <header class="ms-welcome__header ms-bgColor-neutralLighter">
-        <img width="90" height="90" src="../../assets/logo-filled.png" alt="Contoso" title="Contoso" />
-        <h1 class="ms-font-su">Welcome</h1>
-    </header>
-    <section id="sideload-msg" class="ms-welcome__main">
-        <h2 class="ms-font-xl">Please <a target="_blank" href="https://learn.microsoft.com/office/dev/add-ins/testing/test-debug-office-add-ins#sideload-an-office-add-in-for-testing">sideload</a> your add-in to see app body.</h2>
-    </section>
-    <main id="app-body" class="ms-welcome__main" style="display: none;">
-        <h2 class="ms-font-xl"> Discover what Office Add-ins can do for you today! </h2>
-        <ul class="ms-List ms-welcome__features">
-            <li class="ms-ListItem">
-                <i class="ms-Icon ms-Icon--Ribbon ms-font-xl"></i>
-                <span class="ms-font-m">Achieve more with Office integration</span>
-            </li>
-            <li class="ms-ListItem">
-                <i class="ms-Icon ms-Icon--Unlock ms-font-xl"></i>
-                <span class="ms-font-m">Unlock features and functionality</span>
-            </li>
-            <li class="ms-ListItem">
-                <i class="ms-Icon ms-Icon--Design ms-font-xl"></i>
-                <span class="ms-font-m">Create and visualize like a pro</span>
-            </li>
-        </ul>
-        <p class="ms-font-l">Modify the source files, then click <b>Run</b>.</p>
-        <div role="button" id="run" class="ms-welcome__action ms-Button ms-Button--hero ms-font-xl">
-            <span class="ms-Button-label">Run</span>
+<body>
+    <div class="container">
+        <div class="opengov-header">
+            <div class="opengov-logo">
+                <svg width="120" height="32" viewBox="0 0 120 32" fill="none" xmlns="http://www.w3.org/2000/svg">
+                    <rect width="120" height="32" rx="4" fill="#4F7FFF"/>
+                    <text x="10" y="22" font-family="Arial, sans-serif" font-size="14" font-weight="bold" fill="white">OpenGov</text>
+                    <polygon points="95,8 105,16 95,24" fill="white"/>
+                </svg>
+            </div>
+            <div class="opengov-text">
+                <h1 class="main-title">Redline Like You Mean It: The Future of Contracting</h1>
+                <p class="sub-header">By OpenGov</p>
+            </div>
         </div>
-        <p><label id="item-subject"></label></p>
-    </main>
+        
+        <div class="sync-section">
+            <button class="button button-primary" onclick="exportToOpenGov()">
+                💾 Save to the Web
+            </button>
+            <div id="saveStatus" class="status"></div>
+        </div>
+    
+        <div class="sync-section">
+            <button class="button button-secondary" onclick="importFromOpenGov()">
+                📂 Open from the Web
+            </button>
+            <div id="openStatus" class="status"></div>
+        </div>
+        
+        <div class="sync-section">
+            <button class="button button-secondary" onclick="openWebViewer()">
+                🌐 Open OpenGov on the Web
+            </button>
+        </div>
+    </div>
+    
+    <script>
+        Office.onReady((info) => {
+            if (info.host === Office.HostType.Word) {
+                console.log('OpenGov Contract Redlining add-in ready');
+            }
+        });
+        
+        function showStatus(elementId, message, type) {
+            const statusEl = document.getElementById(elementId);
+            if (statusEl) {
+                statusEl.textContent = message;
+                statusEl.className = `status ${type}`;
+                statusEl.style.display = 'block';
+                
+                if (type === 'success') {
+                    setTimeout(() => {
+                        statusEl.style.display = 'none';
+                    }, 3000);
+                }
+            }
+        }
+        
+        async function exportToOpenGov() {
+            showStatus('saveStatus', 'Extracting document from Word...', 'info');
+            
+            try {
+                // Get the document as base64 DOCX using Office.js API
+                const base64 = await new Promise((resolve, reject) => {
+                    Office.context.document.getFileAsync(Office.FileType.Compressed, (result) => {
+                        if (result.status === Office.AsyncResultStatus.Succeeded) {
+                            const file = result.value;
+                            file.getSliceAsync(0, (sliceResult) => {
+                                if (sliceResult.status === Office.AsyncResultStatus.Succeeded) {
+                                    resolve(sliceResult.value.data);
+                                    file.closeAsync();
+                                } else {
+                                    reject(new Error('Failed to get document slice'));
+                                }
+                            });
+                        } else {
+                            reject(new Error('Failed to get document file'));
+                        }
+                    });
+                });
+                
+                // Upload to our API server
+                const response = await fetch('http://localhost:3001/api/upload-docx', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({
+                        docx: base64,
+                        filename: 'word-document.docx'
+                    })
+                });
+                
+                if (response.ok) {
+                    const result = await response.json();
+                    showStatus('saveStatus', '✅ Document saved to the web successfully!', 'success');
+                } else {
+                    throw new Error('Failed to upload document');
+                }
+            } catch (error) {
+                console.error('Export error:', error);
+                showStatus('saveStatus', 'Export failed: ' + error.message, 'error');
+            }
+        }
+        
+        async function importFromOpenGov() {
+            showStatus('openStatus', 'Loading document from the web...', 'info');
+            
+            try {
+                // Get updated document from API server
+                const response = await fetch('http://localhost:3001/api/get-updated-docx');
+                
+                if (!response.ok) {
+                    throw new Error('No document available on the web');
+                }
+                
+                const result = await response.json();
+                
+                if (result.docx) {
+                    await Word.run(async (context) => {
+                        // Clear current document and insert updated content
+                        context.document.body.clear();
+                        context.document.body.insertFileFromBase64(result.docx, Word.InsertLocation.start);
+                        
+                        await context.sync();
+                        
+                        showStatus('openStatus', '✅ Document loaded from the web successfully!', 'success');
+                    });
+                } else {
+                    throw new Error('No document data received');
+                }
+                
+            } catch (error) {
+                console.error('Import error:', error);
+                showStatus('openStatus', 'Import failed: ' + error.message, 'error');
+            }
+        }
+        
+        function openWebViewer() {
+            window.open('http://localhost:3002/viewer.html', '_blank');
+        }
+    </script>
 </body>
-
 </html>
