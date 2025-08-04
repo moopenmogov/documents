@@ -26,7 +26,7 @@ const storage = multer.diskStorage({
 });
 const upload = multer({ storage });
 
-// Store current document info
+// Store current document info and checkout state
 let currentDocument = {
     id: null,
     filename: null,
@@ -34,9 +34,315 @@ let currentDocument = {
     lastUpdated: null
 };
 
+// Document checkout state management
+let documentState = {
+    isCheckedOut: false,
+    checkedOutBy: null,      // 'word' or 'web'
+    checkedOutAt: null,
+    checkedOutUser: null     // identifier for who checked it out
+};
+
+// Store SSE connections
+let sseConnections = [];
+
 // Health check
 app.get('/api/health', (req, res) => {
     res.json({ status: 'ok', timestamp: new Date().toISOString() });
+});
+
+// SSE endpoint for real-time events
+app.get('/api/events', (req, res) => {
+    console.log('📡 New SSE connection established');
+    
+    res.writeHead(200, {
+        'Content-Type': 'text/event-stream',
+        'Cache-Control': 'no-cache',
+        'Connection': 'keep-alive',
+        'Access-Control-Allow-Origin': '*',
+        'Access-Control-Allow-Headers': 'Cache-Control'
+    });
+    
+    // Store connection for broadcasting
+    sseConnections.push(res);
+    
+    // Send initial connection message
+    res.write('data: {"type":"connected","message":"SSE connected successfully","timestamp":"' + new Date().toISOString() + '"}\n\n');
+    
+    // Handle client disconnect
+    req.on('close', () => {
+        console.log('📡 SSE connection closed');
+        const index = sseConnections.indexOf(res);
+        if (index !== -1) {
+            sseConnections.splice(index, 1);
+        }
+    });
+});
+
+// Broadcast function for sending events to all connected clients
+function broadcastSSE(event) {
+    const eventData = JSON.stringify(event);
+    console.log('📡 Broadcasting SSE event:', event.type);
+    
+    sseConnections.forEach((res, index) => {
+        try {
+            res.write(`data: ${eventData}\n\n`);
+        } catch (error) {
+            console.log('📡 Removing dead SSE connection');
+            sseConnections.splice(index, 1);
+        }
+    });
+}
+
+// Test ping endpoint
+app.post('/api/ping', (req, res) => {
+    const { source } = req.body;
+    
+    broadcastSSE({
+        type: 'ping',
+        message: `Ping from ${source || 'unknown'}!`,
+        timestamp: new Date().toISOString(),
+        source: source
+    });
+    
+    res.json({ 
+        success: true, 
+        message: 'Ping broadcast to all clients',
+        connectedClients: sseConnections.length
+    });
+});
+
+// Get current document status and checkout state
+app.get('/api/status', (req, res) => {
+    res.json({
+        currentDocument: currentDocument,
+        checkoutState: documentState,
+        timestamp: new Date().toISOString()
+    });
+});
+
+// Checkout document for editing
+app.post('/api/checkout', (req, res) => {
+    const { source } = req.body; // 'word' or 'web'
+    
+    // Check if already checked out
+    if (documentState.isCheckedOut) {
+        return res.status(409).json({
+            success: false,
+            error: 'Document is already checked out',
+            checkedOutBy: documentState.checkedOutBy,
+            checkedOutAt: documentState.checkedOutAt
+        });
+    }
+    
+    // Check out the document
+    documentState.isCheckedOut = true;
+    documentState.checkedOutBy = source;
+    documentState.checkedOutAt = new Date().toISOString();
+    documentState.checkedOutUser = source; // Could be expanded for user IDs later
+    
+    // Broadcast checkout event
+    broadcastSSE({
+        type: 'document-checked-out',
+        message: `Document checked out by ${source}`,
+        checkedOutBy: source,
+        checkedOutAt: documentState.checkedOutAt,
+        timestamp: new Date().toISOString()
+    });
+    
+    console.log(`📋 Document checked out by: ${source}`);
+    
+    res.json({
+        success: true,
+        message: 'Document checked out successfully',
+        checkoutState: documentState
+    });
+});
+
+// Save document progress (while keeping checkout)
+app.post('/api/save-progress', (req, res) => {
+    const { source, docx, filename } = req.body;
+    
+    // Check if document is checked out
+    if (!documentState.isCheckedOut) {
+        return res.status(400).json({
+            success: false,
+            error: 'Document must be checked out to save progress'
+        });
+    }
+    
+    // Check if the source is the one who checked it out
+    if (documentState.checkedOutBy !== source) {
+        return res.status(403).json({
+            success: false,
+            error: 'Only the user who checked out the document can save progress',
+            checkedOutBy: documentState.checkedOutBy
+        });
+    }
+    
+    try {
+        // Save the document if docx data provided
+        if (docx) {
+            const timestamp = Date.now();
+            const fileName = filename || `progress-save-${timestamp}.docx`;
+            const filePath = path.join(uploadsDir, fileName);
+            
+            // Write base64 data to file
+            const buffer = Buffer.from(docx, 'base64');
+            fs.writeFileSync(filePath, buffer);
+            
+            // Update current document info
+            currentDocument.id = `doc-${timestamp}`;
+            currentDocument.filename = fileName;
+            currentDocument.filePath = filePath;
+            currentDocument.lastUpdated = new Date().toISOString();
+            
+            console.log(`💾 Progress saved by ${source}: ${fileName}`);
+        }
+        
+        // Broadcast save event (document stays checked out)
+        broadcastSSE({
+            type: 'document-saved',
+            message: `Document progress saved by ${source}`,
+            savedBy: source,
+            filename: currentDocument.filename,
+            timestamp: new Date().toISOString(),
+            stillCheckedOut: true
+        });
+        
+        res.json({
+            success: true,
+            message: 'Progress saved successfully',
+            currentDocument: currentDocument,
+            checkoutState: documentState
+        });
+        
+    } catch (error) {
+        console.error('Save progress error:', error);
+        res.status(500).json({
+            success: false,
+            error: 'Failed to save progress: ' + error.message
+        });
+    }
+});
+
+// Check-in document (save and unlock)
+app.post('/api/checkin', (req, res) => {
+    const { source, docx, filename } = req.body;
+    
+    // Check if document is checked out
+    if (!documentState.isCheckedOut) {
+        return res.status(400).json({
+            success: false,
+            error: 'Document is not checked out'
+        });
+    }
+    
+    // Check if the source is the one who checked it out
+    if (documentState.checkedOutBy !== source) {
+        return res.status(403).json({
+            success: false,
+            error: 'Only the user who checked out the document can check it in',
+            checkedOutBy: documentState.checkedOutBy
+        });
+    }
+    
+    try {
+        // Save the document if docx data provided
+        if (docx) {
+            const timestamp = Date.now();
+            const fileName = filename || `checkin-${timestamp}.docx`;
+            const filePath = path.join(uploadsDir, fileName);
+            
+            // Write base64 data to file
+            const buffer = Buffer.from(docx, 'base64');
+            fs.writeFileSync(filePath, buffer);
+            
+            // Update current document info
+            currentDocument.id = `doc-${timestamp}`;
+            currentDocument.filename = fileName;
+            currentDocument.filePath = filePath;
+            currentDocument.lastUpdated = new Date().toISOString();
+            
+            console.log(`✅ Document checked in by ${source}: ${fileName}`);
+        }
+        
+        // Clear checkout state (unlock document)
+        const previouslyCheckedOutBy = documentState.checkedOutBy;
+        documentState.isCheckedOut = false;
+        documentState.checkedOutBy = null;
+        documentState.checkedOutAt = null;
+        documentState.checkedOutUser = null;
+        
+        // Broadcast check-in event
+        broadcastSSE({
+            type: 'document-checked-in',
+            message: `Document checked in by ${source}`,
+            checkinBy: source,
+            filename: currentDocument.filename,
+            timestamp: new Date().toISOString(),
+            previouslyCheckedOutBy: previouslyCheckedOutBy
+        });
+        
+        res.json({
+            success: true,
+            message: 'Document checked in successfully',
+            currentDocument: currentDocument,
+            checkoutState: documentState
+        });
+        
+    } catch (error) {
+        console.error('Check-in error:', error);
+        res.status(500).json({
+            success: false,
+            error: 'Failed to check in document: ' + error.message
+        });
+    }
+});
+
+// Cancel checkout (unlock without saving)
+app.post('/api/cancel-checkout', (req, res) => {
+    const { source } = req.body;
+    
+    // Check if document is checked out
+    if (!documentState.isCheckedOut) {
+        return res.status(400).json({
+            success: false,
+            error: 'Document is not checked out'
+        });
+    }
+    
+    // Check if the source is the one who checked it out
+    if (documentState.checkedOutBy !== source) {
+        return res.status(403).json({
+            success: false,
+            error: 'Only the user who checked out the document can cancel the checkout',
+            checkedOutBy: documentState.checkedOutBy
+        });
+    }
+    
+    // Clear checkout state (unlock document) WITHOUT saving
+    const previouslyCheckedOutBy = documentState.checkedOutBy;
+    documentState.isCheckedOut = false;
+    documentState.checkedOutBy = null;
+    documentState.checkedOutAt = null;
+    documentState.checkedOutUser = null;
+    
+    console.log(`❌ Checkout cancelled by ${source} (no save)`);
+    
+    // Broadcast checkout cancelled event
+    broadcastSSE({
+        type: 'checkout-cancelled',
+        message: `Checkout cancelled by ${source}`,
+        cancelledBy: source,
+        timestamp: new Date().toISOString(),
+        previouslyCheckedOutBy: previouslyCheckedOutBy
+    });
+    
+    res.json({
+        success: true,
+        message: 'Checkout cancelled successfully',
+        checkoutState: documentState
+    });
 });
 
 // Upload DOCX from Word add-in
