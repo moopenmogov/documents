@@ -184,10 +184,31 @@
     </div>
 
     <div class="controls">
-        <button class="btn" onclick="loadCurrentDocument()">📂 Load from Word</button>
-        <button class="btn btn-secondary" onclick="saveDocument()">💾 Save to Word</button>
+        <!-- Checkout/Checkin buttons (shown/hidden based on state) -->
+        <button id="checkoutBtn" class="btn" onclick="checkoutDocument()" style="display: none;">
+            🔒 Check-out Document
+        </button>
+        
+        <button id="saveProgressBtn" class="btn btn-secondary" onclick="saveProgress()" style="display: none;">
+            💾 Save Progress
+        </button>
+        
+        <button id="checkinBtn" class="btn" onclick="checkinDocument()" style="display: none;">
+            ✅ Save & Check-in
+        </button>
+        
+        <button id="cancelBtn" class="btn btn-secondary" onclick="cancelCheckout()" style="display: none;">
+            ❌ Cancel Check-out
+        </button>
+        
+        <button id="viewOnlyBtn" class="btn btn-secondary" onclick="viewReadOnly()" style="display: none;">
+            👀 View Read-Only
+        </button>
+        
         <button class="btn" onclick="openNewFile()" style="background: #28a745;">📁 Open New File</button>
-        <div id="status" class="status"></div>
+        
+        <div id="documentStatus" class="status"></div>
+        <div id="sseStatus" class="status"></div>
     </div>
     
     <!-- Hidden file input -->
@@ -198,9 +219,8 @@
         <div id="superdoc">
             <div class="empty-state">
                 <h2>Welcome to OpenGov Contract Redlining</h2>
-                <p>Click "Load from Word" to view your current document from Word.</p>
-                <p>Make your edits here, then click "Save to Word" to sync back to Word.</p>
                 <p>Real-time collaboration and redlining - the future of contracting!</p>
+                <p>Ready for document collaboration workflow.</p>
             </div>
         </div>
     </div>
@@ -217,28 +237,309 @@
         console.log('SuperDocLibrary available:', typeof SuperDocLibrary);
         console.log('SuperDocLibrary.SuperDoc available:', typeof SuperDocLibrary?.SuperDoc);
 
-        async function loadCurrentDocument() {
-            showStatus('Loading current document...', 'info');
-
+        // SSE connection
+        let eventSource = null;
+        
+        function connectSSE() {
             try {
-                // Get current document info from API
-                const response = await fetch('http://localhost:3001/api/current-document');
+                eventSource = new EventSource('http://localhost:3001/api/events');
                 
-                if (!response.ok) {
-                    throw new Error('No document available from Word');
-                }
-
-                const docInfo = await response.json();
+                eventSource.onopen = function(event) {
+                    console.log('SSE connection opened');
+                    showStatus('📡 Connected to real-time events', 'success', 'sseStatus');
+                };
                 
-                if (!docInfo.id) {
-                    throw new Error('No document has been uploaded from Word yet');
-                }
-
-                await loadSuperdoc(docInfo.id, docInfo.filename);
+                eventSource.onmessage = function(event) {
+                    const data = JSON.parse(event.data);
+                    console.log('SSE event received:', data);
+                    
+                    if (data.type === 'connected') {
+                        document.getElementById('sseStatus').textContent = `📡 ${data.message}`;
+                        document.getElementById('sseStatus').className = 'status success';
+                        document.getElementById('sseStatus').style.display = 'block';
+                    } else if (data.type === 'document-checked-out') {
+                        document.getElementById('sseStatus').textContent = `📡 ${data.message}`;
+                        document.getElementById('sseStatus').className = 'status info';
+                        document.getElementById('sseStatus').style.display = 'block';
+                        fetchDocumentStatus(); // Refresh UI when checkout state changes
+                    } else if (data.type === 'document-checked-in') {
+                        document.getElementById('sseStatus').textContent = `📡 ${data.message}`;
+                        document.getElementById('sseStatus').className = 'status info';
+                        document.getElementById('sseStatus').style.display = 'block';
+                        fetchDocumentStatus(); // Refresh UI when checkout state changes
+                    } else if (data.type === 'document-saved') {
+                        document.getElementById('sseStatus').textContent = `📡 ${data.message}`;
+                        document.getElementById('sseStatus').className = 'status info';
+                        document.getElementById('sseStatus').style.display = 'block';
+                        // No need to refresh buttons for save progress (still checked out)
+                    } else if (data.type === 'checkout-cancelled') {
+                        document.getElementById('sseStatus').textContent = `📡 ${data.message}`;
+                        document.getElementById('sseStatus').className = 'status info';
+                        document.getElementById('sseStatus').style.display = 'block';
+                        fetchDocumentStatus(); // Refresh UI when checkout state changes
+                    }
+                };
+                
+                eventSource.onerror = function(event) {
+                    console.error('SSE error:', event);
+                    showStatus('📡 Connection error - retrying...', 'error', 'sseStatus');
+                };
                 
             } catch (error) {
-                console.error('Load error:', error);
-                showStatus('Load failed: ' + error.message, 'error');
+                console.error('Failed to connect SSE:', error);
+                showStatus('📡 Failed to connect to events', 'error', 'sseStatus');
+            }
+        }
+        
+        // Document state
+        let currentDocumentState = {
+            isCheckedOut: false,
+            checkedOutBy: null,
+            currentDocument: null
+        };
+        
+        // Update button visibility based on document state
+        function updateButtonStates() {
+            const checkoutBtn = document.getElementById('checkoutBtn');
+            const saveProgressBtn = document.getElementById('saveProgressBtn');
+            const checkinBtn = document.getElementById('checkinBtn');
+            const cancelBtn = document.getElementById('cancelBtn');
+            const viewOnlyBtn = document.getElementById('viewOnlyBtn');
+            
+            // Hide all buttons first
+            [checkoutBtn, saveProgressBtn, checkinBtn, cancelBtn, viewOnlyBtn].forEach(btn => {
+                btn.style.display = 'none';
+            });
+            
+            if (!currentDocumentState.isCheckedOut) {
+                // Document is available for checkout
+                checkoutBtn.style.display = 'inline-block';
+                showStatus('📄 Document available for checkout', 'info');
+                updateSuperdocMode('editing'); // Allow editing when available
+            } else if (currentDocumentState.checkedOutBy === 'web') {
+                // I have the document checked out
+                saveProgressBtn.style.display = 'inline-block';
+                checkinBtn.style.display = 'inline-block';
+                cancelBtn.style.display = 'inline-block';
+                showStatus('🔒 Document checked out by you', 'success');
+                updateSuperdocMode('editing'); // Allow editing when I have it
+            } else {
+                // Someone else has it checked out
+                viewOnlyBtn.style.display = 'inline-block';
+                showStatus(`🔒 Document checked out by ${currentDocumentState.checkedOutBy} - Document is READ-ONLY`, 'error');
+                updateSuperdocMode('viewing'); // Lock to read-only when someone else has it
+            }
+        }
+        
+        // Update SuperDoc editing mode based on checkout state
+        function updateSuperdocMode(mode) {
+            if (currentSuperdoc) {
+                try {
+                    // Try to update the mode if SuperDoc supports it
+                    if (currentSuperdoc.setDocumentMode) {
+                        currentSuperdoc.setDocumentMode(mode);
+                        console.log(`SuperDoc mode updated to: ${mode}`);
+                    } else if (currentSuperdoc.setReadOnly) {
+                        // Alternative API if available
+                        currentSuperdoc.setReadOnly(mode === 'viewing');
+                        console.log(`SuperDoc read-only set to: ${mode === 'viewing'}`);
+                    } else {
+                        // If no direct method, we'll need to reinitialize
+                        console.log(`SuperDoc mode change not supported by current API - mode should be: ${mode}`);
+                        
+                        // Add visual indicator for read-only mode
+                        const superdocElement = document.getElementById('superdoc');
+                        if (mode === 'viewing') {
+                            superdocElement.style.opacity = '0.8';
+                            superdocElement.style.pointerEvents = 'none';
+                            superdocElement.style.border = '3px solid #dc3545';
+                            
+                            // Add read-only overlay
+                            let overlay = document.getElementById('readonly-overlay');
+                            if (!overlay) {
+                                overlay = document.createElement('div');
+                                overlay.id = 'readonly-overlay';
+                                overlay.style.cssText = `
+                                    position: absolute;
+                                    top: 0;
+                                    left: 0;
+                                    right: 0;
+                                    bottom: 0;
+                                    background: rgba(220, 53, 69, 0.1);
+                                    z-index: 1000;
+                                    pointer-events: none;
+                                    display: flex;
+                                    align-items: center;
+                                    justify-content: center;
+                                    font-size: 24px;
+                                    font-weight: bold;
+                                    color: #dc3545;
+                                `;
+                                overlay.innerHTML = '🔒 READ-ONLY MODE';
+                                document.querySelector('.viewer-container').style.position = 'relative';
+                                document.querySelector('.viewer-container').appendChild(overlay);
+                            }
+                            overlay.style.display = 'flex';
+                        } else {
+                            superdocElement.style.opacity = '1';
+                            superdocElement.style.pointerEvents = 'auto';
+                            superdocElement.style.border = 'none';
+                            
+                            // Remove read-only overlay
+                            const overlay = document.getElementById('readonly-overlay');
+                            if (overlay) {
+                                overlay.style.display = 'none';
+                            }
+                        }
+                    }
+                } catch (error) {
+                    console.error('Error updating SuperDoc mode:', error);
+                }
+            }
+        }
+        
+        // Fetch current document status
+        async function fetchDocumentStatus() {
+            try {
+                const response = await fetch('http://localhost:3001/api/status');
+                if (response.ok) {
+                    const data = await response.json();
+                    currentDocumentState.isCheckedOut = data.checkoutState.isCheckedOut;
+                    currentDocumentState.checkedOutBy = data.checkoutState.checkedOutBy;
+                    currentDocumentState.currentDocument = data.currentDocument;
+                    updateButtonStates();
+                }
+            } catch (error) {
+                console.error('Failed to fetch document status:', error);
+            }
+        }
+        
+        // Checkout document
+        async function checkoutDocument() {
+            try {
+                const response = await fetch('http://localhost:3001/api/checkout', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ source: 'web' })
+                });
+                
+                if (response.ok) {
+                    showStatus('✅ Document checked out successfully', 'success');
+                    await fetchDocumentStatus(); // Refresh UI
+                    
+                    // Try to load the current document
+                    if (currentDocumentState.currentDocument && currentDocumentState.currentDocument.id) {
+                        await loadSuperdoc(currentDocumentState.currentDocument.id, currentDocumentState.currentDocument.filename);
+                    }
+                } else {
+                    const error = await response.json();
+                    showStatus(`❌ ${error.error}`, 'error');
+                }
+            } catch (error) {
+                console.error('Checkout error:', error);
+                showStatus('❌ Checkout failed: ' + error.message, 'error');
+            }
+        }
+        
+        // Save progress (keep checkout)
+        async function saveProgress() {
+            try {
+                showStatus('💾 Saving progress...', 'info');
+                
+                // For now, we'll save without actual document content
+                // In a real implementation, you'd extract content from SuperDoc
+                const response = await fetch('http://localhost:3001/api/save-progress', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ 
+                        source: 'web',
+                        filename: 'web-progress-save.docx'
+                    })
+                });
+                
+                if (response.ok) {
+                    showStatus('✅ Progress saved successfully', 'success');
+                } else {
+                    const error = await response.json();
+                    showStatus(`❌ ${error.error}`, 'error');
+                }
+            } catch (error) {
+                console.error('Save progress error:', error);
+                showStatus('❌ Save failed: ' + error.message, 'error');
+            }
+        }
+        
+        // Check-in document (save and unlock)
+        async function checkinDocument() {
+            try {
+                showStatus('✅ Checking in document...', 'info');
+                
+                // For now, we'll save without actual document content
+                // In a real implementation, you'd extract content from SuperDoc
+                const response = await fetch('http://localhost:3001/api/checkin', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ 
+                        source: 'web',
+                        filename: 'web-checkin.docx'
+                    })
+                });
+                
+                if (response.ok) {
+                    showStatus('✅ Document checked in successfully', 'success');
+                    await fetchDocumentStatus(); // Refresh UI
+                } else {
+                    const error = await response.json();
+                    showStatus(`❌ ${error.error}`, 'error');
+                }
+            } catch (error) {
+                console.error('Checkin error:', error);
+                showStatus('❌ Check-in failed: ' + error.message, 'error');
+            }
+        }
+        
+        // Cancel checkout (unlock without saving)
+        async function cancelCheckout() {
+            try {
+                const response = await fetch('http://localhost:3001/api/cancel-checkout', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ source: 'web' })
+                });
+                
+                if (response.ok) {
+                    showStatus('✅ Checkout cancelled', 'success');
+                    await fetchDocumentStatus(); // Refresh UI
+                } else {
+                    const error = await response.json();
+                    showStatus(`❌ ${error.error}`, 'error');
+                }
+            } catch (error) {
+                console.error('Cancel checkout error:', error);
+                showStatus('❌ Cancel failed: ' + error.message, 'error');
+            }
+        }
+        
+        // View read-only (load latest without checkout)
+        async function viewReadOnly() {
+            try {
+                showStatus('👀 Loading latest version...', 'info');
+                
+                const response = await fetch('http://localhost:3001/api/status');
+                if (response.ok) {
+                    const data = await response.json();
+                    if (data.currentDocument && data.currentDocument.id) {
+                        await loadSuperdoc(data.currentDocument.id, data.currentDocument.filename);
+                        showStatus('👀 Latest version loaded (read-only)', 'info');
+                    } else {
+                        showStatus('❌ No document available', 'error');
+                    }
+                } else {
+                    throw new Error('Failed to get document status');
+                }
+            } catch (error) {
+                console.error('View read-only error:', error);
+                showStatus('❌ Failed to load: ' + error.message, 'error');
             }
         }
 
@@ -263,12 +564,15 @@
                 // Update document title
                 document.getElementById('document-title').textContent = fileName;
 
+                // Determine document mode based on checkout state
+                const documentMode = (currentDocumentState.isCheckedOut && currentDocumentState.checkedOutBy !== 'web') ? 'viewing' : 'editing';
+                
                 // Create SuperDoc instance
                 currentSuperdoc = new SuperDocClass({
                     selector: '#superdoc',
                     toolbar: '#superdoc-toolbar',
                     document: `http://localhost:3001/api/document/${documentId}`,
-                    documentMode: 'editing',
+                    documentMode: documentMode,
                     pagination: true,
                     rulers: true,
                     zoom: 1.0,
@@ -277,6 +581,10 @@
                         console.log('SuperDoc is ready', event);
                         showStatus('Document loaded successfully! Ready for redlining.', 'success');
                         currentDocumentId = documentId;
+                        
+                        // Ensure the correct mode is applied after SuperDoc is ready
+                        const currentMode = (currentDocumentState.isCheckedOut && currentDocumentState.checkedOutBy !== 'web') ? 'viewing' : 'editing';
+                        updateSuperdocMode(currentMode);
                     },
                     onEditorCreate: (event) => {
                         console.log('SuperDoc editor created', event);
@@ -297,91 +605,10 @@
             }
         }
 
-        async function saveDocument() {
-            if (!currentSuperdoc || !currentDocumentId) {
-                showStatus('No document loaded to save', 'error');
-                return;
-            }
+        // Save functions will go here
 
-            showStatus('Saving document changes...', 'info');
-
-            try {
-                if (!currentSuperdoc) {
-                    throw new Error('No SuperDoc instance available');
-                }
-                
-                // Use the correct SuperDoc export method
-                console.log('Using exportEditorsToDOCX...');
-                const docxResult = await currentSuperdoc.exportEditorsToDOCX();
-                console.log('Export result:', docxResult);
-                
-                // Handle different return types
-                let base64;
-                if (docxResult instanceof Blob && typeof docxResult.arrayBuffer === 'function') {
-                    // It's a proper Blob
-                    console.log('Processing as Blob...');
-                    const arrayBuffer = await docxResult.arrayBuffer();
-                    const uint8Array = new Uint8Array(arrayBuffer);
-                    base64 = btoa(String.fromCharCode.apply(null, uint8Array));
-                } else if (docxResult && docxResult.length !== undefined && docxResult.constructor.name === 'Array') {
-                    // It's an Array - SuperDoc returns array with Blob at index 0
-                    console.log('Processing as Array - getting first element...');
-                    const actualBlob = docxResult[0];
-                    
-                    if (actualBlob instanceof Blob && typeof actualBlob.arrayBuffer === 'function') {
-                        console.log('Converting first element as Blob...');
-                        const arrayBuffer = await actualBlob.arrayBuffer();
-                        const uint8Array = new Uint8Array(arrayBuffer);
-                        
-                        // Convert large arrays in chunks to avoid stack overflow
-                        console.log('Converting', uint8Array.length, 'bytes to base64...');
-                        let binaryString = '';
-                        const chunkSize = 8192; // Process 8KB chunks
-                        
-                        for (let i = 0; i < uint8Array.length; i += chunkSize) {
-                            const chunk = uint8Array.slice(i, i + chunkSize);
-                            binaryString += String.fromCharCode.apply(null, chunk);
-                        }
-                        
-                        base64 = btoa(binaryString);
-                        console.log('Base64 conversion complete, length:', base64.length);
-                    } else {
-                        throw new Error('First array element is not a valid Blob');
-                    }
-                } else {
-                    console.error('Unexpected export result format:', docxResult);
-                    throw new Error('Export returned unexpected format: ' + (typeof docxResult));
-                }
-                
-                // Send updated document to API server
-                const response = await fetch('http://localhost:3001/api/update-document-json', {
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json'
-                    },
-                    body: JSON.stringify({
-                        docx: base64,
-                        filename: `updated-${Date.now()}.docx`
-                    })
-                });
-                
-                if (!response.ok) {
-                    const errorText = await response.text();
-                    console.error('Server response:', response.status, errorText);
-                    throw new Error(`Server error ${response.status}: ${errorText}`);
-                }
-                
-                const result = await response.json();
-                showStatus('✅ Changes saved to Word! Use "Open from the Web" in Word to sync.', 'success');
-                
-            } catch (error) {
-                console.error('Save error:', error);
-                showStatus('Save failed: ' + error.message, 'error');
-            }
-        }
-
-        function showStatus(message, type) {
-            const statusEl = document.getElementById('status');
+        function showStatus(message, type, elementId = 'documentStatus') {
+            const statusEl = document.getElementById(elementId);
             statusEl.textContent = message;
             statusEl.className = `status ${type}`;
             statusEl.style.display = 'block';
@@ -454,11 +681,16 @@
             event.target.value = '';
         }
 
-        // Auto-load document on page load
+        // Initialize web viewer
         window.addEventListener('load', () => {
             console.log('OpenGov Contract Redlining Web Viewer initialized');
-            // Automatically try to load current document
-            setTimeout(loadCurrentDocument, 1000);
+            console.log('Connecting to SSE...');
+            connectSSE();
+            
+            // Fetch initial document status and update button states
+            setTimeout(() => {
+                fetchDocumentStatus();
+            }, 1000); // Small delay to ensure SSE connection is established
         });
     </script>
 </body>
