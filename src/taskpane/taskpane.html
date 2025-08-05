@@ -149,15 +149,19 @@
             <button id="checkinBtn" class="button button-primary" onclick="checkinDocument()" style="display: none;">
                 ✅ Save & Check-in
             </button>
-            
+    
             <button id="cancelBtn" class="button button-secondary" onclick="cancelCheckout()" style="display: none;">
                 ❌ Cancel Check-out
             </button>
-            
+        
             <button id="viewOnlyBtn" class="button button-secondary" onclick="viewReadOnly()" style="display: none;">
-                👀 View Read-Only
+                👀 View Last Saved
             </button>
             
+            <button id="shareToWebBtn" class="button button-primary" onclick="shareToWeb()" style="background: #007acc;">
+                📤 Share to Web
+            </button>
+
             <div id="documentStatus" class="status"></div>
             <div id="sseStatus" class="status"></div>
         </div>
@@ -200,22 +204,25 @@
                     } else if (data.type === 'document-checked-out') {
                         showStatus('sseStatus', `📡 ${data.message}`, 'info');
                         fetchDocumentStatus(); // Refresh UI when checkout state changes
+                        // Auto-load document content when someone checks it out (initial loading)
+                        if (data.checkedOutBy !== 'word') {
+                            loadDocumentContent();
+                        }
                     } else if (data.type === 'document-checked-in') {
                         showStatus('sseStatus', `📡 ${data.message}`, 'info');
                         fetchDocumentStatus(); // Refresh UI when checkout state changes
-                        // Reload content after web check-in
-                        if (data.checkinBy !== 'word') {
-                            loadDocumentContent();
-                        }
+                        // Note: User must manually click "View Read-Only" to pull updates
                     } else if (data.type === 'document-saved') {
                         showStatus('sseStatus', `📡 ${data.message}`, 'info');
-                        // Reload content after web saves (if I'm viewing)
-                        if (data.savedBy !== 'word' && currentDocumentState.checkedOutBy !== 'word') {
-                            loadDocumentContent();
-                        }
+                        // Note: User must manually click "View Read-Only" to pull updates
                     } else if (data.type === 'checkout-cancelled') {
                         showStatus('sseStatus', `📡 ${data.message}`, 'info');
                         fetchDocumentStatus(); // Refresh UI when checkout state changes
+                    } else if (data.type === 'document-uploaded') {
+                        showStatus('sseStatus', `📡 ${data.message}`, 'info');
+                        fetchDocumentStatus(); // Refresh UI when new document is available
+                        // Auto-load the uploaded document
+                        loadDocumentContent();
                     }
                 };
                 
@@ -239,30 +246,16 @@
         
         // Update button visibility based on document state
         function updateButtonStates() {
-            const checkoutBtn = document.getElementById('checkoutBtn');
-            const saveProgressBtn = document.getElementById('saveProgressBtn');
-            const checkinBtn = document.getElementById('checkinBtn');
-            const cancelBtn = document.getElementById('cancelBtn');
-            const viewOnlyBtn = document.getElementById('viewOnlyBtn');
+            // Use the new scenario-based button visibility logic
+            const currentScenario = detectCollaborationScenario();
+            updateButtonVisibilityForScenario(currentScenario);
             
-            // Hide all buttons first
-            [checkoutBtn, saveProgressBtn, checkinBtn, cancelBtn, viewOnlyBtn].forEach(btn => {
-                btn.style.display = 'none';
-            });
-            
+            // Update status messages
             if (!currentDocumentState.isCheckedOut) {
-                // Document is available for checkout
-                checkoutBtn.style.display = 'block';
                 showStatus('documentStatus', '📄 Document available for checkout', 'info');
             } else if (currentDocumentState.checkedOutBy === 'word') {
-                // I have the document checked out
-                saveProgressBtn.style.display = 'block';
-                checkinBtn.style.display = 'block';
-                cancelBtn.style.display = 'block';
                 showStatus('documentStatus', '🔒 Document checked out by you', 'success');
             } else {
-                // Someone else has it checked out
-                viewOnlyBtn.style.display = 'block';
                 showStatus('documentStatus', `🔒 Document checked out by ${currentDocumentState.checkedOutBy}`, 'error');
             }
         }
@@ -273,10 +266,21 @@
                 const response = await fetch('http://localhost:3001/api/status');
                 if (response.ok) {
                     const data = await response.json();
+                    const wasDocumentAvailable = currentDocumentState.currentDocument?.id;
+                    
                     currentDocumentState.isCheckedOut = data.checkoutState.isCheckedOut;
                     currentDocumentState.checkedOutBy = data.checkoutState.checkedOutBy;
                     currentDocumentState.currentDocument = data.currentDocument;
                     updateButtonStates();
+                    
+                    // Auto-load document if newly available and checked out by web viewer
+                    const hasNewDocument = data.currentDocument?.id && data.currentDocument.id !== wasDocumentAvailable;
+                    const isWebCheckout = data.checkoutState.isCheckedOut && data.checkoutState.checkedOutBy === 'web';
+                    
+                    if (hasNewDocument && isWebCheckout) {
+                        console.log('📥 Auto-loading newly available document...');
+                        loadDocumentContent();
+                    }
                 }
             } catch (error) {
                 console.error('Failed to fetch document status:', error);
@@ -329,6 +333,7 @@
                         context.document.body.insertFileFromBase64(result.docx, Word.InsertLocation.start);
                         await context.sync();
                     });
+                    
                     showStatus('documentStatus', `✅ ${result.filename} loaded successfully`, 'success');
                 }
             } catch (error) {
@@ -425,21 +430,71 @@
             try {
                 showStatus('documentStatus', '👀 Loading latest version...', 'info');
                 
-                const response = await fetch('http://localhost:3001/api/status');
-                if (response.ok) {
-                    const data = await response.json();
-                    if (data.currentDocument && data.currentDocument.filePath) {
-                        // Load the document into Word (read-only mode)
-                        showStatus('documentStatus', '👀 Latest version loaded (read-only)', 'info');
-                    } else {
-                        showStatus('documentStatus', '❌ No document available', 'error');
-                    }
-                } else {
-                    throw new Error('Failed to get document status');
-                }
+                // Load the latest document content
+                await loadDocumentContent();
+                
             } catch (error) {
                 console.error('View read-only error:', error);
-                showStatus('documentStatus', '❌ Failed to load: ' + error.message, 'error');
+                showStatus('documentStatus', '❌ Failed to load latest version: ' + error.message, 'error');
+            }
+        }
+        
+        // Share current Word document to web viewer
+        async function shareToWeb() {
+            try {
+                showStatus('documentStatus', '📤 Sharing document to web...', 'info');
+                
+                // Get current document as base64
+                const docx = await getDocumentAsBase64();
+                
+                // Try to get the actual document name from Word
+                let filename = 'shared-document.docx'; // fallback
+                try {
+                    await Word.run(async (context) => {
+                        const properties = context.document.properties;
+                        properties.load("title");
+                        await context.sync();
+                        
+                        // Use document title if available, otherwise use a timestamp-based name
+                        if (properties.title && properties.title.trim()) {
+                            filename = properties.title.trim() + '.docx';
+                        } else {
+                            const timestamp = new Date().toISOString().replace(/[:.]/g, '-');
+                            filename = `shared-document-${timestamp}.docx`;
+                        }
+                    });
+                } catch (nameError) {
+                    console.log('Could not get document name, using timestamp');
+                    const timestamp = new Date().toISOString().replace(/[:.]/g, '-');
+                    filename = `shared-document-${timestamp}.docx`;
+                }
+                
+                // Upload to API server
+                const response = await fetch('http://localhost:3001/api/upload-docx', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({
+                        docx: docx,
+                        filename: filename
+                    })
+                });
+                
+                if (response.ok) {
+                    const result = await response.json();
+                    showStatus('documentStatus', `✅ Document shared: ${result.filename}`, 'success');
+                    
+                    // Refresh document status to update UI
+                    await fetchDocumentStatus();
+                } else {
+                    const error = await response.json();
+                    showStatus('documentStatus', `❌ Share failed: ${error.error}`, 'error');
+                }
+                
+            } catch (error) {
+                console.error('Share to web error:', error);
+                showStatus('documentStatus', '❌ Failed to share document: ' + error.message, 'error');
             }
         }
         
@@ -477,6 +532,127 @@
                 });
             });
         }
+        
+        // ===== MILESTONE 1: STATE DETECTION LOGIC =====
+        
+                // Detect current collaboration scenario (simplified 3-scenario model)
+        function detectCollaborationScenario() {
+            // If scenario is forced for testing, return that
+            if (window.forcedScenario) {
+                return window.forcedScenario;
+            }
+            
+            const isCheckedOut = currentDocumentState.isCheckedOut || false;
+            const checkedOutBy = currentDocumentState.checkedOutBy;
+
+            // Simplified logic: Assume same document, focus on checkout state
+            if (isCheckedOut && checkedOutBy === 'word') {
+                return 'AddInCheckOut';
+            } else if (isCheckedOut && checkedOutBy === 'web') {
+                return 'WebViewCheckOut';
+            } else {
+                return 'BothOnly';
+            }
+        }
+        
+        // Debug helper: Show current collaboration state  
+        function debugCurrentState() {
+            const hasServerDoc = !!(currentDocumentState.currentDocument && currentDocumentState.currentDocument.id);
+            const hasLocalDoc = !!document.querySelector('#document-title')?.textContent && 
+                               document.querySelector('#document-title').textContent !== 'No document loaded';
+            
+            console.log('🔍 WORD ADD-IN STATE ANALYSIS:');
+            console.log('├── Server has document:', hasServerDoc);
+            console.log('├── Word has document:', hasLocalDoc);
+            console.log('├── Is checked out:', currentDocumentState.isCheckedOut);
+            console.log('├── Checked out by:', currentDocumentState.checkedOutBy);
+            console.log('├── Current document:', currentDocumentState.currentDocument?.filename || 'None');
+            console.log('└── Detected scenario:', detectCollaborationScenario());
+            
+            return {
+                hasServerDoc,
+                hasLocalDoc,
+                isCheckedOut: currentDocumentState.isCheckedOut,
+                checkedOutBy: currentDocumentState.checkedOutBy,
+                scenario: detectCollaborationScenario()
+            };
+        }
+        
+        // Debug helper: Get currently visible buttons
+        function getVisibleButtons() {
+            return Array.from(document.querySelectorAll('button'))
+                .filter(btn => !btn.style.display || btn.style.display !== 'none')
+                .map(btn => ({
+                    id: btn.id,
+                    text: btn.textContent.trim(),
+                    visible: true
+                }));
+        }
+        
+
+        
+        // ===== MILESTONE 2: BUTTON VISIBILITY LOGIC =====
+        
+        // Get button configuration for each scenario
+        function getButtonConfigForScenario(scenario) {
+            const buttonConfigs = {
+                'BothOnly': {
+                    // No checkout: Both platforms can view/edit
+                    visible: ['checkoutBtn', 'viewOnlyBtn', 'shareToWebBtn'],
+                    hidden: ['saveProgressBtn', 'checkinBtn', 'cancelBtn']
+                },
+                'AddInCheckOut': {
+                    // Word has checkout: Word add-in can edit
+                    visible: ['saveProgressBtn', 'checkinBtn', 'cancelBtn', 'shareToWebBtn'],
+                    hidden: ['checkoutBtn', 'viewOnlyBtn']
+                },
+                'WebViewCheckOut': {
+                    // Web has checkout: Word add-in is read-only
+                    visible: ['viewOnlyBtn', 'shareToWebBtn'],
+                    hidden: ['checkoutBtn', 'saveProgressBtn', 'checkinBtn', 'cancelBtn']
+                }
+            };
+            
+            return buttonConfigs[scenario] || buttonConfigs['BothOnly'];
+        }
+        
+        // Update button visibility based on scenario
+        function updateButtonVisibilityForScenario(scenario) {
+            const config = getButtonConfigForScenario(scenario);
+            
+            // Hide all managed buttons first
+            ['checkoutBtn', 'saveProgressBtn', 'checkinBtn', 'cancelBtn', 'viewOnlyBtn', 'shareToWebBtn'].forEach(buttonId => {
+                const button = document.getElementById(buttonId);
+                if (button) button.style.display = 'none';
+            });
+            
+            // Show required buttons
+            config.visible.forEach(buttonId => {
+                const button = document.getElementById(buttonId);
+                if (button) button.style.display = 'inline-block';
+            });
+            
+            console.log(`🎨 Updated button visibility for scenario: ${scenario}`, config);
+        }
+        
+        // ===== END MILESTONE 2 BUTTON VISIBILITY =====
+        
+        // Make debugging functions globally available
+        // Force a specific scenario for testing (overrides detection logic)
+        function debugForceScenario(scenarioName) {
+            window.forcedScenario = scenarioName;
+            console.log(`🎭 Forced scenario to: ${scenarioName}`);
+            updateButtonVisibilityForScenario(scenarioName);
+        }
+
+        window.debugCurrentState = debugCurrentState;
+        window.debugForceScenario = debugForceScenario;
+        window.getVisibleButtons = getVisibleButtons;
+        window.detectCollaborationScenario = detectCollaborationScenario;
+        window.updateButtonVisibilityForScenario = updateButtonVisibilityForScenario;
+        window.shareToWeb = shareToWeb;
+        
+        // ===== END MILESTONE 1 STATE DETECTION =====
         
         // Connect to SSE when Office is ready
         Office.onReady((info) => {

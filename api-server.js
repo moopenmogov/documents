@@ -103,9 +103,9 @@ app.post('/api/ping', (req, res) => {
         timestamp: new Date().toISOString(),
         source: source
     });
-    
-    res.json({ 
-        success: true, 
+        
+        res.json({ 
+            success: true, 
         message: 'Ping broadcast to all clients',
         connectedClients: sseConnections.length
     });
@@ -208,9 +208,9 @@ app.post('/api/save-progress', (req, res) => {
             timestamp: new Date().toISOString(),
             stillCheckedOut: true
         });
-        
-        res.json({
-            success: true,
+            
+            res.json({
+                success: true,
             message: 'Progress saved successfully',
             currentDocument: currentDocument,
             checkoutState: documentState
@@ -373,8 +373,17 @@ app.post('/api/upload-docx', (req, res) => {
         
         console.log(`✅ DOCX uploaded: ${fileName} (${buffer.length} bytes)`);
         
-        res.json({
-            success: true,
+        // Broadcast SSE event to notify all clients
+        broadcastSSE({
+            type: 'document-uploaded',
+            message: `Document uploaded: ${fileName}`,
+            documentId: currentDocument.id,
+            filename: fileName,
+            timestamp: new Date().toISOString()
+        });
+        
+        res.json({ 
+            success: true, 
             documentId: currentDocument.id,
             filename: fileName,
             message: 'Document uploaded successfully'

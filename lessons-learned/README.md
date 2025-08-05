@@ -16,7 +16,11 @@ This directory contains detailed lessons learned from developing a Word add-in w
 ### 🔧 Technical Integration  
 - [API Integration Guide](api-integration.md) - Office.js, SuperDoc, Express patterns
 - **[Bidirectional Sync Implementation](bidirectional-sync-implementation.md)** ⭐ **MAJOR BREAKTHROUGH** - Complete real-time sync solution
+- **[Bidirectional Sync Deep Dive](bidirectional-sync-deep-dive.md)** ⭐ **TECHNICAL MASTERCLASS** - Advanced patterns and learnings
 - [Git Workflow Best Practices](git-workflow.md) - Branch management and commit strategies
+
+### 🚀 Release Documentation
+- **[Cross-Platform Collaboration Release Notes](collab-cross-platform-release-notes.md)** - MVP feature delivery and architecture
 
 ### 🚨 Troubleshooting & Common Pitfalls
 - [Troubleshooting Guide](troubleshooting-guide.md) - Registry issues, cache problems, common errors
@@ -48,9 +52,15 @@ This directory contains detailed lessons learned from developing a Word add-in w
 - **Document locking system** with check-out/check-in workflow  
 - **SuperDoc content extraction** using `exportEditorsToDOCX()` method
 - **Word content loading** using `insertFileFromBase64()` with proper ZIP handling
-- **Critical insight:** Most sync failures are due to missing document content, not broken APIs
 
-### 6. **Git Strategy for Complex Features**
+### 6. **Cross-Platform Collaboration MVP** 
+**THE USER EXPERIENCE BREAKTHROUGH:** Built complete bidirectional workflow:
+- **Web → Word**: Upload document → Auto-loads in Word add-in
+- **Word → Web**: Share document → Auto-loads in web viewer  
+- **Smart Button System**: UI adapts to collaboration state (3-scenario model)
+- **Manual Sync Control**: Users control when to pull updates ("View Last Saved")
+
+### 7. **Git Strategy for Complex Features**
 - Create solid foundations before feature development
 - Commit working states frequently as checkpoints
 - Clean up repo structure before merging to main

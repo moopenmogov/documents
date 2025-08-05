@@ -202,9 +202,10 @@
         </button>
         
         <button id="viewOnlyBtn" class="btn btn-secondary" onclick="viewReadOnly()" style="display: none;">
-            👀 View Read-Only
+            👀 View Last Saved
         </button>
         
+
         <button class="btn" onclick="openNewFile()" style="background: #28a745;">📁 Open New File</button>
         
         <div id="documentStatus" class="status"></div>
@@ -277,6 +278,15 @@
                         document.getElementById('sseStatus').className = 'status info';
                         document.getElementById('sseStatus').style.display = 'block';
                         fetchDocumentStatus(); // Refresh UI when checkout state changes
+                    } else if (data.type === 'document-uploaded') {
+                        document.getElementById('sseStatus').textContent = `📡 ${data.message}`;
+                        document.getElementById('sseStatus').className = 'status info';
+                        document.getElementById('sseStatus').style.display = 'block';
+                        fetchDocumentStatus(); // Refresh UI when new document is available
+                        // Auto-load the uploaded document
+                        if (data.documentId && data.filename) {
+                            loadSuperdoc(data.documentId, data.filename);
+                        }
                     }
                 };
                 
@@ -300,32 +310,18 @@
         
         // Update button visibility based on document state
         function updateButtonStates() {
-            const checkoutBtn = document.getElementById('checkoutBtn');
-            const saveProgressBtn = document.getElementById('saveProgressBtn');
-            const checkinBtn = document.getElementById('checkinBtn');
-            const cancelBtn = document.getElementById('cancelBtn');
-            const viewOnlyBtn = document.getElementById('viewOnlyBtn');
+            // Use the new scenario-based button visibility logic
+            const currentScenario = detectCollaborationScenario();
+            updateButtonVisibilityForScenario(currentScenario);
             
-            // Hide all buttons first
-            [checkoutBtn, saveProgressBtn, checkinBtn, cancelBtn, viewOnlyBtn].forEach(btn => {
-                btn.style.display = 'none';
-            });
-            
+            // Update status messages and SuperDoc mode
             if (!currentDocumentState.isCheckedOut) {
-                // Document is available for checkout
-                checkoutBtn.style.display = 'inline-block';
                 showStatus('📄 Document available for checkout', 'info');
                 updateSuperdocMode('editing'); // Allow editing when available
             } else if (currentDocumentState.checkedOutBy === 'web') {
-                // I have the document checked out
-                saveProgressBtn.style.display = 'inline-block';
-                checkinBtn.style.display = 'inline-block';
-                cancelBtn.style.display = 'inline-block';
                 showStatus('🔒 Document checked out by you', 'success');
                 updateSuperdocMode('editing'); // Allow editing when I have it
             } else {
-                // Someone else has it checked out
-                viewOnlyBtn.style.display = 'inline-block';
                 showStatus(`🔒 Document checked out by ${currentDocumentState.checkedOutBy} - Document is READ-ONLY`, 'error');
                 updateSuperdocMode('viewing'); // Lock to read-only when someone else has it
             }
@@ -725,6 +721,129 @@
             event.target.value = '';
         }
 
+        // ===== MILESTONE 1: STATE DETECTION LOGIC =====
+        
+        // Detect current collaboration scenario (simplified 3-scenario model)
+        function detectCollaborationScenario() {
+            // If scenario is forced for testing, return that
+            if (window.forcedScenario) {
+                return window.forcedScenario;
+            }
+            
+            const isCheckedOut = currentDocumentState.isCheckedOut || false;
+            const checkedOutBy = currentDocumentState.checkedOutBy;
+            
+            // Simplified logic: Assume same document, focus on checkout state
+            if (isCheckedOut && checkedOutBy === 'word') {
+                return 'AddInCheckOut';
+            } else if (isCheckedOut && checkedOutBy === 'web') {
+                return 'WebViewCheckOut'; 
+            } else {
+                return 'BothOnly';
+            }
+        }
+        
+        // Debug helper: Show current collaboration state
+        function debugCurrentState() {
+            const hasServerDoc = !!(currentDocumentState.currentDocument && currentDocumentState.currentDocument.id);
+            const hasLocalDoc = !!(currentSuperdoc && currentDocumentId);
+            
+            console.log('🔍 WEB VIEWER STATE ANALYSIS:');
+            console.log('├── Server has document:', hasServerDoc);
+            console.log('├── Web has document:', hasLocalDoc);
+            console.log('├── Is checked out:', currentDocumentState.isCheckedOut);
+            console.log('├── Checked out by:', currentDocumentState.checkedOutBy);
+            console.log('├── Current document:', currentDocumentState.currentDocument?.filename || 'None');
+            console.log('├── SuperDoc instance:', !!currentSuperdoc);
+            console.log('├── Current document ID:', currentDocumentId || 'None');
+            console.log('└── Detected scenario:', detectCollaborationScenario());
+            
+            return {
+                hasServerDoc,
+                hasLocalDoc,
+                isCheckedOut: currentDocumentState.isCheckedOut,
+                checkedOutBy: currentDocumentState.checkedOutBy,
+                scenario: detectCollaborationScenario(),
+                superdocActive: !!currentSuperdoc,
+                documentId: currentDocumentId
+            };
+        }
+        
+        // Debug helper: Get currently visible buttons
+        function getVisibleButtons() {
+            return Array.from(document.querySelectorAll('button'))
+                .filter(btn => !btn.style.display || btn.style.display !== 'none')
+                .map(btn => ({
+                    id: btn.id,
+                    text: btn.textContent.trim(),
+                    visible: true
+                }));
+        }
+        
+
+        
+        // ===== MILESTONE 2: BUTTON VISIBILITY LOGIC =====
+        
+        // Get button configuration for each scenario
+        function getButtonConfigForScenario(scenario) {
+            const buttonConfigs = {
+                'BothOnly': {
+                    // No checkout: Both platforms can view/edit
+                    visible: ['checkoutBtn', 'viewOnlyBtn'],
+                    hidden: ['saveProgressBtn', 'checkinBtn', 'cancelBtn']
+                },
+                'AddInCheckOut': {
+                    // Word has checkout: Web viewer is read-only
+                    visible: ['viewOnlyBtn'],
+                    hidden: ['checkoutBtn', 'saveProgressBtn', 'checkinBtn', 'cancelBtn']
+                },
+                'WebViewCheckOut': {
+                    // Web has checkout: Web viewer can edit
+                    visible: ['saveProgressBtn', 'checkinBtn', 'cancelBtn'],
+                    hidden: ['checkoutBtn', 'viewOnlyBtn']
+                }
+            };
+            
+            return buttonConfigs[scenario] || buttonConfigs['BothOnly'];
+        }
+        
+        // Update button visibility based on scenario
+        function updateButtonVisibilityForScenario(scenario) {
+            const config = getButtonConfigForScenario(scenario);
+            
+            // Hide all managed buttons first
+            ['checkoutBtn', 'saveProgressBtn', 'checkinBtn', 'cancelBtn', 'viewOnlyBtn'].forEach(buttonId => {
+                const button = document.getElementById(buttonId);
+                if (button) button.style.display = 'none';
+            });
+            
+            // Show required buttons
+            config.visible.forEach(buttonId => {
+                const button = document.getElementById(buttonId);
+                if (button) button.style.display = 'inline-block';
+            });
+            
+            console.log(`🎨 Updated button visibility for scenario: ${scenario}`, config);
+        }
+        
+        // ===== END MILESTONE 2 BUTTON VISIBILITY =====
+        
+        // Make debugging functions globally available
+        // Force a specific scenario for testing (overrides detection logic)
+        function debugForceScenario(scenarioName) {
+            window.forcedScenario = scenarioName;
+            console.log(`🎭 Forced scenario to: ${scenarioName}`);
+            updateButtonVisibilityForScenario(scenarioName);
+        }
+
+        window.debugCurrentState = debugCurrentState;
+        window.getVisibleButtons = getVisibleButtons;
+        window.detectCollaborationScenario = detectCollaborationScenario;
+        window.debugForceScenario = debugForceScenario;
+        window.updateButtonVisibilityForScenario = updateButtonVisibilityForScenario;
+        
+        // ===== END MILESTONE 1 STATE DETECTION =====
+        
         // Initialize web viewer
         window.addEventListener('load', () => {
             console.log('OpenGov Contract Redlining Web Viewer initialized');
