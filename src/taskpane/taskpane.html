@@ -57,6 +57,87 @@
             text-align: center;
         }
         
+        .document-info {
+            background: #f8f9fa;
+            padding: 15px;
+            border-radius: 8px;
+            margin-bottom: 20px;
+            border: 1px solid #dee2e6;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        
+        .document-title {
+            font-size: 16px;
+            font-weight: 600;
+            color: #0078d4;
+            margin: 0;
+            flex-grow: 1;
+        }
+        
+        .document-buttons {
+            display: flex;
+            flex-direction: column;
+            gap: 6px;
+            margin-left: 15px;
+        }
+        
+        .btn-notification {
+            background: #6c757d;
+            color: white;
+            padding: 7px 16px;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 12px;
+            font-weight: 600;
+            transition: background-color 0.2s;
+            position: relative;
+        }
+        
+        .btn-notification:hover {
+            background: #5a6268;
+        }
+        
+        .notification-dot {
+            position: absolute;
+            top: -3px;
+            right: -3px;
+            background: #dc3545;
+            border: 2px solid white;
+            border-radius: 50%;
+            width: 10px;
+            height: 10px;
+        }
+        
+        /* Checkout Status Banner */
+        .checkout-banner {
+            background: #dc3545;
+            color: white;
+            padding: 10px 15px;
+            text-align: center;
+            font-weight: 600;
+            font-size: 12px;
+            margin-bottom: 15px;
+            border-radius: 4px;
+            border: 2px solid #b02a37;
+            box-shadow: 0 2px 6px rgba(220, 53, 69, 0.3);
+            display: none;
+            animation: slideDown 0.3s ease-out;
+        }
+        
+        @keyframes slideDown {
+            from {
+                transform: translateY(-8px);
+                opacity: 0;
+            }
+            to {
+                transform: translateY(0);
+                opacity: 1;
+            }
+        }
+        
         .sync-section {
             background: white;
             padding: 20px;
@@ -95,28 +176,126 @@
             background: #edebe9;
         }
         
-        .status {
-            padding: 10px;
+        /* Notification Modal Styles */
+        .notification-modal {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            z-index: 1000;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+        }
+        
+        .notification-modal-backdrop {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.5);
+        }
+        
+        .notification-modal-content {
+            background: white;
+            border-radius: 8px;
+            width: 400px;
+            max-width: 90vw;
+            max-height: 70vh;
+            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.3);
+            position: relative;
+            z-index: 1001;
+            display: flex;
+            flex-direction: column;
+        }
+        
+        .notification-modal-header {
+            background: #0078d4;
+            color: white;
+            padding: 15px;
+            border-radius: 8px 8px 0 0;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        
+        .notification-modal-title {
+            font-size: 16px;
+            font-weight: 600;
+            margin: 0;
+        }
+        
+        .notification-modal-close {
+            background: none;
+            border: none;
+            color: white;
+            font-size: 20px;
+            cursor: pointer;
+            padding: 0;
+            width: 25px;
+            height: 25px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
             border-radius: 4px;
-            margin-top: 10px;
+            transition: background-color 0.2s;
+        }
+        
+        .notification-modal-close:hover {
+            background: rgba(255, 255, 255, 0.2);
+        }
+        
+        .notification-modal-body {
+            padding: 15px;
+            flex-grow: 1;
+            overflow-y: auto;
+        }
+        
+        .notification-item {
+            padding: 12px;
+            border-bottom: 1px solid #e9ecef;
+            border-left: 3px solid transparent;
+        }
+        
+        .notification-item:last-child {
+            border-bottom: none;
+        }
+        
+        .notification-item.success {
+            border-left-color: #28a745;
+            background: #f8fff9;
+        }
+        
+        .notification-item.error {
+            border-left-color: #dc3545;
+            background: #fff8f8;
+        }
+        
+        .notification-item.info {
+            border-left-color: #17a2b8;
+            background: #f8fcff;
+        }
+        
+        .notification-message {
+            font-size: 13px;
+            margin: 0 0 4px 0;
+            color: #333;
+        }
+        
+        .notification-timestamp {
+            font-size: 11px;
+            color: #6c757d;
+            margin: 0;
+        }
+        
+        .no-notifications {
             text-align: center;
-            font-size: 14px;
-            display: none;
-        }
-        
-        .status.success {
-            background: #dff6dd;
-            color: #107c10;
-        }
-        
-        .status.error {
-            background: #fde7e9;
-            color: #a80000;
-        }
-        
-        .status.info {
-            background: #deecf9;
-            color: #003a6b;
+            color: #6c757d;
+            padding: 30px;
+            font-style: italic;
+            font-size: 13px;
         }
     </style>
 </head>
@@ -129,6 +308,21 @@
             <div class="opengov-text">
                 <h1 class="main-title">Redline Like You Mean It: The Future of Contracting</h1>
             </div>
+        </div>
+        
+        <div class="document-info">
+            <p class="document-title" id="document-title">No document loaded</p>
+            <div class="document-buttons">
+                <button class="btn-notification" onclick="openNotificationModal()">
+                    🔔 Notifications
+                    <span id="notificationDot" class="notification-dot" style="display: none;"></span>
+            </button>
+            </div>
+        </div>
+    
+        <!-- Checkout Status Banner -->
+        <div id="checkoutBanner" class="checkout-banner">
+            Document checkout status will appear here
         </div>
         
         <div class="sync-section">
@@ -156,25 +350,38 @@
             <button id="shareToWebBtn" class="button button-primary" onclick="shareToWeb()" style="background: #007acc;">
                 📤 Share to Web
             </button>
-
-            <div id="documentStatus" class="status"></div>
-            <div id="sseStatus" class="status"></div>
+        </div>
+    </div>
+    
+    <!-- Notification Modal -->
+    <div id="notificationModal" class="notification-modal" style="display: none;">
+        <div class="notification-modal-backdrop" onclick="closeNotificationModal()"></div>
+        <div class="notification-modal-content">
+            <div class="notification-modal-header">
+                <h3 class="notification-modal-title">🔔 Notifications</h3>
+                <button class="notification-modal-close" onclick="closeNotificationModal()">×</button>
+            </div>
+            <div class="notification-modal-body" id="notificationModalBody">
+                <div class="no-notifications">
+                    No notifications yet
+                </div>
+            </div>
         </div>
     </div>
     
     <script>
+        // Notification system variables
+        let notificationHistory = [];
+        let hasUnreadNotifications = false;
+        let notificationIdCounter = 0;
+        
         function showStatus(elementId, message, type) {
-            const statusEl = document.getElementById(elementId);
-            if (statusEl) {
-                statusEl.textContent = message;
-                statusEl.className = `status ${type}`;
-                statusEl.style.display = 'block';
-                
-                if (type === 'success') {
-                    setTimeout(() => {
-                        statusEl.style.display = 'none';
-                    }, 3000);
-                }
+            // Status banners removed - notifications now go to modal only
+            console.log(`📋 Status: ${message} (${type})`);
+            
+            // Add to notification history (except for SSE connection messages)
+            if (elementId !== 'sseStatus') {
+                addNotification(message, type);
             }
         }
         
@@ -239,11 +446,24 @@
             currentDocument: null
         };
         
+        // Update document title display
+        function updateDocumentTitle() {
+            const titleElement = document.getElementById('document-title');
+            if (currentDocumentState.currentDocument && currentDocumentState.currentDocument.filename) {
+                titleElement.textContent = currentDocumentState.currentDocument.filename;
+            } else {
+                titleElement.textContent = 'No document loaded';
+            }
+        }
+        
         // Update button visibility based on document state
         function updateButtonStates() {
             // Use the new scenario-based button visibility logic
             const currentScenario = detectCollaborationScenario();
             updateButtonVisibilityForScenario(currentScenario);
+            
+            // Update checkout banner
+            updateCheckoutBanner();
             
             // Update status messages
             if (!currentDocumentState.isCheckedOut) {
@@ -266,6 +486,10 @@
                     currentDocumentState.isCheckedOut = data.checkoutState.isCheckedOut;
                     currentDocumentState.checkedOutBy = data.checkoutState.checkedOutBy;
                     currentDocumentState.currentDocument = data.currentDocument;
+                    
+                    // Update document title display
+                    updateDocumentTitle();
+                    
                     updateButtonStates();
                     
                     // Auto-load document if newly available and checked out by web viewer
@@ -510,8 +734,17 @@
                                         getSlice(sliceIndex + 1);
                                     } else {
                                         file.closeAsync();
-                                        // Convert to base64
-                                        const base64 = btoa(String.fromCharCode.apply(null, new Uint8Array(docxContent.flat())));
+                                        // Convert to base64 using chunked approach to avoid stack overflow
+                                        const uint8Array = new Uint8Array(docxContent.flat());
+                                        const chunkSize = 8192;
+                                        let binaryString = '';
+                                        
+                                        for (let i = 0; i < uint8Array.length; i += chunkSize) {
+                                            const chunk = uint8Array.slice(i, i + chunkSize);
+                                            binaryString += String.fromCharCode.apply(null, chunk);
+                                        }
+                                        
+                                        const base64 = btoa(binaryString);
                                         resolve(base64);
                                     }
                                 } else {
@@ -662,6 +895,172 @@
                 }, 1000); // Small delay to ensure SSE connection is established
             }
         });
+        
+        function openNotificationModal() {
+            console.log('🔔 Opening notification modal...');
+            const modal = document.getElementById('notificationModal');
+            modal.style.display = 'flex';
+            
+            // Render current notifications
+            renderNotifications();
+        }
+        
+        function closeNotificationModal() {
+            console.log('🔔 Closing notification modal...');
+            const modal = document.getElementById('notificationModal');
+            modal.style.display = 'none';
+            
+            // Mark all notifications as read when modal is closed
+            markAllNotificationsAsRead();
+        }
+        
+        // ===== NOTIFICATION SYSTEM =====
+        
+        function addNotification(message, type = 'info') {
+            const notification = {
+                id: ++notificationIdCounter,
+                message: message,
+                type: type, // 'success', 'error', 'info'
+                timestamp: new Date(),
+                isRead: false,
+                platform: 'word'
+            };
+            
+            notificationHistory.unshift(notification); // Add to beginning
+            hasUnreadNotifications = true;
+            updateNotificationDot();
+            
+            console.log('📝 Added notification:', notification);
+            
+            // Limit history to last 50 notifications
+            if (notificationHistory.length > 50) {
+                notificationHistory = notificationHistory.slice(0, 50);
+            }
+        }
+        
+        function renderNotifications() {
+            const modalBody = document.getElementById('notificationModalBody');
+            
+            if (notificationHistory.length === 0) {
+                modalBody.innerHTML = '<div class="no-notifications">No notifications yet</div>';
+                return;
+            }
+            
+            const notificationsHtml = notificationHistory.map(notification => {
+                const timeAgo = getTimeAgo(notification.timestamp);
+                return `
+                    <div class="notification-item ${notification.type}">
+                        <p class="notification-message">${notification.message}</p>
+                        <p class="notification-timestamp">${timeAgo}</p>
+                    </div>
+                `;
+            }).join('');
+            
+            modalBody.innerHTML = notificationsHtml;
+        }
+        
+        function getTimeAgo(timestamp) {
+            const now = new Date();
+            const diff = now - timestamp;
+            const seconds = Math.floor(diff / 1000);
+            const minutes = Math.floor(seconds / 60);
+            const hours = Math.floor(minutes / 60);
+            
+            if (seconds < 60) return `${seconds} seconds ago`;
+            if (minutes < 60) return `${minutes} minutes ago`;
+            if (hours < 24) return `${hours} hours ago`;
+            return timestamp.toLocaleDateString();
+        }
+        
+        function updateNotificationDot() {
+            const dot = document.getElementById('notificationDot');
+            if (dot) {
+                dot.style.display = hasUnreadNotifications ? 'block' : 'none';
+            }
+        }
+        
+        function markAllNotificationsAsRead() {
+            notificationHistory.forEach(notification => {
+                notification.isRead = true;
+            });
+            hasUnreadNotifications = false;
+            updateNotificationDot();
+        }
+        
+        // Test function for generating sample notifications
+        function testNotifications() {
+            addNotification('✅ Document shared to web', 'success');
+            addNotification('📥 New content available', 'info');
+            addNotification('❌ Upload failed - try again', 'error');
+            addNotification('🔒 Document checked out', 'success');
+            console.log('🧪 Test notifications added');
+        }
+        
+        // Make test function globally available
+        window.testNotifications = testNotifications;
+        
+        // ===== CHECKOUT BANNER SYSTEM =====
+        
+        function updateCheckoutBanner() {
+            const banner = document.getElementById('checkoutBanner');
+            const isCheckedOut = currentDocumentState.isCheckedOut || false;
+            const checkedOutBy = currentDocumentState.checkedOutBy;
+            
+            if (!isCheckedOut) {
+                banner.style.display = 'none';
+                return;
+            }
+            
+            let bannerText = '';
+            if (checkedOutBy === 'word') {
+                bannerText = 'document is checked out right here right meow';
+            } else if (checkedOutBy === 'web') {
+                bannerText = "YA CAN'T SAVE HERE FORREST -- Document is checked out elsewhere";
+            }
+            
+            banner.textContent = bannerText;
+            banner.style.display = 'block';
+            
+            console.log(`🚨 Checkout banner updated: ${bannerText}`);
+        }
+        
+        // Test function for checkout banner
+        function testCheckoutBanner() {
+            console.log('🧪 Testing checkout banner scenarios...');
+            
+            // Test word checkout
+            currentDocumentState.isCheckedOut = true;
+            currentDocumentState.checkedOutBy = 'word';
+            updateCheckoutBanner();
+            
+            setTimeout(() => {
+                // Test web checkout
+                currentDocumentState.checkedOutBy = 'web';
+                updateCheckoutBanner();
+                
+                setTimeout(() => {
+                    // Test no checkout
+                    currentDocumentState.isCheckedOut = false;
+                    currentDocumentState.checkedOutBy = null;
+                    updateCheckoutBanner();
+                }, 2000);
+            }, 2000);
+        }
+        
+        // Make test function globally available
+        window.testCheckoutBanner = testCheckoutBanner;
+        
+        // Debug function to test shareToWeb
+        function debugShareToWeb() {
+            console.log('🔍 Debugging Share to Web functionality...');
+            console.log('ShareToWeb function exists:', typeof shareToWeb);
+            console.log('ShareToWebBtn element exists:', !!document.getElementById('shareToWebBtn'));
+            console.log('Button visible:', document.getElementById('shareToWebBtn')?.style.display !== 'none');
+            console.log('Office context ready:', !!Office?.context?.document);
+        }
+        
+        // Make debug function globally available
+        window.debugShareToWeb = debugShareToWeb;
     </script>
 </body>
 </html>

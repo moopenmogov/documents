@@ -78,34 +78,6 @@
             background: #5a6268;
         }
         
-        .status {
-            margin: 20px auto;
-            padding: 15px;
-            border-radius: 8px;
-            display: none;
-            text-align: center;
-            max-width: 600px;
-            font-weight: 500;
-        }
-        
-        .status.success { 
-            background: #dff6dd; 
-            color: #0f5132; 
-            border: 1px solid #b7e4c7;
-        }
-        
-        .status.error { 
-            background: #f8d7da; 
-            color: #842029; 
-            border: 1px solid #f5c2c7;
-        }
-        
-        .status.info { 
-            background: #cce7ff; 
-            color: #084298; 
-            border: 1px solid #9ec5fe;
-        }
-        
         .viewer-container {
             background: white;
             border-radius: 12px;
@@ -167,21 +139,203 @@
             flex-grow: 1;
         }
         
-        .btn-open {
-            background: #28a745;
+        .document-buttons {
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+            margin-left: 20px;
+        }
+        
+        .btn-notification {
+            background: #6c757d;
             color: white;
-            padding: 12px 24px;
+            padding: 8px 20px;
             border: none;
             border-radius: 6px;
             cursor: pointer;
             font-size: 14px;
             font-weight: 600;
             transition: background-color 0.2s;
-            margin-left: 20px;
+            position: relative;
+        }
+        
+        .btn-notification:hover {
+            background: #5a6268;
+        }
+        
+        .btn-open {
+            background: #28a745;
+            color: white;
+            padding: 10px 24px;
+            border: none;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 14px;
+            font-weight: 600;
+            transition: background-color 0.2s;
         }
         
         .btn-open:hover {
             background: #218838;
+        }
+        
+        .notification-dot {
+            position: absolute;
+            top: -5px;
+            right: -5px;
+            background: #dc3545;
+            border: 2px solid white;
+            border-radius: 50%;
+            width: 12px;
+            height: 12px;
+        }
+        
+        /* Checkout Status Banner */
+        .checkout-banner {
+            background: #dc3545;
+            color: white;
+            padding: 12px 20px;
+            text-align: center;
+            font-weight: 600;
+            font-size: 14px;
+            margin: 20px;
+            border-radius: 6px;
+            border: 2px solid #b02a37;
+            box-shadow: 0 2px 8px rgba(220, 53, 69, 0.3);
+            display: none;
+            animation: slideDown 0.3s ease-out;
+        }
+        
+        @keyframes slideDown {
+            from {
+                transform: translateY(-10px);
+                opacity: 0;
+            }
+            to {
+                transform: translateY(0);
+                opacity: 1;
+            }
+        }
+        
+        /* Notification Modal Styles */
+        .notification-modal {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            z-index: 1000;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+        }
+        
+        .notification-modal-backdrop {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.5);
+        }
+        
+        .notification-modal-content {
+            background: white;
+            border-radius: 8px;
+            width: 500px;
+            max-width: 90vw;
+            max-height: 80vh;
+            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.3);
+            position: relative;
+            z-index: 1001;
+            display: flex;
+            flex-direction: column;
+        }
+        
+        .notification-modal-header {
+            background: #0078d4;
+            color: white;
+            padding: 20px;
+            border-radius: 8px 8px 0 0;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        
+        .notification-modal-title {
+            font-size: 18px;
+            font-weight: 600;
+            margin: 0;
+        }
+        
+        .notification-modal-close {
+            background: none;
+            border: none;
+            color: white;
+            font-size: 24px;
+            cursor: pointer;
+            padding: 0;
+            width: 30px;
+            height: 30px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            border-radius: 4px;
+            transition: background-color 0.2s;
+        }
+        
+        .notification-modal-close:hover {
+            background: rgba(255, 255, 255, 0.2);
+        }
+        
+        .notification-modal-body {
+            padding: 20px;
+            flex-grow: 1;
+            overflow-y: auto;
+        }
+        
+        .notification-item {
+            padding: 15px;
+            border-bottom: 1px solid #e9ecef;
+            border-left: 4px solid transparent;
+        }
+        
+        .notification-item:last-child {
+            border-bottom: none;
+        }
+        
+        .notification-item.success {
+            border-left-color: #28a745;
+            background: #f8fff9;
+        }
+        
+        .notification-item.error {
+            border-left-color: #dc3545;
+            background: #fff8f8;
+        }
+        
+        .notification-item.info {
+            border-left-color: #17a2b8;
+            background: #f8fcff;
+        }
+        
+        .notification-message {
+            font-size: 14px;
+            margin: 0 0 5px 0;
+            color: #333;
+        }
+        
+        .notification-timestamp {
+            font-size: 12px;
+            color: #6c757d;
+            margin: 0;
+        }
+        
+        .no-notifications {
+            text-align: center;
+            color: #6c757d;
+            padding: 40px;
+            font-style: italic;
         }
     </style>
 </head>
@@ -197,7 +351,18 @@
 
     <div class="document-info">
         <p class="document-title" id="document-title">No document loaded</p>
-        <button class="btn-open" onclick="openNewFile()">📁 Open</button>
+        <div class="document-buttons">
+            <button class="btn-notification" onclick="openNotificationModal()">
+                🔔 Notifications
+                <span id="notificationDot" class="notification-dot" style="display: none;"></span>
+            </button>
+            <button class="btn-open" onclick="openNewFile()">📁 Open</button>
+        </div>
+    </div>
+
+    <!-- Checkout Status Banner -->
+    <div id="checkoutBanner" class="checkout-banner">
+        Document checkout status will appear here
     </div>
 
     <div class="controls">
@@ -221,9 +386,6 @@
         <button id="viewOnlyBtn" class="btn btn-secondary" onclick="viewReadOnly()" style="display: none;">
             👀 View Last Saved
         </button>
-        
-        <div id="documentStatus" class="status"></div>
-        <div id="sseStatus" class="status"></div>
     </div>
     
     <!-- Hidden file input -->
@@ -240,12 +402,33 @@
         </div>
     </div>
 
+    <!-- Notification Modal -->
+    <div id="notificationModal" class="notification-modal" style="display: none;">
+        <div class="notification-modal-backdrop" onclick="closeNotificationModal()"></div>
+        <div class="notification-modal-content">
+            <div class="notification-modal-header">
+                <h3 class="notification-modal-title">🔔 Notifications</h3>
+                <button class="notification-modal-close" onclick="closeNotificationModal()">×</button>
+            </div>
+            <div class="notification-modal-body" id="notificationModalBody">
+                <div class="no-notifications">
+                    No notifications yet
+                </div>
+            </div>
+        </div>
+    </div>
+
     <!-- Load SuperDoc from local node_modules -->
     <script src="./node_modules/@harbour-enterprises/superdoc/dist/superdoc.umd.js"></script>
     <script>
         // SuperDoc variables
         let currentSuperdoc = null;
         let currentDocumentId = null;
+        
+        // Notification system variables
+        let notificationHistory = [];
+        let hasUnreadNotifications = false;
+        let notificationIdCounter = 0;
 
         // Debug SuperDoc loading
         console.log('SuperDoc available:', typeof SuperDoc);
@@ -261,7 +444,7 @@
                 
                 eventSource.onopen = function(event) {
                     console.log('SSE connection opened');
-                    showStatus('📡 Connected to real-time events', 'success', 'sseStatus');
+                    console.log('📡 Connected to real-time events');
                 };
                 
                 eventSource.onmessage = function(event) {
@@ -269,33 +452,21 @@
                     console.log('SSE event received:', data);
                     
                     if (data.type === 'connected') {
-                        document.getElementById('sseStatus').textContent = `📡 ${data.message}`;
-                        document.getElementById('sseStatus').className = 'status success';
-                        document.getElementById('sseStatus').style.display = 'block';
+                        console.log(`📡 SSE: ${data.message}`);
                     } else if (data.type === 'document-checked-out') {
-                        document.getElementById('sseStatus').textContent = `📡 ${data.message}`;
-                        document.getElementById('sseStatus').className = 'status info';
-                        document.getElementById('sseStatus').style.display = 'block';
+                        console.log(`📡 SSE: ${data.message}`);
                         fetchDocumentStatus(); // Refresh UI when checkout state changes
                     } else if (data.type === 'document-checked-in') {
-                        document.getElementById('sseStatus').textContent = `📡 ${data.message}`;
-                        document.getElementById('sseStatus').className = 'status info';
-                        document.getElementById('sseStatus').style.display = 'block';
+                        console.log(`📡 SSE: ${data.message}`);
                         fetchDocumentStatus(); // Refresh UI when checkout state changes
                     } else if (data.type === 'document-saved') {
-                        document.getElementById('sseStatus').textContent = `📡 ${data.message}`;
-                        document.getElementById('sseStatus').className = 'status info';
-                        document.getElementById('sseStatus').style.display = 'block';
+                        console.log(`📡 SSE: ${data.message}`);
                         // No need to refresh buttons for save progress (still checked out)
                     } else if (data.type === 'checkout-cancelled') {
-                        document.getElementById('sseStatus').textContent = `📡 ${data.message}`;
-                        document.getElementById('sseStatus').className = 'status info';
-                        document.getElementById('sseStatus').style.display = 'block';
+                        console.log(`📡 SSE: ${data.message}`);
                         fetchDocumentStatus(); // Refresh UI when checkout state changes
                     } else if (data.type === 'document-uploaded') {
-                        document.getElementById('sseStatus').textContent = `📡 ${data.message}`;
-                        document.getElementById('sseStatus').className = 'status info';
-                        document.getElementById('sseStatus').style.display = 'block';
+                        console.log(`📡 SSE: ${data.message}`);
                         fetchDocumentStatus(); // Refresh UI when new document is available
                         // Auto-load the uploaded document
                         if (data.documentId && data.filename) {
@@ -306,12 +477,12 @@
                 
                 eventSource.onerror = function(event) {
                     console.error('SSE error:', event);
-                    showStatus('📡 Connection error - retrying...', 'error', 'sseStatus');
+                    console.log('📡 Connection error - retrying...');
                 };
                 
             } catch (error) {
                 console.error('Failed to connect SSE:', error);
-                showStatus('📡 Failed to connect to events', 'error', 'sseStatus');
+                console.log('📡 Failed to connect to events');
             }
         }
         
@@ -327,6 +498,9 @@
             // Use the new scenario-based button visibility logic
             const currentScenario = detectCollaborationScenario();
             updateButtonVisibilityForScenario(currentScenario);
+            
+            // Update checkout banner
+            updateCheckoutBanner();
             
             // Update status messages and SuperDoc mode
             if (!currentDocumentState.isCheckedOut) {
@@ -662,21 +836,196 @@
         // Save functions will go here
 
         function showStatus(message, type, elementId = 'documentStatus') {
-            const statusEl = document.getElementById(elementId);
-            statusEl.textContent = message;
-            statusEl.className = `status ${type}`;
-            statusEl.style.display = 'block';
-
-            if (type === 'success') {
-                setTimeout(() => {
-                    statusEl.style.display = 'none';
-                }, 5000);
+            // Status banners removed - notifications now go to modal only
+            console.log(`📋 Status: ${message} (${type})`);
+            
+            // Add to notification history (except for SSE connection messages)
+            if (elementId !== 'sseStatus') {
+                addNotification(message, type);
             }
         }
 
         function openNewFile() {
             document.getElementById('fileInput').click();
         }
+        
+        function openNotificationModal() {
+            console.log('🔔 Opening notification modal...');
+            const modal = document.getElementById('notificationModal');
+            modal.style.display = 'flex';
+            
+            // Render current notifications
+            renderNotifications();
+        }
+        
+        function closeNotificationModal() {
+            console.log('🔔 Closing notification modal...');
+            const modal = document.getElementById('notificationModal');
+            modal.style.display = 'none';
+            
+            // Mark all notifications as read when modal is closed
+            markAllNotificationsAsRead();
+        }
+        
+        // ===== NOTIFICATION SYSTEM =====
+        
+        function addNotification(message, type = 'info') {
+            const notification = {
+                id: ++notificationIdCounter,
+                message: message,
+                type: type, // 'success', 'error', 'info'
+                timestamp: new Date(),
+                isRead: false,
+                platform: 'web'
+            };
+            
+            notificationHistory.unshift(notification); // Add to beginning
+            hasUnreadNotifications = true;
+            updateNotificationDot();
+            
+            console.log('📝 Added notification:', notification);
+            
+            // Limit history to last 50 notifications
+            if (notificationHistory.length > 50) {
+                notificationHistory = notificationHistory.slice(0, 50);
+            }
+        }
+        
+        function renderNotifications() {
+            const modalBody = document.getElementById('notificationModalBody');
+            
+            if (notificationHistory.length === 0) {
+                modalBody.innerHTML = '<div class="no-notifications">No notifications yet</div>';
+                return;
+            }
+            
+            const notificationsHtml = notificationHistory.map(notification => {
+                const timeAgo = getTimeAgo(notification.timestamp);
+                return `
+                    <div class="notification-item ${notification.type}">
+                        <p class="notification-message">${notification.message}</p>
+                        <p class="notification-timestamp">${timeAgo}</p>
+                    </div>
+                `;
+            }).join('');
+            
+            modalBody.innerHTML = notificationsHtml;
+        }
+        
+        function getTimeAgo(timestamp) {
+            const now = new Date();
+            const diff = now - timestamp;
+            const seconds = Math.floor(diff / 1000);
+            const minutes = Math.floor(seconds / 60);
+            const hours = Math.floor(minutes / 60);
+            
+            if (seconds < 60) return `${seconds} seconds ago`;
+            if (minutes < 60) return `${minutes} minutes ago`;
+            if (hours < 24) return `${hours} hours ago`;
+            return timestamp.toLocaleDateString();
+        }
+        
+        function updateNotificationDot() {
+            const dot = document.getElementById('notificationDot');
+            dot.style.display = hasUnreadNotifications ? 'block' : 'none';
+        }
+        
+        function markAllNotificationsAsRead() {
+            notificationHistory.forEach(notification => {
+                notification.isRead = true;
+            });
+            hasUnreadNotifications = false;
+            updateNotificationDot();
+        }
+        
+        // Test function for generating sample notifications
+        function testNotifications() {
+            addNotification('✅ Document checkout successful', 'success');
+            addNotification('📋 Document saved successfully', 'success');
+            addNotification('⚠️ Connection temporarily lost', 'error');
+            addNotification('📡 Real-time sync enabled', 'info');
+            console.log('🧪 Test notifications added');
+        }
+        
+        // Make test function globally available
+        window.testNotifications = testNotifications;
+        
+        // ===== CHECKOUT BANNER SYSTEM =====
+        
+        function updateCheckoutBanner() {
+            const banner = document.getElementById('checkoutBanner');
+            const isCheckedOut = currentDocumentState.isCheckedOut || false;
+            const checkedOutBy = currentDocumentState.checkedOutBy;
+            
+            if (!isCheckedOut) {
+                banner.style.display = 'none';
+                return;
+            }
+            
+            let bannerText = '';
+            if (checkedOutBy === 'web') {
+                bannerText = 'document is checked out right here right meow';
+            } else if (checkedOutBy === 'word') {
+                bannerText = "YA CAN'T SAVE HERE FORREST -- Document is checked out elsewhere";
+            }
+            
+            banner.textContent = bannerText;
+            banner.style.display = 'block';
+            
+            console.log(`🚨 Checkout banner updated: ${bannerText}`);
+        }
+        
+        // Test function for checkout banner
+        function testCheckoutBanner() {
+            console.log('🧪 Testing checkout banner scenarios...');
+            
+            // Test web checkout
+            currentDocumentState.isCheckedOut = true;
+            currentDocumentState.checkedOutBy = 'web';
+            updateCheckoutBanner();
+            
+            setTimeout(() => {
+                // Test word checkout
+                currentDocumentState.checkedOutBy = 'word';
+                updateCheckoutBanner();
+                
+                setTimeout(() => {
+                    // Test no checkout
+                    currentDocumentState.isCheckedOut = false;
+                    currentDocumentState.checkedOutBy = null;
+                    updateCheckoutBanner();
+                }, 2000);
+            }, 2000);
+        }
+        
+        // Make test function globally available
+        window.testCheckoutBanner = testCheckoutBanner;
+        
+        // Debug function for button visibility issues
+        function debugWebViewerButtons() {
+            console.log('🔍 WEB VIEWER BUTTON DEBUG:');
+            console.log('├── Current document state:', currentDocumentState);
+            console.log('├── Detected scenario:', detectCollaborationScenario());
+            console.log('├── Button elements exist:');
+            
+            ['checkoutBtn', 'saveProgressBtn', 'checkinBtn', 'cancelBtn', 'viewOnlyBtn'].forEach(buttonId => {
+                const button = document.getElementById(buttonId);
+                console.log(`│   ├── ${buttonId}: ${!!button ? 'EXISTS' : 'MISSING'} - Display: ${button?.style.display || 'undefined'}`);
+                if (button) {
+                    console.log(`│   │   └── Text: "${button.textContent.trim()}"`);
+                }
+            });
+            
+            const scenario = detectCollaborationScenario();
+            const config = getButtonConfigForScenario(scenario);
+            console.log('├── Expected config for scenario:', config);
+            console.log('└── Force updating buttons now...');
+            
+            updateButtonVisibilityForScenario(scenario);
+        }
+        
+        // Make debug function globally available
+        window.debugWebViewerButtons = debugWebViewerButtons;
         
         async function handleFileSelect(event) {
             const file = event.target.files[0];
