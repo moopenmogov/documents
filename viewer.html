@@ -152,8 +152,11 @@
             padding: 15px;
             border-radius: 8px;
             margin-bottom: 20px;
-            text-align: center;
             border: 1px solid #dee2e6;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin: 20px;
         }
         
         .document-title {
@@ -161,26 +164,40 @@
             font-weight: 600;
             color: #0078d4;
             margin: 0;
+            flex-grow: 1;
+        }
+        
+        .btn-open {
+            background: #28a745;
+            color: white;
+            padding: 12px 24px;
+            border: none;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 14px;
+            font-weight: 600;
+            transition: background-color 0.2s;
+            margin-left: 20px;
+        }
+        
+        .btn-open:hover {
+            background: #218838;
         }
     </style>
 </head>
 <body>
     <div class="opengov-header">
         <div class="opengov-logo">
-            <svg width="140" height="36" viewBox="0 0 140 36" fill="none" xmlns="http://www.w3.org/2000/svg">
-                <rect width="140" height="36" rx="4" fill="#4F7FFF"/>
-                <text x="12" y="24" font-family="Arial, sans-serif" font-size="16" font-weight="bold" fill="white">OpenGov</text>
-                <polygon points="110,10 122,18 110,26" fill="white"/>
-            </svg>
+            <img src="assets/opengov-logo.png" alt="OpenGov" style="height: 60px; width: auto;">
         </div>
         <div class="opengov-text">
             <h1 class="main-title">Redline Like You Mean It: The Future of Contracting</h1>
-            <p class="sub-header">By OpenGov</p>
         </div>
     </div>
 
     <div class="document-info">
         <p class="document-title" id="document-title">No document loaded</p>
+        <button class="btn-open" onclick="openNewFile()">📁 Open</button>
     </div>
 
     <div class="controls">
@@ -204,9 +221,6 @@
         <button id="viewOnlyBtn" class="btn btn-secondary" onclick="viewReadOnly()" style="display: none;">
             👀 View Last Saved
         </button>
-        
-
-        <button class="btn" onclick="openNewFile()" style="background: #28a745;">📁 Open New File</button>
         
         <div id="documentStatus" class="status"></div>
         <div id="sseStatus" class="status"></div>
