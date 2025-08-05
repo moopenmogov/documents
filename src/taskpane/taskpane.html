@@ -203,9 +203,16 @@
                     } else if (data.type === 'document-checked-in') {
                         showStatus('sseStatus', `📡 ${data.message}`, 'info');
                         fetchDocumentStatus(); // Refresh UI when checkout state changes
+                        // Reload content after web check-in
+                        if (data.checkinBy !== 'word') {
+                            loadDocumentContent();
+                        }
                     } else if (data.type === 'document-saved') {
                         showStatus('sseStatus', `📡 ${data.message}`, 'info');
-                        // No need to refresh buttons for save progress (still checked out)
+                        // Reload content after web saves (if I'm viewing)
+                        if (data.savedBy !== 'word' && currentDocumentState.checkedOutBy !== 'word') {
+                            loadDocumentContent();
+                        }
                     } else if (data.type === 'checkout-cancelled') {
                         showStatus('sseStatus', `📡 ${data.message}`, 'info');
                         fetchDocumentStatus(); // Refresh UI when checkout state changes
@@ -289,6 +296,9 @@
                     const result = await response.json();
                     showStatus('documentStatus', '✅ Document checked out successfully', 'success');
                     await fetchDocumentStatus(); // Refresh UI
+                    
+                    // Load document content using working method
+                    await loadDocumentContent();
                 } else {
                     const error = await response.json();
                     showStatus('documentStatus', `❌ ${error.error}`, 'error');
@@ -296,6 +306,34 @@
             } catch (error) {
                 console.error('Checkout error:', error);
                 showStatus('documentStatus', '❌ Checkout failed: ' + error.message, 'error');
+            }
+        }
+        
+        // Load document content from web (working method)
+        async function loadDocumentContent() {
+            try {
+                showStatus('documentStatus', '📥 Loading document content...', 'info');
+                const response = await fetch('http://localhost:3001/api/get-updated-docx');
+                
+                if (!response.ok) {
+                    console.log('No document content available');
+                    return;
+                }
+                
+                const result = await response.json();
+                console.log('Loading document content:', result.filename);
+                
+                if (result.docx) {
+                    await Word.run(async (context) => {
+                        context.document.body.clear();
+                        context.document.body.insertFileFromBase64(result.docx, Word.InsertLocation.start);
+                        await context.sync();
+                    });
+                    showStatus('documentStatus', `✅ ${result.filename} loaded successfully`, 'success');
+                }
+            } catch (error) {
+                console.error('Failed to load document content:', error);
+                showStatus('documentStatus', '⚠️ Checked out but content loading failed', 'warning');
             }
         }
         

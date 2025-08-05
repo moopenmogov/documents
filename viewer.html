@@ -441,19 +441,61 @@
             }
         }
         
+        // Extract document content from SuperDoc
+        async function extractSuperdocContent() {
+            try {
+                if (!currentSuperdoc) {
+                    console.log('No SuperDoc instance available');
+                    return null;
+                }
+                
+                // Try SuperDoc's export method if available
+                if (currentSuperdoc.exportEditorsToDOCX && typeof currentSuperdoc.exportEditorsToDOCX === 'function') {
+                    console.log('Using SuperDoc exportEditorsToDOCX method...');
+                    const exportResult = await currentSuperdoc.exportEditorsToDOCX();
+                    
+                    if (exportResult && exportResult.length > 0) {
+                        const blob = exportResult[0];
+                        console.log('SuperDoc export successful, blob size:', blob.size);
+                        
+                        // Convert blob to base64
+                        return new Promise((resolve, reject) => {
+                            const reader = new FileReader();
+                            reader.onload = function() {
+                                const base64 = reader.result.split(',')[1]; // Remove data URL prefix
+                                resolve({ format: 'base64', data: base64 });
+                            };
+                            reader.onerror = reject;
+                            reader.readAsDataURL(blob);
+                        });
+                    }
+                }
+                
+                // Fallback: return null if no export method available
+                console.log('SuperDoc export not available, returning null');
+                return null;
+                
+            } catch (error) {
+                console.error('SuperDoc content extraction failed:', error);
+                return null;
+            }
+        }
+        
         // Save progress (keep checkout)
         async function saveProgress() {
             try {
                 showStatus('💾 Saving progress...', 'info');
                 
-                // For now, we'll save without actual document content
-                // In a real implementation, you'd extract content from SuperDoc
+                // Extract actual document content from SuperDoc
+                const extractedContent = await extractSuperdocContent();
+                
                 const response = await fetch('http://localhost:3001/api/save-progress', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({ 
                         source: 'web',
-                        filename: 'web-progress-save.docx'
+                        docx: extractedContent?.data,
+                        filename: currentDocumentState.currentDocument?.filename || 'web-progress-save.docx'
                     })
                 });
                 
@@ -474,14 +516,16 @@
             try {
                 showStatus('✅ Checking in document...', 'info');
                 
-                // For now, we'll save without actual document content
-                // In a real implementation, you'd extract content from SuperDoc
+                // Extract actual document content from SuperDoc
+                const extractedContent = await extractSuperdocContent();
+                
                 const response = await fetch('http://localhost:3001/api/checkin', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({ 
                         source: 'web',
-                        filename: 'web-checkin.docx'
+                        docx: extractedContent?.data,
+                        filename: currentDocumentState.currentDocument?.filename || 'web-checkin.docx'
                     })
                 });
                 
