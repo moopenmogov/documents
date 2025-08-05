@@ -1,22 +1,127 @@
-# Word SuperDoc Add-in
+# 🚀 OpenGov Document Collaboration Tool
 
-Clean Word add-in with SuperDoc integration for DOCX synchronization.
+A powerful local application that enables seamless collaboration between Microsoft Word and web-based document editing.
 
-## Features
+## **⚡ Quick Start (2 Minutes)**
 
-- Export Word documents to SuperDoc web viewer
-- Bidirectional sync preserving DOCX formatting
-- Minimal, focused codebase
+1. **Download:** Clone or download this repository
+2. **Run:** Double-click `start.bat` (Windows)
+3. **Use:** Open the web editor and Word add-in that launch automatically
 
-## Setup
+**📖 Full Setup Guide:** [docs/SETUP.md](docs/SETUP.md)
 
-1. `npm install`
-2. `npm start`
-3. Load `manifest.xml` in Word
+---
 
-## Usage
+## **✨ Features**
 
-1. Open Word document
-2. Use add-in to sync to web viewer
-3. Edit in either Word or web viewer
-4. Sync changes back and forth 
+- **🔄 Bidirectional Sync** - Changes in Word sync to web, and vice versa
+- **🌐 Web Editor** - Full-featured document editing in your browser
+- **📄 Word Integration** - Native Microsoft Word add-in
+- **🔒 Checkout System** - Prevents editing conflicts
+- **🔔 Real-time Notifications** - See what's happening across platforms
+- **💾 Local Storage** - Everything runs on your computer
+
+---
+
+## **🎯 Use Cases**
+
+- **Document Review** - Collaborate on contracts, reports, and proposals
+- **Cross-Platform Editing** - Switch between Word and web seamlessly
+- **Version Control** - Track changes and prevent conflicts
+- **Team Collaboration** - Multiple editors with conflict prevention
+
+---
+
+## **📋 System Requirements**
+
+- **Windows 10/11** (macOS/Linux support via PowerShell)
+- **Microsoft Word 2016+** or Word Online
+- **Node.js LTS** (auto-checked by setup script)
+- **Modern Web Browser** (Chrome, Edge, Firefox)
+
+---
+
+## **📁 Documentation**
+
+- **[🚀 Setup Guide](docs/SETUP.md)** - Complete installation instructions
+- **[🔧 Troubleshooting](docs/TROUBLESHOOTING.md)** - Common issues and solutions  
+- **[🤔 What Am I Running?](docs/WHAT-AM-I-RUNNING.md)** - Technical overview
+- **[📚 Lessons Learned](lessons-learned/README.md)** - Development insights
+
+---
+
+## **🏗️ Architecture**
+
+```
+┌─────────────────┐    ┌─────────────────┐    ┌─────────────────┐
+│   Microsoft     │    │   API Server    │    │   Web Editor    │
+│     Word        │◄──►│  (Port 3001)    │◄──►│  (Port 3002)    │
+│   + Add-in      │    │                 │    │                 │
+└─────────────────┘    └─────────────────┘    └─────────────────┘
+```
+
+**Three Components:**
+- **API Server** - Document storage and state management
+- **Web Editor** - Browser-based editing with SuperDoc
+- **Word Add-in** - Native Office.js integration
+
+---
+
+## **🔒 Security & Privacy**
+
+- ✅ **100% Local** - No external servers or cloud dependencies
+- ✅ **Your Data Stays Put** - Documents stored in local `uploads/` folder
+- ✅ **Standard Technologies** - Uses Office.js and web standards
+- ✅ **Open Source** - Inspect and modify all code
+
+---
+
+## **🚦 Status**
+
+- ✅ **Working MVP** - Full bidirectional sync functional
+- ✅ **Word Add-in** - Complete Office.js integration
+- ✅ **Web Editor** - SuperDoc-powered editing
+- ✅ **Real-time Sync** - SSE-based communication
+- ✅ **Conflict Prevention** - Checkout/checkin workflow
+
+---
+
+## **🛠️ Development**
+
+### **Branch Strategy**
+- `main` - Stable, user-ready code
+- `feature/*` - New features under development
+
+### **Quick Development Setup**
+```bash
+npm install
+npm run start-api     # Terminal 1
+npm run start-web     # Terminal 2  
+npm run start-addin   # Terminal 3
+```
+
+**For Users:** Just use `start.bat` - it handles everything automatically.
+
+---
+
+## **📞 Support**
+
+**Having Issues?**
+1. Check [Troubleshooting Guide](docs/TROUBLESHOOTING.md)
+2. Look for error messages in command windows
+3. Try restarting: close everything, run `start.bat` again
+
+**For Developers:**
+- See [Lessons Learned](lessons-learned/README.md) for technical insights
+- Check console logs for debugging information
+- Use browser dev tools for web editor issues
+
+---
+
+## **📜 License**
+
+[Add your license here]
+
+---
+
+**🎉 Ready to start collaborating? Run `start.bat` and you'll be up in 2 minutes!** 
