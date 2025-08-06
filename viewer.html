@@ -769,10 +769,14 @@
                         fetchDocumentStatus(); // Refresh UI when checkout state changes
                     } else if (data.type === 'document-uploaded') {
                         console.log(`📡 SSE: ${data.message}`);
+                        console.log(`📄 Auto-loading document: ${data.filename} (ID: ${data.documentId})`);
                         fetchDocumentStatus(); // Refresh UI when new document is available
                         // Auto-load the uploaded document
                         if (data.documentId && data.filename) {
+                            console.log(`🚀 Calling loadSuperdoc(${data.documentId}, ${data.filename})`);
                             loadSuperdoc(data.documentId, data.filename);
+                        } else {
+                            console.warn('⚠️ Missing documentId or filename in SSE event:', data);
                         }
                     } else if (data.type === 'user-switched') {
                         console.log(`📡 WEB SSE: User switched event received:`, data);

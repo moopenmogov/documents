@@ -176,10 +176,10 @@
         
         .document-buttons {
             display: flex;
-            justify-content: flex-start;
+            justify-content: space-between;
             width: 100%;
-            padding: 0 17px 0 3px;
-            position: relative;
+            padding: 0 10px;
+            gap: 10px;
         }
         
         .btn-notification {
@@ -199,7 +199,7 @@
             background: #5a6268;
         }
         
-        .btn-view-latest {
+                .btn-view-latest {
             background: #17a2b8;
             color: white;
             padding: 8px 12px;
@@ -209,12 +209,10 @@
             font-size: 12px;
             font-weight: 600;
             transition: background-color 0.2s;
-            width: auto;
-            min-width: 120px;
-            position: relative;
-            left: -2px;
+            flex: 1;
+            max-width: 140px;
         }
-        
+
         .btn-view-latest:hover {
             background: #138496;
         }
@@ -229,12 +227,8 @@
             font-size: 12px;
             font-weight: 600;
             transition: background-color 0.2s;
-            width: auto;
-            min-width: 120px;
-            position: absolute;
-            right: 0;
-            left: auto;
-            transform: translateX(-5px);
+            flex: 1;
+            max-width: 140px;
         }
         
         .btn-open-web:hover {
@@ -1505,6 +1499,7 @@
         
         // Share current Word document to web viewer
         async function shareToWeb() {
+            console.log('🌐 shareToWeb function called');
             try {
                 showStatus('documentStatus', '📤 Sharing document to web...', 'info');
                 
@@ -1551,6 +1546,9 @@
                     
                     // Refresh document status to update UI
                     await fetchDocumentStatus();
+                    
+                    // Document uploaded successfully - web viewer will auto-load via SSE
+                    // No need to open new tab - existing web viewer will receive the document
                 } else {
                     const error = await response.json();
                     showStatus('documentStatus', `❌ Share failed: ${error.error}`, 'error');
