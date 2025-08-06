@@ -21,6 +21,8 @@
             text-align: center;
             margin: 20px;
             box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+            display: block !important;
+            visibility: visible !important;
         }
         
         .opengov-logo {
@@ -91,7 +93,7 @@
         }
         
         .viewer-container.read-only-mode {
-            border: 6px solid #dc3545;
+            border: 6px solid transparent;
             box-shadow: 0 4px 16px rgba(0,0,0,0.2), 0 0 20px rgba(220, 53, 69, 0.3);
         }
         
@@ -100,22 +102,7 @@
             box-shadow: 0 4px 16px rgba(0,0,0,0.1);
         }
         
-        .viewer-container.read-only-mode::before {
-            content: "READ ONLY";
-            position: absolute;
-            top: -15px;
-            left: 50%;
-            transform: translateX(-50%);
-            background: #dc3545;
-            color: white;
-            padding: 6px 20px;
-            border-radius: 20px;
-            font-weight: bold;
-            font-size: 14px;
-            letter-spacing: 1px;
-            box-shadow: 0 2px 8px rgba(220, 53, 69, 0.4);
-            z-index: 10;
-        }
+
         
         #superdoc-toolbar {
             border-bottom: 2px solid #e9ecef;
@@ -129,33 +116,7 @@
             background: white;
         }
         
-        /* Read-only wrapper styling */
-        .readonly-wrapper {
-            position: absolute;
-            top: 0;
-            left: 0;
-            right: 0;
-            bottom: 0;
-            border: 2px solid #dc3545;
-            border-radius: 8px;
-            pointer-events: none;
-            z-index: 1000;
-        }
-        
-        .readonly-label {
-            position: absolute;
-            top: 10px;
-            right: 10px;
-            background: #dc3545;
-            color: white;
-            padding: 4px 12px;
-            border-radius: 4px;
-            font-weight: bold;
-            font-size: 12px;
-            letter-spacing: 1px;
-            z-index: 1001;
-            box-shadow: 0 2px 4px rgba(0,0,0,0.2);
-        }
+
         
         .empty-state {
             text-align: center;
@@ -216,7 +177,7 @@
         }
         
         .user-role.viewer {
-            background: #6c757d;
+            background: #dc3545;
         }
         
         .user-switcher {
@@ -250,12 +211,10 @@
             background: #f8f9fa;
             padding: 15px;
             border-radius: 8px;
-            margin-bottom: 20px;
+            margin-bottom: 15px;
             border: 1px solid #dee2e6;
             display: flex;
-            justify-content: space-between;
-            align-items: center;
-            margin: 20px;
+            flex-direction: column;
         }
         
         .document-title {
@@ -268,9 +227,9 @@
         
         .document-buttons {
             display: flex;
-            flex-direction: column;
-            gap: 8px;
-            margin-left: 20px;
+            gap: 15px;
+            margin-top: 10px;
+            justify-content: flex-start;
         }
         
         .btn-notification {
@@ -290,6 +249,22 @@
             background: #5a6268;
         }
         
+        .btn-view-latest {
+            background: #17a2b8;
+            color: white;
+            padding: 8px 20px;
+            border: none;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 14px;
+            font-weight: 600;
+            transition: background-color 0.2s;
+        }
+        
+        .btn-view-latest:hover {
+            background: #138496;
+        }
+        
         .btn-open {
             background: #28a745;
             color: white;
@@ -305,6 +280,50 @@
         .btn-open:hover {
             background: #218838;
         }
+
+        /* Button click animation for all buttons */
+        .btn-clicked {
+            animation: buttonClick 0.3s ease-out !important;
+            transform: scale(0.95) !important;
+            position: relative !important;
+            z-index: 9999 !important;
+            will-change: transform, opacity !important;
+            animation-fill-mode: both !important;
+        }
+
+        @keyframes buttonClick {
+            0% { 
+                transform: scale(1); 
+                opacity: 1;
+            }
+            30% { 
+                transform: scale(0.92); 
+                opacity: 0.7;
+            }
+            60% { 
+                transform: scale(0.96); 
+                opacity: 0.9;
+            }
+            100% { 
+                transform: scale(1); 
+                opacity: 1;
+            }
+        }
+
+        /* Apply animation to all button types with stronger specificity */
+        button:active, 
+        .btn:active, 
+        .btn-notification:active, 
+        .btn-view-latest:active, 
+        .btn-open:active,
+        .button:active {
+            animation: buttonClick 0.3s ease-out !important;
+            position: relative !important;
+            z-index: 9999 !important;
+            will-change: transform, opacity !important;
+        }
+
+
         
         .notification-dot {
             position: absolute;
@@ -464,6 +483,128 @@
             padding: 40px;
             font-style: italic;
         }
+
+        /* Transparent Notification Window Styles */
+        .notification-window {
+            background: linear-gradient(145deg, rgba(248, 249, 250, 0.95), rgba(233, 236, 239, 0.9));
+            border: 2px solid rgba(108, 117, 125, 0.2);
+            border-left: 4px solid #17a2b8;
+            border-radius: 0;
+            margin-top: 15px;
+            max-height: 200px;
+            overflow-y: auto;
+            backdrop-filter: blur(3px);
+            box-shadow: inset 0 1px 3px rgba(0, 0, 0, 0.1), 0 1px 3px rgba(0, 0, 0, 0.05);
+        }
+
+        .notification-window-header {
+            background: linear-gradient(135deg, rgba(23, 162, 184, 0.15), rgba(23, 162, 184, 0.05));
+            color: #495057;
+            padding: 6px 12px;
+            border-radius: 0;
+            font-size: 11px;
+            font-weight: 500;
+            text-align: left;
+            border-bottom: 1px solid rgba(23, 162, 184, 0.2);
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+
+        .notification-window-body {
+            max-height: 150px;
+            overflow-y: auto;
+            padding: 0;
+        }
+
+        .notification-window .notification-item {
+            padding: 6px 12px;
+            border-bottom: 1px dotted rgba(108, 117, 125, 0.2);
+            background: transparent;
+            margin: 0;
+            transition: background-color 0.2s ease;
+        }
+
+        .notification-window .notification-item:hover {
+            background: rgba(255, 255, 255, 0.4);
+        }
+
+        .notification-window .notification-item:last-child {
+            border-bottom: none;
+        }
+
+        .notification-window .notification-item.success {
+            border-left: 2px solid #28a745;
+            background: linear-gradient(90deg, rgba(40, 167, 69, 0.05), transparent 30%);
+        }
+
+        .notification-window .notification-item.error {
+            border-left: 2px solid #dc3545;
+            background: linear-gradient(90deg, rgba(220, 53, 69, 0.05), transparent 30%);
+        }
+
+        .notification-window .notification-item.info {
+            border-left: 2px solid #17a2b8;
+            background: linear-gradient(90deg, rgba(23, 162, 184, 0.05), transparent 30%);
+        }
+
+        .notification-window .notification-message {
+            font-size: 11px;
+            margin: 0 0 2px 0;
+            color: #495057;
+            line-height: 1.4;
+            font-weight: 400;
+        }
+
+        .notification-window .notification-timestamp {
+            font-size: 9px;
+            color: #868e96;
+            margin: 0;
+            font-family: 'Courier New', monospace;
+        }
+
+        .notification-window .no-notifications {
+            padding: 20px 15px;
+            font-size: 11px;
+            color: #adb5bd;
+            text-align: center;
+            font-style: italic;
+            background: linear-gradient(45deg, rgba(248, 249, 250, 0.3), rgba(233, 236, 239, 0.1));
+        }
+
+        /* Custom scrollbar for notification window */
+        .notification-window::-webkit-scrollbar {
+            width: 4px;
+        }
+
+        .notification-window::-webkit-scrollbar-track {
+            background: rgba(248, 249, 250, 0.5);
+        }
+
+        .notification-window::-webkit-scrollbar-thumb {
+            background: rgba(23, 162, 184, 0.3);
+            border-radius: 2px;
+        }
+
+        .notification-window::-webkit-scrollbar-thumb:hover {
+            background: rgba(23, 162, 184, 0.5);
+        }
+
+        /* Two Column Layout */
+        .main-content {
+            display: flex;
+            gap: 20px;
+            margin-bottom: 20px;
+        }
+
+        .left-column {
+            flex: 1;
+            min-width: 0;
+        }
+
+        .right-column {
+            width: 300px;
+            flex-shrink: 0;
+        }
     </style>
 </head>
 <body>
@@ -491,53 +632,68 @@
         </div>
     </div>
 
-    <div class="document-info">
-        <p class="document-title" id="document-title">No document loaded</p>
-        <div class="document-buttons">
-            <button class="btn-notification" onclick="openNotificationModal()">
-                🔔 Notifications
-                <span id="notificationDot" class="notification-dot" style="display: none;"></span>
-            </button>
-            <button class="btn-open" onclick="openNewFile()">📁 Open</button>
+    <!-- Main Content Area with Two Columns -->
+    <div class="main-content">
+        <!-- Left Column -->
+        <div class="left-column">
+            <div class="document-info">
+                <p class="document-title" id="document-title">No document loaded</p>
+                <div class="document-buttons">
+                    <button class="btn-view-latest" onclick="viewReadOnly()">👀 View Latest</button>
+                    <button class="btn-open" onclick="openNewFile()">📁 Open</button>
+                </div>
+            </div>
+
+            <!-- Checkout Status Banner -->
+            <div id="checkoutBanner" class="checkout-banner">
+                Document checkout status will appear here
+            </div>
+
+            <!-- Checkout Controls -->
+            <div class="checkout-controls">
+                <button id="checkoutBtn" class="btn" onclick="checkoutDocument()" style="display: none;">
+                    🔒 Check-out Document
+                </button>
+                
+                <button id="saveProgressBtn" class="btn btn-secondary" onclick="saveProgress()" style="display: none;">
+                    💾 Save Progress
+                </button>
+                
+                <button id="checkinBtn" class="btn" onclick="checkinDocument()" style="display: none;">
+                    ✅ Save & Check-in
+                </button>
+                
+                <button id="cancelBtn" class="btn btn-secondary" onclick="cancelCheckout()" style="display: none;">
+                    ❌ Cancel Check-out
+                </button>
+            </div>
+
+        </div>
+        
+        <!-- Right Column -->
+        <div class="right-column">
+            <!-- Notification Window -->
+            <div class="notification-window">
+                <div class="notification-window-header">
+                    🔔 Notifications
+                </div>
+                <div class="notification-window-body" id="notificationWindowBody">
+                    <div class="no-notifications">
+                        No notifications yet
+                    </div>
+                </div>
+            </div>
         </div>
     </div>
 
-    <!-- Checkout Status Banner -->
-    <div id="checkoutBanner" class="checkout-banner">
-        Document checkout status will appear here
-    </div>
 
-    <div class="controls">
-        <!-- Checkout/Checkin buttons (shown/hidden based on state) -->
-        <button id="checkoutBtn" class="btn" onclick="checkoutDocument()" style="display: none;">
-            🔒 Check-out Document
-        </button>
-        
-        <button id="saveProgressBtn" class="btn btn-secondary" onclick="saveProgress()" style="display: none;">
-            💾 Save Progress
-        </button>
-        
-        <button id="checkinBtn" class="btn" onclick="checkinDocument()" style="display: none;">
-            ✅ Save & Check-in
-        </button>
-        
-        <button id="cancelBtn" class="btn btn-secondary" onclick="cancelCheckout()" style="display: none;">
-            ❌ Cancel Check-out
-        </button>
-        
-        <button id="viewOnlyBtn" class="btn btn-secondary" onclick="viewReadOnly()" style="display: none;">
-            👀 View Last Saved
-        </button>
-    </div>
     
     <!-- Hidden file input -->
     <input type="file" id="fileInput" accept=".docx,.doc" style="display: none;" onchange="handleFileSelect(event)">
 
     <div class="viewer-container">
         <div id="superdoc-toolbar"></div>
-        <div id="readonly-wrapper" class="readonly-wrapper" style="display: none;">
-            <div class="readonly-label">READ-ONLY</div>
-        </div>
+
         <div id="superdoc">
             <div class="empty-state">
                 <h2>Welcome to OpenGov Contract Redlining</h2>
@@ -618,13 +774,21 @@
                             loadSuperdoc(data.documentId, data.filename);
                         }
                     } else if (data.type === 'user-switched') {
-                        console.log(`📡 SSE: User switched to ${data.currentUser.name}`);
-                        // Update current user if this was triggered by another client
-                        if (data.currentUser.id !== currentUser?.id) {
-                            currentUser = data.currentUser;
-                            updateCurrentUserDisplay();
-                            populateUserSwitcher();
-                            updateButtonStates();
+                        console.log(`📡 WEB SSE: User switched event received:`, data);
+                        
+                        // Only handle web platform user switches
+                        if (data.platform === 'web') {
+                            console.log(`📡 WEB: Processing web user switch to ${data.currentUser.name}`);
+                            // Update current user if this was triggered by another client
+                            if (data.currentUser.id !== currentUser?.id) {
+                                currentUser = data.currentUser;
+                                window.currentUser = data.currentUser;
+                                updateCurrentUserDisplay();
+                                populateUserSwitcher();
+                                updateButtonStates();
+                            }
+                        } else {
+                            console.log(`📡 WEB: Ignoring ${data.platform || 'legacy'} user switch event`);
                         }
                     } else if (data.type === 'permission-changed') {
                         console.log(`📡 SSE: Permission changed for ${data.user.name}`);
@@ -661,29 +825,36 @@
         let currentUser = null;
         let allUsers = [];
         
-        // Initialize user system on page load
+        // Initialize web-specific user system
         async function initializeUserSystem() {
             try {
-                // Load current user
-                const userResponse = await fetch('http://localhost:3001/api/user/current');
+                console.log('👤 WEB: Initializing independent web user system...');
+                
+                // Load current web user
+                const userResponse = await fetch('http://localhost:3001/api/user/web/current');
                 if (userResponse.ok) {
                     const userData = await userResponse.json();
                     currentUser = userData.user;
                     window.currentUser = userData.user; // Also set global variable
                     updateCurrentUserDisplay();
+                    console.log('👤 WEB: Current user loaded:', userData.user.name, `(${userData.user.role})`);
                 }
                 
-                // Load all users for switcher
-                const usersResponse = await fetch('http://localhost:3001/api/users');
+                // Load all web users for switcher
+                const usersResponse = await fetch('http://localhost:3001/api/user/web/users');
                 if (usersResponse.ok) {
                     const usersData = await usersResponse.json();
                     allUsers = usersData.users;
                     populateUserSwitcher();
+                    console.log('👤 WEB: Available users loaded:', usersData.users.map(u => u.name));
                 }
                 
-                console.log('👤 User system initialized:', currentUser);
+                console.log('✅ WEB: Independent user system initialized successfully');
+                
+                // Update button states after initialization
+                updateButtonStates();
             } catch (error) {
-                console.error('❌ Failed to initialize user system:', error);
+                console.error('❌ WEB: Failed to initialize user system:', error);
             }
         }
         
@@ -715,12 +886,14 @@
             });
         }
         
-        // Switch user (demo function)
+        // Switch web user (platform-specific demo function)
         async function switchUser(userId) {
             if (!userId) return;
             
             try {
-                const response = await fetch('http://localhost:3001/api/user/switch', {
+                console.log('👤 WEB: Switching to user:', userId);
+                
+                const response = await fetch('http://localhost:3001/api/user/web/switch', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({ userId })
@@ -736,16 +909,17 @@
                     updateButtonStates();
                     
                     // Add notification
-                    addNotification(`Switched to ${currentUser.name} (${currentUser.role})`, 'info');
+                    addNotification(`Web user switched to ${currentUser.name} (${currentUser.role})`, 'info');
                     
-                    console.log('👤 User switched to:', currentUser);
+                    console.log('✅ WEB: User switched to:', currentUser.name, `(${currentUser.role})`);
                 } else {
-                    console.error('❌ Failed to switch user');
-                    addNotification('Failed to switch user', 'error');
+                    const error = await response.json();
+                    console.error('❌ WEB: Failed to switch user:', error);
+                    addNotification('Failed to switch web user', 'error');
                 }
             } catch (error) {
-                console.error('❌ Error switching user:', error);
-                addNotification('Error switching user', 'error');
+                console.error('❌ WEB: Error switching user:', error);
+                addNotification('Error switching web user', 'error');
             }
         }
         
@@ -757,6 +931,27 @@
         // Check if current user can edit
         function canCurrentUserEdit() {
             return getCurrentUserRole() === 'editor';
+        }
+
+        // Control user selector during checkout
+        function disableUserSelection() {
+            const switcher = document.getElementById('userSwitcher');
+            if (switcher) {
+                switcher.disabled = true;
+                switcher.style.opacity = '0.5';
+                switcher.style.cursor = 'not-allowed';
+                console.log('🔒 WEB: User selection disabled during checkout');
+            }
+        }
+
+        function enableUserSelection() {
+            const switcher = document.getElementById('userSwitcher');
+            if (switcher) {
+                switcher.disabled = false;
+                switcher.style.opacity = '1';
+                switcher.style.cursor = 'pointer';
+                console.log('🔓 WEB: User selection enabled after checkin');
+            }
         }
         
         // ========================================
@@ -792,9 +987,213 @@
             };
         }
         
+        // Debug web viewer state
+        function debugWebViewerState() {
+            const viewerContainer = document.querySelector('.viewer-container');
+            return {
+                currentUser,
+                canEdit: canCurrentUserEdit(),
+                role: getCurrentUserRole(),
+                viewerContainer: viewerContainer ? {
+                    classList: Array.from(viewerContainer.classList),
+                    hasReadOnlyMode: viewerContainer.classList.contains('read-only-mode'),
+                    hasEditMode: viewerContainer.classList.contains('edit-mode')
+                } : null,
+                buttonStates: getVisibleButtons()
+            };
+        }
+
+        // DEBUG: Test web viewer protection layers
+        window.debugWebProtectionLayers = () => {
+            console.log('🧪 WEB: TESTING MULTI-LAYER PROTECTION DETECTION');
+            console.log('='.repeat(50));
+            
+            const accessInfo = determineWebViewerAccess();
+            
+            console.log('📊 WEB: COMPLETE ACCESS ANALYSIS:');
+            console.log('   Final Result:', accessInfo.canEdit ? '✅ CAN EDIT' : '❌ READ-ONLY');
+            console.log('   Reason:', accessInfo.reason);
+            console.log('');
+            console.log('🔍 WEB: LAYER BREAKDOWN:');
+            console.log('   📄 File Level:');
+            console.log('      Detected:', accessInfo.layers.fileLevel.detected ? '✅' : '❌ (web limitation)');
+            console.log('      Read-Only:', accessInfo.layers.fileLevel.readOnly ? '🔒' : '✏️ (unknown)');
+            console.log('   👤 User Level:');
+            console.log('      Role:', accessInfo.layers.userLevel.role);
+            console.log('      Can Edit:', accessInfo.layers.userLevel.canEdit ? '✅' : '❌');
+            console.log('   🤝 Collaboration Level:');
+            console.log('      Available:', accessInfo.layers.collaborationLevel.available ? '✅' : '❌');
+            console.log('      Checked Out By:', accessInfo.layers.collaborationLevel.checkedOutBy || 'none');
+            
+            return accessInfo;
+        };
+
+        // DEBUG: Test web viewer visual feedback system
+        window.debugWebVisualFeedback = () => {
+            console.log('🎨 WEB: TESTING VISUAL FEEDBACK SYSTEM');
+            console.log('='.repeat(50));
+            
+            const accessInfo = determineWebViewerAccess();
+            
+            console.log('🔍 WEB: Access Info:', {
+                canEdit: accessInfo.canEdit,
+                reason: accessInfo.reason,
+                layers: accessInfo.layers
+            });
+            
+            console.log('🎨 WEB: Applying visual feedback...');
+            updateWebUIForAccessLevel(accessInfo);
+            
+            // Check applied CSS classes
+            const viewerContainer = document.querySelector('.viewer-container');
+            
+            console.log('📋 WEB: Applied CSS Classes:');
+            console.log('   Viewer Container classes:', viewerContainer ? Array.from(viewerContainer.classList) : 'not found');
+            
+            // Check button visibility
+            const visibleButtons = [];
+            const hiddenButtons = [];
+            
+            ['checkoutBtn', 'saveProgressBtn', 'checkinBtn', 'cancelBtn', 'openBtn', 'viewOnlyBtn'].forEach(id => {
+                const btn = document.getElementById(id);
+                if (btn) {
+                    if (btn.style.display === 'none') {
+                        hiddenButtons.push(id);
+                    } else {
+                        visibleButtons.push(id);
+                    }
+                }
+            });
+            
+            console.log('🔘 WEB: Button States:');
+            console.log('   Visible:', visibleButtons);
+            console.log('   Hidden:', hiddenButtons);
+            
+            return {
+                accessInfo,
+                cssClasses: {
+                    viewerContainer: viewerContainer ? Array.from(viewerContainer.classList) : []
+                },
+                buttons: { visible: visibleButtons, hidden: hiddenButtons }
+            };
+        };
+
+        // DEBUG: Test user selection control (Web)
+        window.debugUserSelectionWeb = () => {
+            const switcher = document.getElementById('userSwitcher');
+            console.log('👤 WEB USER SELECTION STATE:');
+            console.log('├── Disabled:', switcher?.disabled);
+            console.log('├── Opacity:', switcher?.style.opacity);
+            console.log('├── Cursor:', switcher?.style.cursor);
+            console.log('├── Checkout state:', currentDocumentState.isCheckedOut);
+            console.log('└── Checked out by:', currentDocumentState.checkedOutBy);
+            
+            return {
+                disabled: switcher?.disabled,
+                checkoutState: currentDocumentState.isCheckedOut,
+                checkedOutBy: currentDocumentState.checkedOutBy
+            };
+        };
+
+        // DEBUG: Test web independent user system
+        window.debugWebUserSystem = async () => {
+            console.log('🧪 WEB USER SYSTEM TEST:');
+            console.log('='.repeat(50));
+            
+            try {
+                // Test current user endpoint
+                const currentResp = await fetch('http://localhost:3001/api/user/web/current');
+                const currentData = await currentResp.json();
+                console.log('1. Web current user API:', currentData.user.name, `(${currentData.user.role})`);
+                
+                // Test users list endpoint  
+                const usersResp = await fetch('http://localhost:3001/api/user/web/users');
+                const usersData = await usersResp.json();
+                console.log('2. Web users available:', usersData.users.map(u => `${u.name} (${u.role})`));
+                
+                // Test local state
+                console.log('3. Local currentUser:', currentUser?.name, `(${currentUser?.role})`);
+                console.log('4. Local allUsers:', allUsers.map(u => `${u.name} (${u.role})`));
+                
+                // Test status includes web user
+                const statusResp = await fetch('http://localhost:3001/api/status');
+                const statusData = await statusResp.json();
+                console.log('5. Status webUser:', statusData.checkoutState.webUser?.name);
+                console.log('6. Status wordUser:', statusData.checkoutState.wordUser?.name);
+                
+                return {
+                    webUserAPI: currentData.user,
+                    localUser: currentUser,
+                    platformUsers: statusData.platformUsers
+                };
+            } catch (error) {
+                console.error('❌ Web user system test failed:', error);
+            }
+        };
+
+        // Add click animation to all buttons with interruption protection
+        function addButtonClickAnimation() {
+            let activeAnimations = new Map();
+            
+            document.addEventListener('click', function(e) {
+                const button = e.target.closest('button') || e.target.closest('.btn') || e.target.closest('.button');
+                if (!button) return;
+                
+                // Clear any existing animation for this button
+                if (activeAnimations.has(button)) {
+                    clearTimeout(activeAnimations.get(button));
+                    button.classList.remove('btn-clicked');
+                }
+                
+                // Start new animation
+                button.classList.add('btn-clicked');
+                
+                // Store timeout reference for this specific button
+                const timeoutId = setTimeout(() => {
+                    button.classList.remove('btn-clicked');
+                    activeAnimations.delete(button);
+                    // Re-enable pointer events
+                    button.style.pointerEvents = '';
+                }, 300); // Match the CSS animation duration
+                
+                activeAnimations.set(button, timeoutId);
+            });
+            
+            // Add protection against DOM changes interrupting animations
+            const observer = new MutationObserver(function(mutations) {
+                mutations.forEach(function(mutation) {
+                    if (mutation.type === 'childList' || mutation.type === 'attributes') {
+                        // Check if any animated buttons still exist and maintain their animation
+                        activeAnimations.forEach((timeoutId, button) => {
+                            if (document.contains(button) && button.classList.contains('btn-clicked')) {
+                                // Ensure animation continues even if DOM changed
+                                button.style.animation = 'buttonClick 0.3s ease-out';
+                                button.style.zIndex = '9999';
+                                button.style.position = 'relative';
+                            }
+                        });
+                    }
+                });
+            });
+            
+            observer.observe(document.body, {
+                childList: true,
+                subtree: true,
+                attributes: true,
+                attributeFilter: ['class', 'style']
+            });
+        }
+
+        // Initialize button animations when page loads
+        window.addEventListener('load', function() {
+            addButtonClickAnimation();
+        });
+
         // Make test functions available globally
         window.testUserSystem = testUserSystem;
         window.debugUserState = debugUserState;
+        window.debugWebViewerState = debugWebViewerState;
+        window.debugWebProtectionLayers = debugWebProtectionLayers;
         
         // Immediate availability check
         console.log('🧪 Test functions loaded:', {
@@ -821,39 +1220,147 @@
             });
         }
         
-        // Update button visibility based on document state
-        function updateButtonStates() {
-            // Check user permissions first
+        // Multi-layer document protection detection for web viewer
+        function determineWebViewerAccess() {
+            console.log('🔍 WEB: Determining document access levels...');
+            
+            const result = {
+                canEdit: false,
+                reason: '',
+                layers: {
+                    fileLevel: { readOnly: false, detected: false },
+                    userLevel: { canEdit: false, role: '' },
+                    collaborationLevel: { available: true, checkedOutBy: null }
+                }
+            };
+            
+            // Layer 1: File-level protection (not detectable in web viewer)
+            console.log('📄 Layer 1: File-level protection (web viewer limitation)');
+            result.layers.fileLevel.detected = false;
+            result.layers.fileLevel.readOnly = false; // Cannot detect in web
+            console.log('   ⚠️ File protection detection not available in web viewer');
+            
+            // Layer 2: User role-based restrictions
+            console.log('👤 Layer 2: Checking user role permissions...');
+            const userRole = getCurrentUserRole();
             const userCanEdit = canCurrentUserEdit();
-            const viewerContainer = document.querySelector('.viewer-container');
+            result.layers.userLevel.role = userRole;
+            result.layers.userLevel.canEdit = userCanEdit;
+            
+            console.log(`   User role: ${userRole}, Can edit: ${userCanEdit}`);
             
             if (!userCanEdit) {
-                // User is a viewer - hide all editing controls and open button
-                hideButtons(['checkoutBtn', 'saveProgressBtn', 'checkinBtn', 'cancelBtn', 'openBtn']);
-                showButtons(['viewOnlyBtn']);
+                result.canEdit = false;
+                result.reason = 'user-viewer';
+                console.log('   ❌ User is viewer - denying edit access');
+                return result;
+            }
+            
+            // Layer 3: Collaboration state (checkout system)
+            console.log('🤝 Layer 3: Checking collaboration state...');
+            const isCheckedOutByOther = currentDocumentState.isCheckedOut && currentDocumentState.checkedOutBy !== 'web';
+            result.layers.collaborationLevel.available = !isCheckedOutByOther;
+            result.layers.collaborationLevel.checkedOutBy = isCheckedOutByOther ? currentDocumentState.checkedOutBy : null;
+            
+            console.log(`   Checked out by other: ${isCheckedOutByOther}, User: ${currentDocumentState.checkedOutBy || 'none'}`);
+            
+            if (isCheckedOutByOther) {
+                result.canEdit = false;
+                result.reason = 'checked-out';
+                console.log(`   ❌ Document checked out by ${currentDocumentState.checkedOutBy} - denying edit access`);
+                return result;
+            }
+            
+            // All accessible layers allow editing
+            result.canEdit = true;
+            result.reason = 'full-access';
+            console.log('   ✅ All accessible protection layers allow editing');
+            
+            return result;
+        }
+
+        // Enhanced visual feedback system for web viewer
+        function updateWebUIForAccessLevel(accessInfo) {
+            console.log('🎨 WEB STEP 2: Updating UI based on access level:', accessInfo.reason);
+            
+            const viewerContainer = document.querySelector('.viewer-container');
+            
+            if (!accessInfo.canEdit) {
+                // Apply read-only mode
+                hideButtons(['checkoutBtn', 'saveProgressBtn', 'checkinBtn', 'cancelBtn', 'openBtn', 'viewOnlyBtn']);
                 updateSuperdocMode('viewing');
-                showStatus(`👁️ Read-only access - You are logged in as a viewer`, 'info');
                 
                 // Apply read-only styling
                 if (viewerContainer) {
                     viewerContainer.classList.remove('edit-mode');
                     viewerContainer.classList.add('read-only-mode');
                 }
-                return;
+                
+                // Show context-specific status message
+                let statusMessage = '';
+                let statusType = 'info';
+                
+                switch (accessInfo.reason) {
+                    case 'user-viewer':
+                        statusMessage = '👁️ Viewer access - read-only mode';
+                        statusType = 'info';
+                        break;
+                    case 'checked-out':
+                        statusMessage = `🔒 Document checked out by ${accessInfo.layers.collaborationLevel.checkedOutBy}`;
+                        statusType = 'error';
+                        break;
+                    default:
+                        statusMessage = '🔒 Read-only access';
+                        statusType = 'info';
+                }
+                
+                showStatus(statusMessage, statusType);
+                console.log(`🎨 WEB: Applied read-only mode: ${accessInfo.reason}`);
+                
+            } else {
+                // Apply edit mode styling
+                if (viewerContainer) {
+                    viewerContainer.classList.remove('read-only-mode');
+                    viewerContainer.classList.add('edit-mode');
+                }
+                
+                showStatus('✅ Document ready for editing', 'success');
+                console.log('🎨 WEB: Applied edit mode: full access granted');
             }
+        }
+
+        // Update button visibility based on document state (now using multi-layer protection)
+        function updateButtonStates() {
+            console.log('🔄 WEB: Updating button states with multi-layer protection...');
             
-            // User is an editor - apply edit mode styling
-            if (viewerContainer) {
-                viewerContainer.classList.remove('read-only-mode');
-                viewerContainer.classList.add('edit-mode');
+            // Get comprehensive access information
+            const accessInfo = determineWebViewerAccess();
+            
+            console.log('📊 WEB: Final access determination:', {
+                canEdit: accessInfo.canEdit,
+                reason: accessInfo.reason,
+                layers: accessInfo.layers
+            });
+            
+            // Apply visual feedback based on access level
+            updateWebUIForAccessLevel(accessInfo);
+            
+            // Continue with existing scenario-based logic for editors
+            if (accessInfo.canEdit) {
+                // User is an editor - use normal scenario-based logic
+                const currentScenario = detectCollaborationScenario();
+                updateButtonVisibilityForScenario(currentScenario);
             }
-            
-            // User is an editor - use normal scenario-based logic
-            const currentScenario = detectCollaborationScenario();
-            updateButtonVisibilityForScenario(currentScenario);
             
             // Update checkout banner
             updateCheckoutBanner();
+            
+            // Control user selection based on checkout state
+            if (currentDocumentState.isCheckedOut && currentDocumentState.checkedOutBy === 'web') {
+                disableUserSelection();
+            } else {
+                enableUserSelection();
+            }
             
             // Update status messages and SuperDoc mode
             if (!currentDocumentState.isCheckedOut) {
@@ -884,26 +1391,15 @@
                         // If no direct method, we'll need to reinitialize
                         console.log(`SuperDoc mode change not supported by current API - mode should be: ${mode}`);
                         
-                        // Add visual indicator for read-only mode
+                        // Update visual styling for read-only mode
                         const superdocElement = document.getElementById('superdoc');
-                        const readonlyWrapper = document.getElementById('readonly-wrapper');
                         
                         if (mode === 'viewing') {
                             superdocElement.style.opacity = '0.8';
                             superdocElement.style.pointerEvents = 'none';
-                            
-                            // Show read-only wrapper with border and label
-                            if (readonlyWrapper) {
-                                readonlyWrapper.style.display = 'block';
-                            }
                         } else {
                             superdocElement.style.opacity = '1';
                             superdocElement.style.pointerEvents = 'auto';
-                            
-                            // Hide read-only wrapper
-                            if (readonlyWrapper) {
-                                readonlyWrapper.style.display = 'none';
-                            }
                         }
                     }
                 } catch (error) {
@@ -939,6 +1435,10 @@
                 
                 if (response.ok) {
                     showStatus('✅ Document checked out successfully', 'success');
+                    
+                    // Disable user selection during checkout
+                    disableUserSelection();
+                    
                     await fetchDocumentStatus(); // Refresh UI
                     
                     // Try to load the current document
@@ -1045,6 +1545,10 @@
                 
                 if (response.ok) {
                     showStatus('✅ Document checked in successfully', 'success');
+                    
+                    // Re-enable user selection after successful checkin
+                    enableUserSelection();
+                    
                     await fetchDocumentStatus(); // Refresh UI
                 } else {
                     const error = await response.json();
@@ -1067,6 +1571,10 @@
                 
                 if (response.ok) {
                     showStatus('✅ Checkout cancelled', 'success');
+                    
+                    // Re-enable user selection after cancelling checkout
+                    enableUserSelection();
+                    
                     await fetchDocumentStatus(); // Refresh UI
                 } else {
                     const error = await response.json();
@@ -1212,6 +1720,7 @@
             notificationHistory.unshift(notification); // Add to beginning
             hasUnreadNotifications = true;
             updateNotificationDot();
+            renderNotifications(); // Update both modal and window
             
             console.log('📝 Added notification:', notification);
             
@@ -1223,9 +1732,12 @@
         
         function renderNotifications() {
             const modalBody = document.getElementById('notificationModalBody');
+            const windowBody = document.getElementById('notificationWindowBody');
             
             if (notificationHistory.length === 0) {
-                modalBody.innerHTML = '<div class="no-notifications">No notifications yet</div>';
+                const noNotificationsHtml = '<div class="no-notifications">No notifications yet</div>';
+                if (modalBody) modalBody.innerHTML = noNotificationsHtml;
+                if (windowBody) windowBody.innerHTML = noNotificationsHtml;
                 return;
             }
             
@@ -1239,7 +1751,9 @@
                 `;
             }).join('');
             
-            modalBody.innerHTML = notificationsHtml;
+            // Update both modal and transparent window
+            if (modalBody) modalBody.innerHTML = notificationsHtml;
+            if (windowBody) windowBody.innerHTML = notificationsHtml;
         }
         
         function getTimeAgo(timestamp) {
@@ -1286,23 +1800,41 @@
             const banner = document.getElementById('checkoutBanner');
             const isCheckedOut = currentDocumentState.isCheckedOut || false;
             const checkedOutBy = currentDocumentState.checkedOutBy;
-            
-            if (!isCheckedOut) {
-                banner.style.display = 'none';
-                return;
-            }
+            const userRole = getCurrentUserRole();
             
             let bannerText = '';
-            if (checkedOutBy === 'web') {
-                bannerText = 'document is checked out right here right meow';
-            } else if (checkedOutBy === 'word') {
-                bannerText = "YA CAN'T SAVE HERE FORREST -- Document is checked out elsewhere";
+            let shouldShow = false;
+            
+            if (userRole === 'viewer') {
+                // Viewers ALWAYS see banner
+                if (!isCheckedOut) {
+                    bannerText = 'u no change this';
+                } else if (checkedOutBy === 'word') {
+                    bannerText = 'u no change this - also checked out by word';
+                }
+                // Note: checkedOutBy === 'web' is impossible for web viewers
+                shouldShow = true;
+            } else if (userRole === 'editor') {
+                // Editors see banner when checked out (by them or others)
+                if (isCheckedOut) {
+                    if (checkedOutBy === 'web') {
+                        bannerText = 'doc doc u ... right here right meow';
+                    } else if (checkedOutBy === 'word') {
+                        bannerText = "YA CAN'T SAVE HERE FORREST -- WORD GOT YA DOC!";
+                    }
+                    shouldShow = true;
+                }
+                // Hidden when document is available for editors
             }
             
-            banner.textContent = bannerText;
-            banner.style.display = 'block';
-            
-            console.log(`🚨 Checkout banner updated: ${bannerText}`);
+            if (shouldShow && bannerText) {
+                banner.textContent = bannerText;
+                banner.style.display = 'block';
+                console.log(`🚨 WEB: Banner updated: ${bannerText}`);
+            } else {
+                banner.style.display = 'none';
+                console.log(`🚨 WEB: Banner hidden`);
+            }
         }
         
         // Test function for checkout banner

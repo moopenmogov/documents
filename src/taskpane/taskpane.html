@@ -19,7 +19,7 @@
         }
         
         body.read-only-mode {
-            border: 8px solid #dc3545;
+            border: 8px solid #f8f9fa;
         }
         
         body.edit-mode {
@@ -31,7 +31,8 @@
             margin: 0 auto;
             padding: 10px;
             height: auto;
-            max-height: calc(100vh - 60px);
+            min-height: calc(100vh - 20px);
+            max-height: calc(100vh - 20px);
             overflow-y: auto;
             background: #f8f9fa;
         }
@@ -109,7 +110,7 @@
         }
         
         .user-role.viewer {
-            background: #6c757d;
+            background: #dc3545;
         }
         
         .user-switcher {
@@ -132,26 +133,7 @@
             position: relative;
         }
         
-        .addin-readonly-wrapper {
-            display: none;
-        }
-        
-        .container.read-only-mode::after {
-            content: "READ-ONLY";
-            position: absolute;
-            bottom: 10px;
-            left: 50%;
-            transform: translateX(-50%);
-            background: #dc3545;
-            color: white;
-            padding: 4px 12px;
-            border-radius: 12px;
-            font-weight: bold;
-            font-size: 10px;
-            letter-spacing: 1px;
-            box-shadow: 0 2px 6px rgba(220, 53, 69, 0.4);
-            z-index: 1000;
-        }
+
         
         body.read-only-mode .container {
             position: relative;
@@ -159,13 +141,18 @@
         
         .document-info {
             background: #f8f9fa;
-            padding: 10px;
+            padding: 0;
             border-radius: 8px;
             margin-bottom: 12px;
             border: 1px solid #dee2e6;
             display: flex;
-            justify-content: space-between;
-            align-items: center;
+            flex-direction: column;
+        }
+        
+        .document-title-section {
+            width: 100%;
+            padding: 12px 15px;
+            border-bottom: 1px solid #dee2e6;
         }
         
         .document-title {
@@ -173,14 +160,26 @@
             font-weight: 600;
             color: #0078d4;
             margin: 0;
-            flex-grow: 1;
+            text-align: center;
+            word-wrap: break-word;
+            overflow-wrap: break-word;
+            max-width: 100%;
+            line-height: 1.3;
+        }
+        
+        .document-buttons-section {
+            width: 100%;
+            padding: 10px 12px;
+            display: flex;
+            justify-content: space-between;
         }
         
         .document-buttons {
             display: flex;
-            flex-direction: column;
-            gap: 6px;
-            margin-left: 15px;
+            justify-content: flex-start;
+            width: 100%;
+            padding: 0 17px 0 3px;
+            position: relative;
         }
         
         .btn-notification {
@@ -199,6 +198,94 @@
         .btn-notification:hover {
             background: #5a6268;
         }
+        
+        .btn-view-latest {
+            background: #17a2b8;
+            color: white;
+            padding: 8px 12px;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 12px;
+            font-weight: 600;
+            transition: background-color 0.2s;
+            width: auto;
+            min-width: 120px;
+            position: relative;
+            left: -2px;
+        }
+        
+        .btn-view-latest:hover {
+            background: #138496;
+        }
+
+        .btn-open-web {
+            background: #007acc;
+            color: white;
+            padding: 8px 12px;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 12px;
+            font-weight: 600;
+            transition: background-color 0.2s;
+            width: auto;
+            min-width: 120px;
+            position: absolute;
+            right: 0;
+            left: auto;
+            transform: translateX(-5px);
+        }
+        
+        .btn-open-web:hover {
+            background: #005a99;
+        }
+
+        /* Button click animation for all buttons */
+        .btn-clicked {
+            animation: buttonClick 0.3s ease-out !important;
+            transform: scale(0.95) !important;
+            position: relative !important;
+            z-index: 9999 !important;
+            will-change: transform, opacity !important;
+            animation-fill-mode: both !important;
+        }
+
+        @keyframes buttonClick {
+            0% { 
+                transform: scale(1); 
+                opacity: 1;
+            }
+            30% { 
+                transform: scale(0.92); 
+                opacity: 0.7;
+            }
+            60% { 
+                transform: scale(0.96); 
+                opacity: 0.9;
+            }
+            100% { 
+                transform: scale(1); 
+                opacity: 1;
+            }
+        }
+
+        /* Apply animation to all button types with stronger specificity */
+        button:active, 
+        .btn:active, 
+        .btn-notification:active, 
+        .btn-view-latest:active,
+        .btn-open-web:active,
+        .button:active,
+        .button-primary:active,
+        .button-secondary:active {
+            animation: buttonClick 0.3s ease-out !important;
+            position: relative !important;
+            z-index: 9999 !important;
+            will-change: transform, opacity !important;
+        }
+
+
         
         .notification-dot {
             position: absolute;
@@ -397,6 +484,111 @@
             font-style: italic;
             font-size: 13px;
         }
+
+        /* Transparent Notification Window Styles */
+        .notification-window {
+            background: linear-gradient(145deg, rgba(248, 249, 250, 0.95), rgba(233, 236, 239, 0.9));
+            border: 2px solid rgba(108, 117, 125, 0.2);
+            border-left: 4px solid #17a2b8;
+            border-radius: 0;
+            margin-top: 15px;
+            max-height: 200px;
+            overflow-y: auto;
+            backdrop-filter: blur(3px);
+            box-shadow: inset 0 1px 3px rgba(0, 0, 0, 0.1), 0 1px 3px rgba(0, 0, 0, 0.05);
+        }
+
+        .notification-window-header {
+            background: linear-gradient(135deg, rgba(23, 162, 184, 0.15), rgba(23, 162, 184, 0.05));
+            color: #495057;
+            padding: 6px 12px;
+            border-radius: 0;
+            font-size: 11px;
+            font-weight: 500;
+            text-align: left;
+            border-bottom: 1px solid rgba(23, 162, 184, 0.2);
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+
+        .notification-window-body {
+            max-height: 150px;
+            overflow-y: auto;
+            padding: 0;
+        }
+
+        .notification-window .notification-item {
+            padding: 6px 12px;
+            border-bottom: 1px dotted rgba(108, 117, 125, 0.2);
+            background: transparent;
+            margin: 0;
+            transition: background-color 0.2s ease;
+        }
+
+        .notification-window .notification-item:hover {
+            background: rgba(255, 255, 255, 0.4);
+        }
+
+        .notification-window .notification-item:last-child {
+            border-bottom: none;
+        }
+
+        .notification-window .notification-item.success {
+            border-left: 2px solid #28a745;
+            background: linear-gradient(90deg, rgba(40, 167, 69, 0.05), transparent 30%);
+        }
+
+        .notification-window .notification-item.error {
+            border-left: 2px solid #dc3545;
+            background: linear-gradient(90deg, rgba(220, 53, 69, 0.05), transparent 30%);
+        }
+
+        .notification-window .notification-item.info {
+            border-left: 2px solid #17a2b8;
+            background: linear-gradient(90deg, rgba(23, 162, 184, 0.05), transparent 30%);
+        }
+
+        .notification-window .notification-message {
+            font-size: 11px;
+            margin: 0 0 2px 0;
+            color: #495057;
+            line-height: 1.4;
+            font-weight: 400;
+        }
+
+        .notification-window .notification-timestamp {
+            font-size: 9px;
+            color: #868e96;
+            margin: 0;
+            font-family: 'Courier New', monospace;
+        }
+
+        .notification-window .no-notifications {
+            padding: 20px 15px;
+            font-size: 11px;
+            color: #adb5bd;
+            text-align: center;
+            font-style: italic;
+            background: linear-gradient(45deg, rgba(248, 249, 250, 0.3), rgba(233, 236, 239, 0.1));
+        }
+
+        /* Custom scrollbar for notification window */
+        .notification-window::-webkit-scrollbar {
+            width: 4px;
+        }
+
+        .notification-window::-webkit-scrollbar-track {
+            background: rgba(248, 249, 250, 0.5);
+        }
+
+        .notification-window::-webkit-scrollbar-thumb {
+            background: rgba(23, 162, 184, 0.3);
+            border-radius: 2px;
+        }
+
+        .notification-window::-webkit-scrollbar-thumb:hover {
+            background: rgba(23, 162, 184, 0.5);
+        }
     </style>
 </head>
 <body>
@@ -424,19 +616,18 @@
             </div>
         </div>
         
-        <!-- Read-only wrapper for add-in controls -->
-        <div id="addin-readonly-wrapper" class="addin-readonly-wrapper" style="display: none;">
-            <div class="addin-readonly-label">READ-ONLY</div>
-        </div>
+
         
         <div id="addin-controls-area">
             <div class="document-info">
-                <p class="document-title" id="document-title">No document loaded</p>
-                <div class="document-buttons">
-                    <button class="btn-notification" onclick="openNotificationModal()">
-                        🔔 Notifications
-                        <span id="notificationDot" class="notification-dot" style="display: none;"></span>
-                </button>
+                <div class="document-title-section">
+                    <p class="document-title" id="document-title">No document loaded</p>
+                </div>
+                <div class="document-buttons-section">
+                    <div class="document-buttons">
+                        <button class="btn-view-latest" onclick="viewReadOnly()">👀 View Latest</button>
+                        <button id="shareToWebBtn" class="btn-open-web" onclick="shareToWeb()">🌐 Open in Web</button>
+                    </div>
                 </div>
             </div>
         
@@ -463,14 +654,22 @@
                 ❌ Cancel Check-out
             </button>
         
-            <button id="viewOnlyBtn" class="button button-secondary" onclick="viewReadOnly()" style="display: none;">
-                👀 View Last Saved
-            </button>
+
             
-            <button id="shareToWebBtn" class="button button-primary" onclick="shareToWeb()" style="background: #007acc;">
-                📤 Share to Web
-            </button>
         </div>
+        
+        <!-- Transparent Notification Window -->
+        <div class="notification-window">
+            <div class="notification-window-header">
+                🔔 Notifications
+            </div>
+            <div class="notification-window-body" id="notificationWindowBody">
+                <div class="no-notifications">
+                    No notifications yet
+                </div>
+            </div>
+        </div>
+        
         </div> <!-- End addin-controls-area -->
     </div>
     
@@ -547,13 +746,20 @@
                         // Auto-load the uploaded document
                         loadDocumentContent();
                     } else if (data.type === 'user-switched') {
-                        console.log(`📡 WORD: User switched to ${data.currentUser.name}`);
-                        // Update current user if this was triggered by another client
-                        if (data.currentUser.id !== currentUser?.id) {
-                            currentUser = data.currentUser;
-                            updateCurrentUserDisplay();
-                            populateUserSwitcher();
-                            updateButtonStates();
+                        console.log(`📡 WORD SSE: User switched event received:`, data);
+                        
+                        // Only handle word platform user switches
+                        if (data.platform === 'word') {
+                            console.log(`📡 WORD: Processing word user switch to ${data.currentUser.name}`);
+                            // Update current user if this was triggered by another client
+                            if (data.currentUser.id !== currentUser?.id) {
+                                currentUser = data.currentUser;
+                                updateCurrentUserDisplay();
+                                populateUserSwitcher();
+                                updateButtonStates();
+                            }
+                        } else {
+                            console.log(`📡 WORD: Ignoring ${data.platform || 'legacy'} user switch event`);
                         }
                     } else if (data.type === 'permission-changed') {
                         console.log(`📡 WORD: Permission changed for ${data.user.name}`);
@@ -586,30 +792,38 @@
             currentDocument: null
         };
         
+        // Document locking system
+        let documentLock = null;
+        let isDocumentLocked = false;
+        
         // User management state (same as web viewer)
         let currentUser = null;
         let allUsers = [];
         
-        // Initialize user system on Office ready
+        // Initialize word-specific user system  
         async function initializeUserSystem() {
             try {
-                // Load current user
-                const userResponse = await fetch('http://localhost:3001/api/user/current');
+                console.log('👤 WORD: Initializing independent word user system...');
+                
+                // Load current word user
+                const userResponse = await fetch('http://localhost:3001/api/user/word/current');
                 if (userResponse.ok) {
                     const userData = await userResponse.json();
                     currentUser = userData.user;
                     updateCurrentUserDisplay();
+                    console.log('👤 WORD: Current user loaded:', userData.user.name, `(${userData.user.role})`);
                 }
                 
-                // Load all users for switcher
-                const usersResponse = await fetch('http://localhost:3001/api/users');
+                // Load all word users for switcher
+                const usersResponse = await fetch('http://localhost:3001/api/user/word/users');
                 if (usersResponse.ok) {
                     const usersData = await usersResponse.json();
                     allUsers = usersData.users;
                     populateUserSwitcher();
+                    console.log('👤 WORD: Available users loaded:', usersData.users.map(u => u.name));
                 }
                 
-                console.log('👤 WORD: User system initialized:', currentUser);
+                console.log('✅ WORD: Independent user system initialized successfully');
             } catch (error) {
                 console.error('❌ WORD: Failed to initialize user system:', error);
             }
@@ -643,12 +857,14 @@
             });
         }
         
-        // Switch user (demo function)
+        // Switch word user (platform-specific demo function)
         async function switchUser(userId) {
             if (!userId) return;
             
             try {
-                const response = await fetch('http://localhost:3001/api/user/switch', {
+                console.log('👤 WORD: Switching to user:', userId);
+                
+                const response = await fetch('http://localhost:3001/api/user/word/switch', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({ userId })
@@ -659,31 +875,54 @@
                     currentUser = data.user;
                     updateCurrentUserDisplay();
                     
-                    // Update button states based on new user role
-                    updateButtonStates();
+                    // Update button states and document locking based on new user role
+                    await updateButtonStates();
                     
                     // Add notification
-                    addNotification(`Switched to ${currentUser.name} (${currentUser.role})`, 'info');
+                    addNotification(`Word user switched to ${currentUser.name} (${currentUser.role})`, 'info');
                     
-                    console.log('👤 WORD: User switched to:', currentUser);
+                    console.log('✅ WORD: User switched to:', currentUser.name, `(${currentUser.role})`);
+                    console.log('🔐 Document lock state updated for new user role');
                 } else {
-                    console.error('❌ WORD: Failed to switch user');
-                    addNotification('Failed to switch user', 'error');
+                    const error = await response.json();
+                    console.error('❌ WORD: Failed to switch user:', error);
+                    addNotification('Failed to switch word user', 'error');
                 }
             } catch (error) {
                 console.error('❌ WORD: Error switching user:', error);
-                addNotification('Error switching user', 'error');
+                addNotification('Error switching word user', 'error');
             }
         }
         
-        // Get current user role for permission checks
+                // Get current user role for permission checks
         function getCurrentUserRole() {
             return currentUser ? currentUser.role : 'editor'; // Default to editor if no user
         }
-        
+
         // Check if current user can edit
         function canCurrentUserEdit() {
             return getCurrentUserRole() === 'editor';
+        }
+
+        // Control user selector during checkout
+        function disableUserSelection() {
+            const switcher = document.getElementById('userSwitcher');
+            if (switcher) {
+                switcher.disabled = true;
+                switcher.style.opacity = '0.5';
+                switcher.style.cursor = 'not-allowed';
+                console.log('🔒 WORD: User selection disabled during checkout');
+            }
+        }
+
+        function enableUserSelection() {
+            const switcher = document.getElementById('userSwitcher');
+            if (switcher) {
+                switcher.disabled = false;
+                switcher.style.opacity = '1';
+                switcher.style.cursor = 'pointer';
+                console.log('🔓 WORD: User selection enabled after checkin');
+            }
         }
         
         // ========================================
@@ -719,6 +958,148 @@
             };
         }
         
+        // DEBUG: Test banner specifically
+        window.debugBannerIssue = async () => {
+            console.log('🚨 DEBUGGING BANNER ISSUE');
+            console.log('='.repeat(50));
+            
+            console.log('1. Current document state:', {
+                isCheckedOut: currentDocumentState.isCheckedOut,
+                checkedOutBy: currentDocumentState.checkedOutBy,
+                currentDocument: currentDocumentState.currentDocument?.filename
+            });
+            
+            console.log('2. Current user:', {
+                name: currentUser?.name,
+                role: getCurrentUserRole()
+            });
+            
+            console.log('3. Access info:');
+            const accessInfo = await determineDocumentAccess();
+            console.log('   Can edit:', accessInfo.canEdit);
+            console.log('   Reason:', accessInfo.reason);
+            
+            console.log('4. Banner element:', {
+                element: !!document.getElementById('checkoutBanner'),
+                display: document.getElementById('checkoutBanner')?.style.display,
+                content: document.getElementById('checkoutBanner')?.textContent
+            });
+            
+            console.log('5. Manually calling updateCheckoutBanner...');
+            updateCheckoutBanner();
+            
+            console.log('6. Banner after manual update:', {
+                display: document.getElementById('checkoutBanner')?.style.display,
+                content: document.getElementById('checkoutBanner')?.textContent
+            });
+        };
+
+        // DEBUG: Test user selection control
+        window.debugUserSelection = () => {
+            const switcher = document.getElementById('userSwitcher');
+            console.log('👤 USER SELECTION STATE:');
+            console.log('├── Disabled:', switcher?.disabled);
+            console.log('├── Opacity:', switcher?.style.opacity);
+            console.log('├── Cursor:', switcher?.style.cursor);
+            console.log('├── Checkout state:', currentDocumentState.isCheckedOut);
+            console.log('└── Checked out by:', currentDocumentState.checkedOutBy);
+            
+            return {
+                disabled: switcher?.disabled,
+                checkoutState: currentDocumentState.isCheckedOut,
+                checkedOutBy: currentDocumentState.checkedOutBy
+            };
+        };
+
+        // DEBUG: Test word independent user system
+        window.debugWordUserSystem = async () => {
+            console.log('🧪 WORD USER SYSTEM TEST:');
+            console.log('='.repeat(50));
+            
+            try {
+                // Test current user endpoint
+                const currentResp = await fetch('http://localhost:3001/api/user/word/current');
+                const currentData = await currentResp.json();
+                console.log('1. Word current user API:', currentData.user.name, `(${currentData.user.role})`);
+                
+                // Test users list endpoint  
+                const usersResp = await fetch('http://localhost:3001/api/user/word/users');
+                const usersData = await usersResp.json();
+                console.log('2. Word users available:', usersData.users.map(u => `${u.name} (${u.role})`));
+                
+                // Test local state
+                console.log('3. Local currentUser:', currentUser?.name, `(${currentUser?.role})`);
+                console.log('4. Local allUsers:', allUsers.map(u => `${u.name} (${u.role})`));
+                
+                // Test status includes word user
+                const statusResp = await fetch('http://localhost:3001/api/status');
+                const statusData = await statusResp.json();
+                console.log('5. Status webUser:', statusData.checkoutState.webUser?.name);
+                console.log('6. Status wordUser:', statusData.checkoutState.wordUser?.name);
+                
+                return {
+                    wordUserAPI: currentData.user,
+                    localUser: currentUser,
+                    platformUsers: statusData.platformUsers
+                };
+            } catch (error) {
+                console.error('❌ Word user system test failed:', error);
+            }
+        };
+
+        // Add click animation to all buttons with interruption protection
+        function addButtonClickAnimation() {
+            let activeAnimations = new Map();
+            
+            document.addEventListener('click', function(e) {
+                const button = e.target.closest('button') || e.target.closest('.btn') || e.target.closest('.button');
+                if (!button) return;
+                
+                // Clear any existing animation for this button
+                if (activeAnimations.has(button)) {
+                    clearTimeout(activeAnimations.get(button));
+                    button.classList.remove('btn-clicked');
+                }
+                
+                // Start new animation
+                button.classList.add('btn-clicked');
+                
+                // Store timeout reference for this specific button
+                const timeoutId = setTimeout(() => {
+                    button.classList.remove('btn-clicked');
+                    activeAnimations.delete(button);
+                    // Re-enable pointer events
+                    button.style.pointerEvents = '';
+                }, 300); // Match the CSS animation duration
+                
+                activeAnimations.set(button, timeoutId);
+            });
+            
+            // Add protection against DOM changes interrupting animations
+            const observer = new MutationObserver(function(mutations) {
+                mutations.forEach(function(mutation) {
+                    if (mutation.type === 'childList' || mutation.type === 'attributes') {
+                        // Check if any animated buttons still exist and maintain their animation
+                        activeAnimations.forEach((timeoutId, button) => {
+                            if (document.contains(button) && button.classList.contains('btn-clicked')) {
+                                // Ensure animation continues even if DOM changed
+                                button.style.animation = 'buttonClick 0.3s ease-out';
+                                button.style.zIndex = '9999';
+                                button.style.position = 'relative';
+                            }
+                        });
+                    }
+                });
+            });
+            
+            observer.observe(document.body, {
+                childList: true,
+                subtree: true,
+                attributes: true,
+                attributeFilter: ['class', 'style']
+            });
+        }
+
         // Make test functions available globally
         window.testUserSystemWord = testUserSystemWord;
         window.debugUserStateWord = debugUserStateWord;
@@ -752,48 +1133,171 @@
             });
         }
         
-        // Update button visibility based on document state
-        function updateButtonStates() {
-            // Check user permissions first
+        // Multi-layer document protection detection
+        async function determineDocumentAccess() {
+            console.log('🔍 STEP 1: Determining document access levels...');
+            
+            const result = {
+                canEdit: false,
+                reason: '',
+                layers: {
+                    fileLevel: { readOnly: false, detected: false },
+                    userLevel: { canEdit: false, role: '' },
+                    collaborationLevel: { available: true, checkedOutBy: null }
+                }
+            };
+            
+            try {
+                // Layer 1: File-system level protection (Office.js detection)
+                console.log('📄 Layer 1: Checking file-level protection...');
+                const documentMode = Office.context.document.mode;
+                result.layers.fileLevel.detected = true;
+                result.layers.fileLevel.readOnly = (documentMode === Office.DocumentMode.ReadOnly);
+                
+                console.log(`   File mode: ${documentMode === Office.DocumentMode.ReadOnly ? 'READ-ONLY' : 'READ-WRITE'}`);
+                
+                if (result.layers.fileLevel.readOnly) {
+                    result.canEdit = false;
+                    result.reason = 'file-protected';
+                    console.log('   ❌ Document is file-protected - forcing read-only');
+                    return result;
+                }
+                
+            } catch (error) {
+                console.warn('   ⚠️ Could not detect file-level protection:', error);
+                result.layers.fileLevel.detected = false;
+            }
+            
+            // Layer 2: User role-based restrictions
+            console.log('👤 Layer 2: Checking user role permissions...');
+            const userRole = getCurrentUserRole();
             const userCanEdit = canCurrentUserEdit();
+            result.layers.userLevel.role = userRole;
+            result.layers.userLevel.canEdit = userCanEdit;
+            
+            console.log(`   User role: ${userRole}, Can edit: ${userCanEdit}`);
             
             if (!userCanEdit) {
-                // User is a viewer - hide all editing controls
-                hideButtons(['checkoutBtn', 'saveProgressBtn', 'checkinBtn', 'cancelBtn']);
-                showButtons(['viewOnlyBtn']);
-                showStatus('documentStatus', `👁️ Read-only access - You are logged in as a viewer`, 'info');
-                
-                // Apply read-only styling
+                result.canEdit = false;
+                result.reason = 'user-viewer';
+                console.log('   ❌ User is viewer - denying edit access');
+                return result;
+            }
+            
+            // Layer 3: Collaboration state (checkout system)
+            console.log('🤝 Layer 3: Checking collaboration state...');
+            const isCheckedOutByOther = currentDocumentState.isCheckedOut && currentDocumentState.checkedOutBy !== 'word';
+            result.layers.collaborationLevel.available = !isCheckedOutByOther;
+            result.layers.collaborationLevel.checkedOutBy = isCheckedOutByOther ? currentDocumentState.checkedOutBy : null;
+            
+            console.log(`   Checked out by other: ${isCheckedOutByOther}, User: ${currentDocumentState.checkedOutBy || 'none'}`);
+            
+            if (isCheckedOutByOther) {
+                result.canEdit = false;
+                result.reason = 'checked-out';
+                console.log(`   ❌ Document checked out by ${currentDocumentState.checkedOutBy} - denying edit access`);
+                return result;
+            }
+            
+            // All layers allow editing
+            result.canEdit = true;
+            result.reason = 'full-access';
+            console.log('   ✅ All protection layers allow editing');
+            
+            return result;
+        }
+        
+        // Enhanced visual feedback system using multi-layer protection
+        async function updateUIForAccessLevel(accessInfo) {
+            console.log('🎨 STEP 2: Updating UI based on access level:', accessInfo.reason);
+            
+            // Apply appropriate CSS classes and button visibility
+            if (!accessInfo.canEdit) {
+                // Apply read-only mode styling
                 document.body.classList.remove('edit-mode');
                 document.body.classList.add('read-only-mode');
                 document.querySelector('.container').classList.add('read-only-mode');
                 
-                // Read-only styling is now handled by CSS pseudo-element
+                // Hide editing controls
+                            hideButtons(['checkoutBtn', 'saveProgressBtn', 'checkinBtn', 'cancelBtn', 'viewOnlyBtn']);
                 
-                return;
+                // Show context-specific status message
+                let statusMessage = '';
+                let statusType = 'info';
+                
+                switch (accessInfo.reason) {
+                    case 'file-protected':
+                        statusMessage = '📄 Document is protected at file level - read-only access';
+                        statusType = 'warning';
+                        break;
+                    case 'user-viewer':
+                        statusMessage = `👁️ Read-only access - You are logged in as a viewer`;
+                        statusType = 'info';
+                        break;
+                    case 'checked-out':
+                        statusMessage = `🔒 Document checked out by ${accessInfo.layers.collaborationLevel.checkedOutBy} - Use manual unlock if needed`;
+                        statusType = 'error';
+                        break;
+                    default:
+                        statusMessage = '🔒 Read-only access';
+                        statusType = 'info';
+                }
+                
+                showStatus('documentStatus', statusMessage, statusType);
+                console.log(`🎨 Applied read-only mode: ${accessInfo.reason}`);
+                
+                // Skip automatic locking to prevent crashes
+                console.log('🔒 Would lock document (manual testing mode)');
+                
+            } else {
+                // Apply edit mode styling
+                document.body.classList.remove('read-only-mode');
+                document.body.classList.add('edit-mode');
+                document.querySelector('.container').classList.remove('read-only-mode');
+                
+                // Show editing controls
+                showStatus('documentStatus', '✅ Document ready for editing - Use manual unlock if needed', 'success');
+                console.log('🎨 Applied edit mode: full access granted');
+                
+                // Skip automatic unlocking to prevent crashes
+                console.log('🔓 Would unlock document (manual testing mode)');
             }
+        }
+
+        // Update button visibility based on document state (now using multi-layer protection)
+        async function updateButtonStates() {
+            console.log('🔄 Updating button states with multi-layer protection...');
             
-            // User is an editor - apply edit mode styling
-            document.body.classList.remove('read-only-mode');
-            document.body.classList.add('edit-mode');
-            document.querySelector('.container').classList.remove('read-only-mode');
+            // Get comprehensive access information
+            const accessInfo = await determineDocumentAccess();
             
-            // Editor styling is now handled by CSS classes
+            // Apply visual feedback based on access level
+            await updateUIForAccessLevel(accessInfo);
             
-            // User is an editor - use normal scenario-based logic
-            const currentScenario = detectCollaborationScenario();
-            updateButtonVisibilityForScenario(currentScenario);
-            
-            // Update checkout banner
+            // Update checkout banner for ALL users (viewers and editors)
             updateCheckoutBanner();
             
-            // Update status messages
-            if (!currentDocumentState.isCheckedOut) {
-                showStatus('documentStatus', '📄 Document available for checkout', 'info');
-            } else if (currentDocumentState.checkedOutBy === 'word') {
-                showStatus('documentStatus', '🔒 Document checked out by you', 'success');
+            // Control user selection based on checkout state
+            if (currentDocumentState.isCheckedOut && currentDocumentState.checkedOutBy === 'word') {
+                disableUserSelection();
             } else {
-                showStatus('documentStatus', `🔒 Document checked out by ${currentDocumentState.checkedOutBy}`, 'error');
+                enableUserSelection();
+            }
+            
+            // Continue with existing scenario-based logic for editors
+            if (accessInfo.canEdit) {
+                // User is an editor - use normal scenario-based logic
+                const currentScenario = detectCollaborationScenario();
+                updateButtonVisibilityForScenario(currentScenario);
+                
+                // Update status messages for editors
+                if (!currentDocumentState.isCheckedOut) {
+                    showStatus('documentStatus', '📄 Document available for checkout', 'info');
+                } else if (currentDocumentState.checkedOutBy === 'word') {
+                    showStatus('documentStatus', '🔒 Document checked out by you', 'success');
+                } else {
+                    showStatus('documentStatus', `🔒 Document checked out by ${currentDocumentState.checkedOutBy}`, 'error');
+                }
             }
         }
         
@@ -840,7 +1344,11 @@
                 if (response.ok) {
                     const result = await response.json();
                     showStatus('documentStatus', '✅ Document checked out successfully', 'success');
-                    await fetchDocumentStatus(); // Refresh UI
+                    
+                    // Disable user selection during checkout
+                    disableUserSelection();
+                    
+                    await fetchDocumentStatus(); // Refresh UI (includes unlocking)
                     
                     // Load document content using working method
                     await loadDocumentContent();
@@ -918,6 +1426,9 @@
             try {
                 showStatus('documentStatus', '✅ Checking in document...', 'info');
                 
+                // Temporarily unlock to allow reading content
+                await unlockDocument();
+                
                 // Get document content from Word
                 const docx = await getDocumentAsBase64();
                 
@@ -933,14 +1444,22 @@
                 
                 if (response.ok) {
                     showStatus('documentStatus', '✅ Document checked in successfully', 'success');
-                    await fetchDocumentStatus(); // Refresh UI
+                    
+                    // Re-enable user selection after successful checkin
+                    enableUserSelection();
+                    
+                    await fetchDocumentStatus(); // Refresh UI (includes re-locking if needed)
                 } else {
                     const error = await response.json();
                     showStatus('documentStatus', `❌ ${error.error}`, 'error');
+                    // Re-lock on error
+                    await updateButtonStates();
                 }
             } catch (error) {
                 console.error('Checkin error:', error);
                 showStatus('documentStatus', '❌ Check-in failed: ' + error.message, 'error');
+                // Re-lock on error
+                await updateButtonStates();
             }
         }
         
@@ -955,6 +1474,10 @@
                 
                 if (response.ok) {
                     showStatus('documentStatus', '✅ Checkout cancelled', 'success');
+                    
+                    // Re-enable user selection after cancelling checkout
+                    enableUserSelection();
+                    
                     await fetchDocumentStatus(); // Refresh UI
                 } else {
                     const error = await response.json();
@@ -1204,6 +1727,119 @@
         
         // ===== END MILESTONE 1 STATE DETECTION =====
         
+        // Clean up any existing locks from previous sessions
+        async function cleanupExistingLocks() {
+            try {
+                await Word.run(async (context) => {
+                    const contentControls = context.document.contentControls;
+                    contentControls.load("items");
+                    await context.sync();
+                    
+                    for (let i = 0; i < contentControls.items.length; i++) {
+                        const cc = contentControls.items[i];
+                        cc.load("tag");
+                        await context.sync();
+                        
+                        if (cc.tag === "redlineLock") {
+                            console.log('🧹 Cleaning up existing document lock');
+                            cc.delete(false);
+                            await context.sync();
+                        }
+                    }
+                    
+                    // Reset our tracking variables
+                    documentLock = null;
+                    isDocumentLocked = false;
+                    console.log('✅ Document lock cleanup complete');
+                });
+            } catch (error) {
+                console.error('❌ Failed to cleanup existing locks:', error);
+            }
+        }
+        
+        // Document locking functions
+        async function lockDocument() {
+            if (isDocumentLocked) return; // Already locked
+            
+            try {
+                // First cleanup any existing locks
+                await cleanupExistingLocks();
+                
+                await Word.run(async (context) => {
+                    const body = context.document.body;
+                    documentLock = body.insertContentControl();
+                    documentLock.tag = "redlineLock";
+                    documentLock.title = "Document locked for editing";
+                    documentLock.cannotEdit = true;
+                    documentLock.cannotDelete = true;
+                    await context.sync();
+                    
+                    isDocumentLocked = true;
+                    console.log('📄 Document locked successfully');
+                    showStatus('documentStatus', '🔒 Document is now locked for editing', 'info');
+                });
+            } catch (error) {
+                console.error('❌ Failed to lock document:', error);
+                showStatus('documentStatus', '❌ Failed to lock document', 'error');
+            }
+        }
+        
+        async function unlockDocument() {
+            try {
+                // Always try to clean up any locks, even if we think there aren't any
+                await cleanupExistingLocks();
+                
+                // Also try to remove any content controls that might be causing the issue
+                await Word.run(async (context) => {
+                    const contentControls = context.document.contentControls;
+                    contentControls.load("items");
+                    await context.sync();
+                    
+                    // Remove ALL content controls to ensure unlocking
+                    for (let i = contentControls.items.length - 1; i >= 0; i--) {
+                        const cc = contentControls.items[i];
+                        try {
+                            cc.delete(false);
+                        } catch (e) {
+                            console.log('Could not delete content control:', e);
+                        }
+                    }
+                    await context.sync();
+                });
+                
+                console.log('📄 Document unlocked successfully');
+                showStatus('documentStatus', '🔓 Document is now unlocked for editing', 'success');
+            } catch (error) {
+                console.error('❌ Failed to unlock document:', error);
+                showStatus('documentStatus', '❌ Failed to unlock document', 'error');
+            }
+        }
+        
+        // Handle Word Online deletion bug
+        async function setupLockProtection() {
+            try {
+                await Word.run(async (context) => {
+                    context.document.onContentControlDeleted.add(async (event) => {
+                        if (documentLock && event.ids.includes(documentLock.id)) {
+                            console.log('🚨 Document lock was deleted - re-applying...');
+                            documentLock = null;
+                            isDocumentLocked = false;
+                            
+                            // Re-apply lock if we should still be locked
+                            const shouldBeLocked = !canCurrentUserEdit() || 
+                                                 (currentDocumentState.isCheckedOut && currentDocumentState.checkedOutBy !== 'word');
+                            if (shouldBeLocked) {
+                                await lockDocument();
+                            }
+                        }
+                    });
+                    await context.sync();
+                });
+            } catch (error) {
+                console.error('❌ Failed to setup lock protection:', error);
+            }
+        }
+        
         // Connect to SSE when Office is ready
         Office.onReady((info) => {
             if (info.host === Office.HostType.Word) {
@@ -1211,10 +1847,16 @@
                 console.log('Connecting to SSE...');
                 connectSSE();
                 
-                // Initialize user system and fetch document status
+                // Initialize systems
                 setTimeout(async () => {
+                    // Skip automatic cleanup due to crashes - do manual testing instead
+                    console.log('🚨 Skipping automatic cleanup to prevent crashes');
                     await initializeUserSystem();
+                    // Skip lock protection setup due to crashes
                     fetchDocumentStatus();
+                    
+                    // Initialize button click animations
+                    addButtonClickAnimation();
                 }, 1000); // Small delay to ensure SSE connection is established
             }
         });
@@ -1252,6 +1894,7 @@
             notificationHistory.unshift(notification); // Add to beginning
             hasUnreadNotifications = true;
             updateNotificationDot();
+            renderNotifications(); // Update both modal and window
             
             console.log('📝 Added notification:', notification);
             
@@ -1263,9 +1906,12 @@
         
         function renderNotifications() {
             const modalBody = document.getElementById('notificationModalBody');
+            const windowBody = document.getElementById('notificationWindowBody');
             
             if (notificationHistory.length === 0) {
-                modalBody.innerHTML = '<div class="no-notifications">No notifications yet</div>';
+                const noNotificationsHtml = '<div class="no-notifications">No notifications yet</div>';
+                if (modalBody) modalBody.innerHTML = noNotificationsHtml;
+                if (windowBody) windowBody.innerHTML = noNotificationsHtml;
                 return;
             }
             
@@ -1279,7 +1925,9 @@
                 `;
             }).join('');
             
-            modalBody.innerHTML = notificationsHtml;
+            // Update both modal and transparent window
+            if (modalBody) modalBody.innerHTML = notificationsHtml;
+            if (windowBody) windowBody.innerHTML = notificationsHtml;
         }
         
         function getTimeAgo(timestamp) {
@@ -1322,29 +1970,463 @@
         // Make test function globally available
         window.testNotifications = testNotifications;
         
+        // Debug functions for document locking
+        window.debugLockDocument = lockDocument;
+        window.debugUnlockDocument = unlockDocument;
+        window.debugCleanupLocks = cleanupExistingLocks;
+        window.debugNuclearReset = async () => {
+            console.log('🚨 NUCLEAR RESET - completely clearing and rebuilding document...');
+            try {
+                await Word.run(async (context) => {
+                    const body = context.document.body;
+                    
+                    // Get the original content first
+                    body.load("text");
+                    await context.sync();
+                    const originalText = body.text;
+                    console.log('📄 Preserved text length:', originalText.length);
+                    
+                    // Nuclear option: clear everything
+                    body.clear();
+                    await context.sync();
+                    console.log('🧹 Body cleared');
+                    
+                    // Rebuild with clean content
+                    if (originalText.trim()) {
+                        body.insertText(originalText, Word.InsertLocation.start);
+                        await context.sync();
+                        console.log('✅ Content restored');
+                    } else {
+                        // If no content, add some sample text
+                        body.insertText("Document ready for editing.", Word.InsertLocation.start);
+                        await context.sync();
+                        console.log('✅ Sample content added');
+                    }
+                    
+                    // Reset our tracking
+                    documentLock = null;
+                    isDocumentLocked = false;
+                    
+                    console.log('✅ NUCLEAR RESET COMPLETE - Document should be fully unlocked');
+                });
+            } catch (error) {
+                console.error('❌ Nuclear reset failed:', error);
+            }
+        };
+        window.debugForceUnlock = async () => {
+            console.log('🔓 FORCE UNLOCKING - trying multiple methods...');
+            try {
+                await Word.run(async (context) => {
+                    const contentControls = context.document.contentControls;
+                    contentControls.load("items");
+                    await context.sync();
+                    
+                    console.log(`Found ${contentControls.items.length} content controls`);
+                    
+                    // Method 1: Try to unlock then delete
+                    for (let i = contentControls.items.length - 1; i >= 0; i--) {
+                        const cc = contentControls.items[i];
+                        try {
+                            cc.load("tag, title, cannotEdit, cannotDelete");
+                            await context.sync();
+                            
+                            console.log(`Processing: ${cc.tag} - ${cc.title}`);
+                            
+                            // First try to unlock it
+                            if (cc.cannotEdit || cc.cannotDelete) {
+                                cc.cannotEdit = false;
+                                cc.cannotDelete = false;
+                                await context.sync();
+                                console.log('✅ Unlocked content control');
+                            }
+                            
+                            // Then try to delete
+                            cc.delete(false);
+                            await context.sync();
+                            console.log('✅ Deleted content control');
+                            
+                        } catch (ccError) {
+                            console.log(`❌ Could not process content control ${i}:`, ccError.message);
+                            
+                            // If individual CC fails, try to clear its content instead
+                            try {
+                                cc.clear();
+                                await context.sync();
+                                console.log('✅ Cleared content control content');
+                            } catch (clearError) {
+                                console.log('❌ Could not clear content either:', clearError.message);
+                            }
+                        }
+                    }
+                    
+                    documentLock = null;
+                    isDocumentLocked = false;
+                    console.log('✅ FORCE UNLOCK ATTEMPT COMPLETE');
+                });
+            } catch (error) {
+                console.error('❌ Force unlock failed:', error);
+                
+                // Method 2: Nuclear option - try to replace document body
+                try {
+                    console.log('🚨 Trying nuclear option - preserving content but removing controls...');
+                    await Word.run(async (context) => {
+                        const body = context.document.body;
+                        body.load("text");
+                        await context.sync();
+                        
+                        const originalText = body.text;
+                        body.clear();
+                        body.insertText(originalText, Word.InsertLocation.start);
+                        await context.sync();
+                        
+                        console.log('✅ Nuclear unlock complete - document recreated');
+                    });
+                } catch (nuclearError) {
+                    console.error('❌ Nuclear option failed too:', nuclearError);
+                }
+            }
+        };
+        window.debugLockState = async () => {
+            console.log('🔐 Lock state:', {
+                isDocumentLocked,
+                documentLock: !!documentLock,
+                currentUser: currentUser?.name,
+                userRole: currentUser?.role,
+                canEdit: canCurrentUserEdit(),
+                checkoutState: currentDocumentState
+            });
+            
+            // Check actual content controls
+            try {
+                await Word.run(async (context) => {
+                    const contentControls = context.document.contentControls;
+                    contentControls.load("items");
+                    await context.sync();
+                    
+                    console.log(`📋 Found ${contentControls.items.length} content controls:`);
+                    
+                    for (let i = 0; i < contentControls.items.length; i++) {
+                        const cc = contentControls.items[i];
+                        cc.load(["tag", "title", "cannotEdit", "cannotDelete"]);
+                    }
+                    await context.sync();
+                    
+                    contentControls.items.forEach((cc, index) => {
+                        console.log(`  ${index}: ${cc.tag} - cannotEdit:${cc.cannotEdit}, cannotDelete:${cc.cannotDelete}`);
+                    });
+                });
+            } catch (error) {
+                console.error('❌ Failed to check content controls:', error);
+            }
+        };
+
+        window.debugTestTyping = async () => {
+            console.log('🔤 Testing if document allows typing...');
+            try {
+                await Word.run(async (context) => {
+                    const body = context.document.body;
+                    body.insertText(" [TEST]", Word.InsertLocation.end);
+                    await context.sync();
+                    console.log('✅ Document is editable - test text added');
+                    
+                    // Remove test text
+                    const range = body.getRange();
+                    range.load("text");
+                    await context.sync();
+                    const newText = range.text.replace(" [TEST]", "");
+                    range.insertText(newText, Word.InsertLocation.replace);
+                    await context.sync();
+                    console.log('🧹 Test text removed');
+                });
+            } catch (error) {
+                console.error('❌ Document is NOT editable:', error.message);
+            }
+        };
+
+        window.debugForceUnlockNow = async () => {
+            console.log('🔓 FORCE UNLOCKING NOW...');
+            await unlockDocument();
+            await debugLockState();
+            await debugTestTyping();
+        };
+
+        // DEBUG: Test multi-layer protection detection
+        window.debugProtectionLayers = async () => {
+            console.log('🧪 TESTING MULTI-LAYER PROTECTION DETECTION');
+            console.log('='.repeat(50));
+            
+            const accessInfo = await determineDocumentAccess();
+            
+            console.log('📊 COMPLETE ACCESS ANALYSIS:');
+            console.log('   Final Result:', accessInfo.canEdit ? '✅ CAN EDIT' : '❌ READ-ONLY');
+            console.log('   Reason:', accessInfo.reason);
+            console.log('');
+            console.log('🔍 LAYER BREAKDOWN:');
+            console.log('   📄 File Level:');
+            console.log('      Detected:', accessInfo.layers.fileLevel.detected ? '✅' : '❌');
+            console.log('      Read-Only:', accessInfo.layers.fileLevel.readOnly ? '🔒' : '✏️');
+            console.log('   👤 User Level:');
+            console.log('      Role:', accessInfo.layers.userLevel.role);
+            console.log('      Can Edit:', accessInfo.layers.userLevel.canEdit ? '✅' : '❌');
+            console.log('   🤝 Collaboration Level:');
+            console.log('      Available:', accessInfo.layers.collaborationLevel.available ? '✅' : '❌');
+            console.log('      Checked Out By:', accessInfo.layers.collaborationLevel.checkedOutBy || 'none');
+            
+            return accessInfo;
+        };
+
+        window.debugAggressiveUnlock = async () => {
+            console.log('🔓 AGGRESSIVE UNLOCK - removing all content controls...');
+            try {
+                await Word.run(async (context) => {
+                    const contentControls = context.document.contentControls;
+                    contentControls.load("items");
+                    await context.sync();
+                    
+                    console.log(`🔍 Found ${contentControls.items.length} content controls`);
+                    
+                    // Load all properties first
+                    for (let i = 0; i < contentControls.items.length; i++) {
+                        const cc = contentControls.items[i];
+                        cc.load(["tag", "cannotEdit", "cannotDelete"]);
+                    }
+                    await context.sync();
+                    
+                    // First, try to unlock all controls
+                    for (let i = 0; i < contentControls.items.length; i++) {
+                        const cc = contentControls.items[i];
+                        try {
+                            console.log(`🔓 Unlocking control ${i}: ${cc.tag}`);
+                            cc.cannotEdit = false;
+                            cc.cannotDelete = false;
+                        } catch (e) {
+                            console.log(`❌ Could not unlock control ${i}:`, e.message);
+                        }
+                    }
+                    await context.sync();
+                    
+                    // Then try to delete all controls
+                    for (let i = contentControls.items.length - 1; i >= 0; i--) {
+                        const cc = contentControls.items[i];
+                        try {
+                            console.log(`🗑️ Deleting control ${i}: ${cc.tag}`);
+                            cc.delete(false);
+                        } catch (e) {
+                            console.log(`❌ Could not delete control ${i}:`, e.message);
+                        }
+                    }
+                    await context.sync();
+                    
+                    console.log('✅ Aggressive unlock complete');
+                });
+                
+                // Reset tracking
+                documentLock = null;
+                isDocumentLocked = false;
+                
+                // Test again
+                await debugLockState();
+                await debugTestTyping();
+                
+            } catch (error) {
+                console.error('❌ Aggressive unlock failed:', error);
+            }
+        };
+
+        window.debugSimpleLock = async () => {
+            console.log('🔒 SIMPLE LOCK - creating one content control...');
+            try {
+                await Word.run(async (context) => {
+                    const body = context.document.body;
+                    const contentControl = body.insertContentControl();
+                    contentControl.tag = "redlineLock";
+                    contentControl.title = "Document locked for editing";
+                    contentControl.cannotEdit = true;
+                    contentControl.cannotDelete = true;
+                    await context.sync();
+                    
+                    console.log('✅ Simple lock created');
+                    documentLock = contentControl;
+                    isDocumentLocked = true;
+                });
+                
+                // Test the lock
+                await debugLockState();
+                await debugTestTyping();
+                
+            } catch (error) {
+                console.error('❌ Simple lock failed:', error);
+            }
+        };
+
+        window.debugSafeUnlock = async () => {
+            console.log('🔓 SAFE UNLOCK - unlocking without deleting content...');
+            try {
+                await Word.run(async (context) => {
+                    const contentControls = context.document.contentControls;
+                    contentControls.load("items");
+                    await context.sync();
+                    
+                    console.log(`🔍 Found ${contentControls.items.length} content controls`);
+                    
+                    // Load all properties first
+                    for (let i = 0; i < contentControls.items.length; i++) {
+                        const cc = contentControls.items[i];
+                        cc.load(["tag", "cannotEdit", "cannotDelete"]);
+                    }
+                    await context.sync();
+                    
+                    // Just unlock them, don't delete them
+                    let unlockedCount = 0;
+                    for (let i = 0; i < contentControls.items.length; i++) {
+                        const cc = contentControls.items[i];
+                        if (cc.tag === "redlineLock") {
+                            try {
+                                console.log(`🔓 Unlocking control ${i}: ${cc.tag}`);
+                                cc.cannotEdit = false;
+                                cc.cannotDelete = false;
+                                unlockedCount++;
+                            } catch (e) {
+                                console.log(`❌ Could not unlock control ${i}:`, e.message);
+                            }
+                        }
+                    }
+                    await context.sync();
+                    
+                    console.log(`✅ Unlocked ${unlockedCount} controls (content preserved)`);
+                });
+                
+                // Reset tracking
+                documentLock = null;
+                isDocumentLocked = false;
+                
+                // Test typing
+                await debugTestTyping();
+                
+            } catch (error) {
+                console.error('❌ Safe unlock failed:', error);
+            }
+        };
+
+        // DEBUG: Test multi-layer protection detection (re-added after hot reload)
+        window.debugProtectionLayers = async () => {
+            console.log('🧪 TESTING MULTI-LAYER PROTECTION DETECTION');
+            console.log('='.repeat(50));
+            
+            const accessInfo = await determineDocumentAccess();
+            
+            console.log('📊 COMPLETE ACCESS ANALYSIS:');
+            console.log('   Final Result:', accessInfo.canEdit ? '✅ CAN EDIT' : '❌ READ-ONLY');
+            console.log('   Reason:', accessInfo.reason);
+            console.log('');
+            console.log('🔍 LAYER BREAKDOWN:');
+            console.log('   📄 File Level:');
+            console.log('      Detected:', accessInfo.layers.fileLevel.detected ? '✅' : '❌');
+            console.log('      Read-Only:', accessInfo.layers.fileLevel.readOnly ? '🔒' : '✏️');
+            console.log('   👤 User Level:');
+            console.log('      Role:', accessInfo.layers.userLevel.role);
+            console.log('      Can Edit:', accessInfo.layers.userLevel.canEdit ? '✅' : '❌');
+            console.log('   🤝 Collaboration Level:');
+            console.log('      Available:', accessInfo.layers.collaborationLevel.available ? '✅' : '❌');
+            console.log('      Checked Out By:', accessInfo.layers.collaborationLevel.checkedOutBy || 'none');
+            
+            return accessInfo;
+        };
+
+        // DEBUG: Test visual feedback system
+        window.debugVisualFeedback = async () => {
+            console.log('🎨 TESTING VISUAL FEEDBACK SYSTEM');
+            console.log('='.repeat(50));
+            
+            const accessInfo = await determineDocumentAccess();
+            
+            console.log('🔍 Access Info:', {
+                canEdit: accessInfo.canEdit,
+                reason: accessInfo.reason,
+                layers: accessInfo.layers
+            });
+            
+            console.log('🎨 Applying visual feedback...');
+            await updateUIForAccessLevel(accessInfo);
+            
+            // Check applied CSS classes
+            const body = document.body;
+            const container = document.querySelector('.container');
+            
+            console.log('📋 Applied CSS Classes:');
+            console.log('   Body classes:', Array.from(body.classList));
+            console.log('   Container classes:', Array.from(container.classList));
+            
+            // Check button visibility
+            const visibleButtons = [];
+            const hiddenButtons = [];
+            
+            ['checkoutBtn', 'saveProgressBtn', 'checkinBtn', 'cancelBtn', 'viewOnlyBtn'].forEach(id => {
+                const btn = document.getElementById(id);
+                if (btn) {
+                    if (btn.style.display === 'none') {
+                        hiddenButtons.push(id);
+                    } else {
+                        visibleButtons.push(id);
+                    }
+                }
+            });
+            
+            console.log('🔘 Button States:');
+            console.log('   Visible:', visibleButtons);
+            console.log('   Hidden:', hiddenButtons);
+            
+            return {
+                accessInfo,
+                cssClasses: {
+                    body: Array.from(body.classList),
+                    container: Array.from(container.classList)
+                },
+                buttons: { visible: visibleButtons, hidden: hiddenButtons }
+            };
+        };
+        
         // ===== CHECKOUT BANNER SYSTEM =====
         
         function updateCheckoutBanner() {
             const banner = document.getElementById('checkoutBanner');
             const isCheckedOut = currentDocumentState.isCheckedOut || false;
             const checkedOutBy = currentDocumentState.checkedOutBy;
-            
-            if (!isCheckedOut) {
-                banner.style.display = 'none';
-                return;
-            }
+            const userRole = getCurrentUserRole();
             
             let bannerText = '';
-            if (checkedOutBy === 'word') {
-                bannerText = 'document is checked out right here right meow';
-            } else if (checkedOutBy === 'web') {
-                bannerText = "YA CAN'T SAVE HERE FORREST -- Document is checked out elsewhere";
+            let shouldShow = false;
+            
+            if (userRole === 'viewer') {
+                // Viewers ALWAYS see banner
+                if (!isCheckedOut) {
+                    bannerText = 'u no change this';
+                } else if (checkedOutBy === 'web') {
+                    bannerText = 'u no change this - also checked out by web';
+                }
+                // Note: checkedOutBy === 'word' is impossible for word viewers
+                shouldShow = true;
+            } else if (userRole === 'editor') {
+                // Editors see banner when checked out (by them or others)
+                if (isCheckedOut) {
+                    if (checkedOutBy === 'word') {
+                        bannerText = 'doc doc u ... right here right meow';
+                    } else if (checkedOutBy === 'web') {
+                        bannerText = "YA CAN'T SAVE HERE FORREST -- THE WEB GOT YA DOC!";
+                    }
+                    shouldShow = true;
+                }
+                // Hidden when document is available for editors
             }
             
-            banner.textContent = bannerText;
-            banner.style.display = 'block';
-            
-            console.log(`🚨 Checkout banner updated: ${bannerText}`);
+            if (shouldShow && bannerText) {
+                banner.textContent = bannerText;
+                banner.style.display = 'block';
+                console.log(`🚨 WORD: Banner updated: ${bannerText}`);
+            } else {
+                banner.style.display = 'none';
+                console.log(`🚨 WORD: Banner hidden`);
+            }
         }
         
         // Test function for checkout banner

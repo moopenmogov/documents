@@ -34,23 +34,41 @@ let currentDocument = {
     lastUpdated: null
 };
 
-// Document checkout state management
+// Document checkout state management - Enhanced for platform users
 let documentState = {
     isCheckedOut: false,
     checkedOutBy: null,      // 'word' or 'web'
     checkedOutAt: null,
-    checkedOutUser: null     // identifier for who checked it out
+    checkedOutUser: null,    // user object who checked it out
+    checkedOutUserId: null,  // user ID for reference
+    webUser: null,           // current web user (for context)
+    wordUser: null           // current word user (for context)
 };
 
-// Mock user system
-let mockUsers = {
-    'user1': { id: 'user1', name: 'John Smith', email: 'john@opengov.com', role: 'editor' },
-    'user2': { id: 'user2', name: 'Sarah Wilson', email: 'sarah@opengov.com', role: 'viewer' },
-    'user3': { id: 'user3', name: 'Mike Johnson', email: 'mike@opengov.com', role: 'editor' }
+// Mock user system - Platform-specific users
+let webUsers = {
+    'user1': { id: 'user1', name: 'Warren Peace', email: 'warren@opengov.com', role: 'editor' },
+    'user2': { id: 'user2', name: 'Gettysburger King', email: 'gettysburger@opengov.com', role: 'viewer' }
 };
 
-// Current active user (for demo purposes)
-let currentUser = mockUsers['user1']; // Default to John Smith
+let wordUsers = {
+    'user3': { id: 'user3', name: 'Phil A Minyon', email: 'phil@opengov.com', role: 'editor' },
+    'user4': { id: 'user4', name: 'Dee Nial', email: 'dee@opengov.com', role: 'viewer' }
+};
+
+// Combined user pool for reference
+let allUsers = { ...webUsers, ...wordUsers };
+
+// Current active users per platform
+let currentWebUser = webUsers['user1']; // Default to Warren Peace
+let currentWordUser = wordUsers['user3']; // Default to Phil A Minyon
+
+// Legacy support - points to web user for backward compatibility
+let currentUser = currentWebUser;
+
+// Initialize document state with current users
+documentState.webUser = currentWebUser;
+documentState.wordUser = currentWordUser;
 
 // Document permissions
 let documentPermissions = {};
@@ -124,11 +142,20 @@ app.post('/api/ping', (req, res) => {
     });
 });
 
-// Get current document status and checkout state
+// Get current document status and checkout state (enhanced with platform users)
 app.get('/api/status', (req, res) => {
     res.json({
         currentDocument: currentDocument,
-        checkoutState: documentState,
+        checkoutState: {
+            ...documentState,
+            // Ensure current users are always up to date in status
+            webUser: currentWebUser,
+            wordUser: currentWordUser
+        },
+        platformUsers: {
+            web: currentWebUser,
+            word: currentWordUser
+        },
         timestamp: new Date().toISOString()
     });
 });
@@ -147,22 +174,32 @@ app.post('/api/checkout', (req, res) => {
         });
     }
     
-    // Check out the document
+    // Determine which user is checking out based on platform
+    const checkoutUser = source === 'web' ? currentWebUser : currentWordUser;
+    
+    // Check out the document with enhanced user tracking
     documentState.isCheckedOut = true;
     documentState.checkedOutBy = source;
     documentState.checkedOutAt = new Date().toISOString();
-    documentState.checkedOutUser = source; // Could be expanded for user IDs later
+    documentState.checkedOutUser = checkoutUser;
+    documentState.checkedOutUserId = checkoutUser.id;
+    documentState.webUser = currentWebUser;   // Always track current platform users
+    documentState.wordUser = currentWordUser;
     
-    // Broadcast checkout event
+    // Broadcast enhanced checkout event with user context
     broadcastSSE({
         type: 'document-checked-out',
-        message: `Document checked out by ${source}`,
+        message: `Document checked out by ${checkoutUser.name} (${source})`,
         checkedOutBy: source,
+        checkedOutUser: checkoutUser,
+        checkedOutUserId: checkoutUser.id,
         checkedOutAt: documentState.checkedOutAt,
+        webUser: currentWebUser,
+        wordUser: currentWordUser,
         timestamp: new Date().toISOString()
     });
     
-    console.log(`📋 Document checked out by: ${source}`);
+    console.log(`📋 Document checked out by: ${checkoutUser.name} (${source} platform)`);
     
     res.json({
         success: true,
@@ -518,51 +555,182 @@ app.post('/api/update-document-json', (req, res) => {
 });
 
 // ========================================
-// USER MANAGEMENT ENDPOINTS (Mock System)
-// ========================================
+// USER MANAGEMENT ENDPOINTS (Platform-Specific Mock System)
+// ============================================================
 
-// Get current user
+// Legacy endpoint - returns web user for backward compatibility
 app.get('/api/user/current', (req, res) => {
     res.json({
         success: true,
-        user: currentUser
+        user: currentWebUser
     });
 });
 
-// Get all users
+// Legacy endpoint - returns all users for backward compatibility
 app.get('/api/users', (req, res) => {
     res.json({
         success: true,
-        users: Object.values(mockUsers)
+        users: Object.values(allUsers)
     });
 });
 
-// Switch current user (for demo purposes)
-app.post('/api/user/switch', (req, res) => {
+// PLATFORM-SPECIFIC USER ENDPOINTS
+// =================================
+
+// Get current web user
+app.get('/api/user/web/current', (req, res) => {
+    res.json({
+        success: true,
+        user: currentWebUser,
+        platform: 'web'
+    });
+});
+
+// Get all web users
+app.get('/api/user/web/users', (req, res) => {
+    res.json({
+        success: true,
+        users: Object.values(webUsers),
+        platform: 'web'
+    });
+});
+
+// Switch web user
+app.post('/api/user/web/switch', (req, res) => {
     const { userId } = req.body;
     
-    if (!mockUsers[userId]) {
-        return res.status(404).json({ error: 'User not found' });
+    if (!webUsers[userId]) {
+        return res.status(404).json({ error: 'Web user not found' });
     }
     
-    const previousUser = currentUser;
-    currentUser = mockUsers[userId];
+    const previousUser = currentWebUser;
+    currentWebUser = webUsers[userId];
+    currentUser = currentWebUser; // Update legacy reference
     
-    console.log(`👤 User switched: ${previousUser.name} → ${currentUser.name} (${currentUser.role})`);
+    // Update document state context
+    documentState.webUser = currentWebUser;
     
-    // Broadcast user switch event
+    console.log(`👤 WEB: User switched: ${previousUser.name} → ${currentWebUser.name} (${currentWebUser.role})`);
+    
+    // Broadcast platform-specific user switch event
     broadcastSSE({
         type: 'user-switched',
+        platform: 'web',
         previousUser,
-        currentUser,
+        currentUser: currentWebUser,
         timestamp: new Date().toISOString()
     });
     
     res.json({
         success: true,
-        user: currentUser,
-        message: `Switched to ${currentUser.name}`
+        user: currentWebUser,
+        platform: 'web',
+        message: `Web user switched to ${currentWebUser.name}`
     });
+});
+
+// Get current word user
+app.get('/api/user/word/current', (req, res) => {
+    res.json({
+        success: true,
+        user: currentWordUser,
+        platform: 'word'
+    });
+});
+
+// Get all word users
+app.get('/api/user/word/users', (req, res) => {
+    res.json({
+        success: true,
+        users: Object.values(wordUsers),
+        platform: 'word'
+    });
+});
+
+// Switch word user
+app.post('/api/user/word/switch', (req, res) => {
+    const { userId } = req.body;
+    
+    if (!wordUsers[userId]) {
+        return res.status(404).json({ error: 'Word user not found' });
+    }
+    
+    const previousUser = currentWordUser;
+    currentWordUser = wordUsers[userId];
+    
+    // Update document state context
+    documentState.wordUser = currentWordUser;
+    
+    console.log(`👤 WORD: User switched: ${previousUser.name} → ${currentWordUser.name} (${currentWordUser.role})`);
+    
+    // Broadcast platform-specific user switch event
+    broadcastSSE({
+        type: 'user-switched',
+        platform: 'word',
+        previousUser,
+        currentUser: currentWordUser,
+        timestamp: new Date().toISOString()
+    });
+    
+    res.json({
+        success: true,
+        user: currentWordUser,
+        platform: 'word',
+        message: `Word user switched to ${currentWordUser.name}`
+    });
+});
+
+// Legacy user switch - updates web user for backward compatibility
+app.post('/api/user/switch', (req, res) => {
+    const { userId } = req.body;
+    
+    if (!allUsers[userId]) {
+        return res.status(404).json({ error: 'User not found' });
+    }
+    
+    // Determine if this is a web or word user and route accordingly
+    if (webUsers[userId]) {
+        const previousUser = currentWebUser;
+        currentWebUser = webUsers[userId];
+        currentUser = currentWebUser;
+        documentState.webUser = currentWebUser;
+        
+        console.log(`👤 LEGACY->WEB: User switched: ${previousUser.name} → ${currentWebUser.name}`);
+        
+        broadcastSSE({
+            type: 'user-switched',
+            platform: 'web',
+            previousUser,
+            currentUser: currentWebUser,
+            timestamp: new Date().toISOString()
+        });
+        
+        res.json({
+            success: true,
+            user: currentWebUser,
+            message: `Switched to ${currentWebUser.name} (web)`
+        });
+    } else if (wordUsers[userId]) {
+        const previousUser = currentWordUser;
+        currentWordUser = wordUsers[userId];
+        documentState.wordUser = currentWordUser;
+        
+        console.log(`👤 LEGACY->WORD: User switched: ${previousUser.name} → ${currentWordUser.name}`);
+        
+        broadcastSSE({
+            type: 'user-switched',
+            platform: 'word',
+            previousUser,
+            currentUser: currentWordUser,
+            timestamp: new Date().toISOString()
+        });
+        
+        res.json({
+            success: true,
+            user: currentWordUser,
+            message: `Switched to ${currentWordUser.name} (word)`
+        });
+    }
 });
 
 // Get document permissions
