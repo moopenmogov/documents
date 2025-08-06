@@ -594,6 +594,7 @@
             display: flex;
             gap: 20px;
             margin-bottom: 20px;
+            padding: 0 20px;
         }
 
         .left-column {
@@ -1771,7 +1772,10 @@
         
         function updateNotificationDot() {
             const dot = document.getElementById('notificationDot');
-            dot.style.display = hasUnreadNotifications ? 'block' : 'none';
+            if (dot) {
+                dot.style.display = hasUnreadNotifications ? 'block' : 'none';
+            }
+            // Note: notificationDot was removed when we moved to the notification window
         }
         
         function markAllNotificationsAsRead() {
