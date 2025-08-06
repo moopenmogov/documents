@@ -42,6 +42,19 @@ let documentState = {
     checkedOutUser: null     // identifier for who checked it out
 };
 
+// Mock user system
+let mockUsers = {
+    'user1': { id: 'user1', name: 'John Smith', email: 'john@opengov.com', role: 'editor' },
+    'user2': { id: 'user2', name: 'Sarah Wilson', email: 'sarah@opengov.com', role: 'viewer' },
+    'user3': { id: 'user3', name: 'Mike Johnson', email: 'mike@opengov.com', role: 'editor' }
+};
+
+// Current active user (for demo purposes)
+let currentUser = mockUsers['user1']; // Default to John Smith
+
+// Document permissions
+let documentPermissions = {};
+
 // Store SSE connections
 let sseConnections = [];
 
@@ -502,6 +515,122 @@ app.post('/api/update-document-json', (req, res) => {
         console.error('❌ Update document error:', error);
         res.status(500).json({ error: error.message });
     }
+});
+
+// ========================================
+// USER MANAGEMENT ENDPOINTS (Mock System)
+// ========================================
+
+// Get current user
+app.get('/api/user/current', (req, res) => {
+    res.json({
+        success: true,
+        user: currentUser
+    });
+});
+
+// Get all users
+app.get('/api/users', (req, res) => {
+    res.json({
+        success: true,
+        users: Object.values(mockUsers)
+    });
+});
+
+// Switch current user (for demo purposes)
+app.post('/api/user/switch', (req, res) => {
+    const { userId } = req.body;
+    
+    if (!mockUsers[userId]) {
+        return res.status(404).json({ error: 'User not found' });
+    }
+    
+    const previousUser = currentUser;
+    currentUser = mockUsers[userId];
+    
+    console.log(`👤 User switched: ${previousUser.name} → ${currentUser.name} (${currentUser.role})`);
+    
+    // Broadcast user switch event
+    broadcastSSE({
+        type: 'user-switched',
+        previousUser,
+        currentUser,
+        timestamp: new Date().toISOString()
+    });
+    
+    res.json({
+        success: true,
+        user: currentUser,
+        message: `Switched to ${currentUser.name}`
+    });
+});
+
+// Get document permissions
+app.get('/api/document/:documentId/permissions', (req, res) => {
+    const { documentId } = req.params;
+    
+    // Initialize permissions if they don't exist
+    if (!documentPermissions[documentId]) {
+        documentPermissions[documentId] = {
+            users: Object.values(mockUsers), // Default: all users have access
+            obfuscatedSections: []
+        };
+    }
+    
+    res.json({
+        success: true,
+        permissions: documentPermissions[documentId]
+    });
+});
+
+// Update user permission for document
+app.post('/api/document/:documentId/permissions', (req, res) => {
+    const { documentId } = req.params;
+    const { userId, role } = req.body;
+    
+    if (!mockUsers[userId]) {
+        return res.status(404).json({ error: 'User not found' });
+    }
+    
+    if (!['editor', 'viewer'].includes(role)) {
+        return res.status(400).json({ error: 'Invalid role. Must be "editor" or "viewer"' });
+    }
+    
+    // Initialize permissions if they don't exist
+    if (!documentPermissions[documentId]) {
+        documentPermissions[documentId] = {
+            users: Object.values(mockUsers),
+            obfuscatedSections: []
+        };
+    }
+    
+    // Update user role
+    const userIndex = documentPermissions[documentId].users.findIndex(u => u.id === userId);
+    if (userIndex !== -1) {
+        documentPermissions[documentId].users[userIndex].role = role;
+    } else {
+        // Add new user permission
+        const user = { ...mockUsers[userId], role };
+        documentPermissions[documentId].users.push(user);
+    }
+    
+    console.log(`🔐 Permission updated: ${mockUsers[userId].name} → ${role} for document ${documentId}`);
+    
+    // Broadcast permission change
+    broadcastSSE({
+        type: 'permission-changed',
+        documentId,
+        userId,
+        role,
+        user: mockUsers[userId],
+        timestamp: new Date().toISOString()
+    });
+    
+    res.json({
+        success: true,
+        permissions: documentPermissions[documentId],
+        message: `${mockUsers[userId].name} role updated to ${role}`
+    });
 });
 
 app.listen(PORT, () => {

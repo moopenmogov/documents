@@ -15,18 +15,31 @@
             margin: 0;
             padding: 0;
             background: #f8f9fa;
+            box-sizing: border-box;
+        }
+        
+        body.read-only-mode {
+            border: 8px solid #dc3545;
+        }
+        
+        body.edit-mode {
+            border: 8px solid #f8f9fa;
         }
         
         .container {
             max-width: 400px;
             margin: 0 auto;
-            padding: 20px;
+            padding: 10px;
+            height: auto;
+            max-height: calc(100vh - 60px);
+            overflow-y: auto;
+            background: #f8f9fa;
         }
         
         .opengov-header {
             text-align: center;
-            margin-bottom: 30px;
-            padding: 20px;
+            margin-bottom: 15px;
+            padding: 12px;
             background: linear-gradient(135deg, #1e3a8a, #3b82f6);
             color: white;
             border-radius: 8px;
@@ -43,25 +56,112 @@
         }
         
         .main-title {
-            font-size: 16px;
+            font-size: 14px;
             font-weight: bold;
-            margin: 0 0 8px 0;
-            line-height: 1.3;
+            margin: 0 0 6px 0;
+            line-height: 1.2;
         }
         
         .sub-header {
-            font-size: 12px;
+            font-size: 11px;
             margin: 0;
             opacity: 0.9;
             font-style: italic;
             text-align: center;
         }
         
+        /* User Controls Styling */
+        .user-controls {
+            background: #fff3cd;
+            border: 1px solid #ffeaa7;
+            border-radius: 6px;
+            padding: 8px;
+            margin-bottom: 10px;
+            font-size: 12px;
+        }
+        
+        .current-user {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            margin-bottom: 8px;
+        }
+        
+        .user-label {
+            font-weight: 600;
+            color: #856404;
+        }
+        
+        .user-name {
+            font-weight: bold;
+            color: #495057;
+            font-size: 12px;
+        }
+        
+        .user-role {
+            background: #fd7e14;
+            color: white;
+            padding: 1px 6px;
+            border-radius: 8px;
+            font-size: 10px;
+            font-weight: 600;
+            text-transform: uppercase;
+        }
+        
+        .user-role.viewer {
+            background: #6c757d;
+        }
+        
+        .user-switcher {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+        
+        .user-select {
+            padding: 4px 8px;
+            border: 1px solid #ffc107;
+            border-radius: 3px;
+            background: white;
+            font-size: 11px;
+            flex-grow: 1;
+        }
+        
+        /* Add-in read-only wrapper styling */
+        #addin-controls-area {
+            position: relative;
+        }
+        
+        .addin-readonly-wrapper {
+            display: none;
+        }
+        
+        .container.read-only-mode::after {
+            content: "READ-ONLY";
+            position: absolute;
+            bottom: 10px;
+            left: 50%;
+            transform: translateX(-50%);
+            background: #dc3545;
+            color: white;
+            padding: 4px 12px;
+            border-radius: 12px;
+            font-weight: bold;
+            font-size: 10px;
+            letter-spacing: 1px;
+            box-shadow: 0 2px 6px rgba(220, 53, 69, 0.4);
+            z-index: 1000;
+        }
+        
+        body.read-only-mode .container {
+            position: relative;
+        }
+        
         .document-info {
             background: #f8f9fa;
-            padding: 15px;
+            padding: 10px;
             border-radius: 8px;
-            margin-bottom: 20px;
+            margin-bottom: 12px;
             border: 1px solid #dee2e6;
             display: flex;
             justify-content: space-between;
@@ -140,20 +240,20 @@
         
         .sync-section {
             background: white;
-            padding: 20px;
+            padding: 12px;
             border-radius: 8px;
-            margin-bottom: 20px;
+            margin-bottom: 10px;
             box-shadow: 0 2px 4px rgba(0,0,0,0.1);
         }
         
         .button {
             width: 100%;
-            padding: 12px;
-            font-size: 16px;
+            padding: 10px;
+            font-size: 14px;
             border: none;
             border-radius: 6px;
             cursor: pointer;
-            margin-bottom: 10px;
+            margin-bottom: 8px;
             transition: background-color 0.2s;
         }
         
@@ -310,22 +410,42 @@
             </div>
         </div>
         
-        <div class="document-info">
-            <p class="document-title" id="document-title">No document loaded</p>
-            <div class="document-buttons">
-                <button class="btn-notification" onclick="openNotificationModal()">
-                    🔔 Notifications
-                    <span id="notificationDot" class="notification-dot" style="display: none;"></span>
-            </button>
+        <!-- User Controls (Demo Mode) -->
+        <div class="user-controls">
+            <div class="current-user">
+                <span class="user-label">User:</span>
+                <span id="currentUserDisplay" class="user-name">Loading...</span>
+                <span id="currentUserRole" class="user-role">(editor)</span>
+            </div>
+            <div class="user-switcher">
+                <select id="userSwitcher" class="user-select" onchange="switchUser(this.value)">
+                    <option value="">Loading users...</option>
+                </select>
             </div>
         </div>
-    
-        <!-- Checkout Status Banner -->
-        <div id="checkoutBanner" class="checkout-banner">
-            Document checkout status will appear here
+        
+        <!-- Read-only wrapper for add-in controls -->
+        <div id="addin-readonly-wrapper" class="addin-readonly-wrapper" style="display: none;">
+            <div class="addin-readonly-label">READ-ONLY</div>
         </div>
         
-        <div class="sync-section">
+        <div id="addin-controls-area">
+            <div class="document-info">
+                <p class="document-title" id="document-title">No document loaded</p>
+                <div class="document-buttons">
+                    <button class="btn-notification" onclick="openNotificationModal()">
+                        🔔 Notifications
+                        <span id="notificationDot" class="notification-dot" style="display: none;"></span>
+                </button>
+                </div>
+            </div>
+        
+            <!-- Checkout Status Banner -->
+            <div id="checkoutBanner" class="checkout-banner">
+                Document checkout status will appear here
+            </div>
+            
+            <div class="sync-section">
             <!-- Checkout/Checkin buttons (shown/hidden based on state) -->
             <button id="checkoutBtn" class="button button-primary" onclick="checkoutDocument()" style="display: none;">
                 🔒 Check-out Document
@@ -351,6 +471,7 @@
                 📤 Share to Web
             </button>
         </div>
+        </div> <!-- End addin-controls-area -->
     </div>
     
     <!-- Notification Modal -->
@@ -425,6 +546,25 @@
                         fetchDocumentStatus(); // Refresh UI when new document is available
                         // Auto-load the uploaded document
                         loadDocumentContent();
+                    } else if (data.type === 'user-switched') {
+                        console.log(`📡 WORD: User switched to ${data.currentUser.name}`);
+                        // Update current user if this was triggered by another client
+                        if (data.currentUser.id !== currentUser?.id) {
+                            currentUser = data.currentUser;
+                            updateCurrentUserDisplay();
+                            populateUserSwitcher();
+                            updateButtonStates();
+                        }
+                    } else if (data.type === 'permission-changed') {
+                        console.log(`📡 WORD: Permission changed for ${data.user.name}`);
+                        // Refresh button states if this affects current user
+                        if (data.userId === currentUser?.id) {
+                            // Update current user role
+                            currentUser.role = data.role;
+                            updateCurrentUserDisplay();
+                            updateButtonStates();
+                            addNotification(`Your access level changed to ${data.role}`, 'info');
+                        }
                     }
                 };
                 
@@ -446,6 +586,143 @@
             currentDocument: null
         };
         
+        // User management state (same as web viewer)
+        let currentUser = null;
+        let allUsers = [];
+        
+        // Initialize user system on Office ready
+        async function initializeUserSystem() {
+            try {
+                // Load current user
+                const userResponse = await fetch('http://localhost:3001/api/user/current');
+                if (userResponse.ok) {
+                    const userData = await userResponse.json();
+                    currentUser = userData.user;
+                    updateCurrentUserDisplay();
+                }
+                
+                // Load all users for switcher
+                const usersResponse = await fetch('http://localhost:3001/api/users');
+                if (usersResponse.ok) {
+                    const usersData = await usersResponse.json();
+                    allUsers = usersData.users;
+                    populateUserSwitcher();
+                }
+                
+                console.log('👤 WORD: User system initialized:', currentUser);
+            } catch (error) {
+                console.error('❌ WORD: Failed to initialize user system:', error);
+            }
+        }
+        
+        // Update current user display
+        function updateCurrentUserDisplay() {
+            const nameElement = document.getElementById('currentUserDisplay');
+            const roleElement = document.getElementById('currentUserRole');
+            
+            if (currentUser && nameElement && roleElement) {
+                nameElement.textContent = currentUser.name;
+                roleElement.textContent = `(${currentUser.role})`;
+                roleElement.className = `user-role ${currentUser.role}`;
+            }
+        }
+        
+        // Populate user switcher dropdown
+        function populateUserSwitcher() {
+            const switcher = document.getElementById('userSwitcher');
+            if (!switcher || !allUsers.length) return;
+            
+            switcher.innerHTML = '';
+            
+            allUsers.forEach(user => {
+                const option = document.createElement('option');
+                option.value = user.id;
+                option.textContent = `${user.name} (${user.role})`;
+                option.selected = currentUser && user.id === currentUser.id;
+                switcher.appendChild(option);
+            });
+        }
+        
+        // Switch user (demo function)
+        async function switchUser(userId) {
+            if (!userId) return;
+            
+            try {
+                const response = await fetch('http://localhost:3001/api/user/switch', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ userId })
+                });
+                
+                if (response.ok) {
+                    const data = await response.json();
+                    currentUser = data.user;
+                    updateCurrentUserDisplay();
+                    
+                    // Update button states based on new user role
+                    updateButtonStates();
+                    
+                    // Add notification
+                    addNotification(`Switched to ${currentUser.name} (${currentUser.role})`, 'info');
+                    
+                    console.log('👤 WORD: User switched to:', currentUser);
+                } else {
+                    console.error('❌ WORD: Failed to switch user');
+                    addNotification('Failed to switch user', 'error');
+                }
+            } catch (error) {
+                console.error('❌ WORD: Error switching user:', error);
+                addNotification('Error switching user', 'error');
+            }
+        }
+        
+        // Get current user role for permission checks
+        function getCurrentUserRole() {
+            return currentUser ? currentUser.role : 'editor'; // Default to editor if no user
+        }
+        
+        // Check if current user can edit
+        function canCurrentUserEdit() {
+            return getCurrentUserRole() === 'editor';
+        }
+        
+        // ========================================
+        // TESTING FUNCTIONS (Word Add-in)
+        // ========================================
+        
+        // Test user switching
+        function testUserSystemWord() {
+            console.log('🧪 WORD: Testing user system...');
+            console.log('Current user:', currentUser);
+            console.log('All users:', allUsers);
+            console.log('Can edit:', canCurrentUserEdit());
+            
+            // Test notifications
+            addNotification('Word add-in user system test', 'info');
+            
+            return {
+                currentUser,
+                allUsers,
+                canEdit: canCurrentUserEdit(),
+                userRole: getCurrentUserRole()
+            };
+        }
+        
+        // Debug function to check user state
+        function debugUserStateWord() {
+            return {
+                currentUser,
+                allUsers,
+                canEdit: canCurrentUserEdit(),
+                role: getCurrentUserRole(),
+                buttonStates: getVisibleButtons()
+            };
+        }
+        
+        // Make test functions available globally
+        window.testUserSystemWord = testUserSystemWord;
+        window.debugUserStateWord = debugUserStateWord;
+        
         // Update document title display
         function updateDocumentTitle() {
             const titleElement = document.getElementById('document-title');
@@ -456,9 +733,54 @@
             }
         }
         
+        // Button visibility helper functions
+        function hideButtons(buttonIds) {
+            buttonIds.forEach(id => {
+                const button = document.getElementById(id);
+                if (button) {
+                    button.style.display = 'none';
+                }
+            });
+        }
+        
+        function showButtons(buttonIds) {
+            buttonIds.forEach(id => {
+                const button = document.getElementById(id);
+                if (button) {
+                    button.style.display = 'block';
+                }
+            });
+        }
+        
         // Update button visibility based on document state
         function updateButtonStates() {
-            // Use the new scenario-based button visibility logic
+            // Check user permissions first
+            const userCanEdit = canCurrentUserEdit();
+            
+            if (!userCanEdit) {
+                // User is a viewer - hide all editing controls
+                hideButtons(['checkoutBtn', 'saveProgressBtn', 'checkinBtn', 'cancelBtn']);
+                showButtons(['viewOnlyBtn']);
+                showStatus('documentStatus', `👁️ Read-only access - You are logged in as a viewer`, 'info');
+                
+                // Apply read-only styling
+                document.body.classList.remove('edit-mode');
+                document.body.classList.add('read-only-mode');
+                document.querySelector('.container').classList.add('read-only-mode');
+                
+                // Read-only styling is now handled by CSS pseudo-element
+                
+                return;
+            }
+            
+            // User is an editor - apply edit mode styling
+            document.body.classList.remove('read-only-mode');
+            document.body.classList.add('edit-mode');
+            document.querySelector('.container').classList.remove('read-only-mode');
+            
+            // Editor styling is now handled by CSS classes
+            
+            // User is an editor - use normal scenario-based logic
             const currentScenario = detectCollaborationScenario();
             updateButtonVisibilityForScenario(currentScenario);
             
@@ -889,8 +1211,9 @@
                 console.log('Connecting to SSE...');
                 connectSSE();
                 
-                // Fetch initial document status and update button states
-                setTimeout(() => {
+                // Initialize user system and fetch document status
+                setTimeout(async () => {
+                    await initializeUserSystem();
                     fetchDocumentStatus();
                 }, 1000); // Small delay to ensure SSE connection is established
             }
