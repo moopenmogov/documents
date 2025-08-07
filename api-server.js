@@ -48,12 +48,14 @@ let documentState = {
 // Mock user system - Platform-specific users
 let webUsers = {
     'user1': { id: 'user1', name: 'Warren Peace', email: 'warren@opengov.com', role: 'editor' },
-    'user2': { id: 'user2', name: 'Gettysburger King', email: 'gettysburger@opengov.com', role: 'viewer' }
+    'user2': { id: 'user2', name: 'Gettysburger King', email: 'gettysburger@opengov.com', role: 'viewer' },
+    'user5': { id: 'user5', name: 'Yuri Lee Laffed', email: 'reese@opengov.com', role: 'suggester' }
 };
 
 let wordUsers = {
     'user3': { id: 'user3', name: 'Phil A Minyon', email: 'phil@opengov.com', role: 'editor' },
-    'user4': { id: 'user4', name: 'Dee Nial', email: 'dee@opengov.com', role: 'viewer' }
+    'user4': { id: 'user4', name: 'Dee Nial', email: 'dee@opengov.com', role: 'viewer' },
+    'user6': { id: 'user6', name: 'Boregard Snoozington', email: 'chuck@opengov.com', role: 'suggester' }
 };
 
 // Combined user pool for reference
@@ -760,8 +762,8 @@ app.post('/api/document/:documentId/permissions', (req, res) => {
         return res.status(404).json({ error: 'User not found' });
     }
     
-    if (!['editor', 'viewer'].includes(role)) {
-        return res.status(400).json({ error: 'Invalid role. Must be "editor" or "viewer"' });
+    if (!['editor', 'viewer', 'feedback'].includes(role)) {
+        return res.status(400).json({ error: 'Invalid role. Must be "editor", "viewer", or "feedback"' });
     }
     
     // Initialize permissions if they don't exist

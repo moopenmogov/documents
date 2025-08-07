@@ -640,8 +640,8 @@
             <div class="document-info">
                 <p class="document-title" id="document-title">No document loaded</p>
                 <div class="document-buttons">
-                    <button class="btn-view-latest" onclick="viewReadOnly()">👀 View Latest</button>
-                    <button class="btn-open" onclick="openNewFile()">📁 Open</button>
+                    <button class="btn-view-latest" onclick="viewReadOnly()">View Latest</button>
+                    <button class="btn-open" onclick="openNewFile()">Open</button>
                 </div>
             </div>
 
@@ -653,7 +653,7 @@
             <!-- Checkout Controls -->
             <div class="checkout-controls">
                 <button id="checkoutBtn" class="btn" onclick="checkoutDocument()" style="display: none;">
-                    🔒 Check-out Document
+                    Check-out Document
                 </button>
                 
                 <button id="saveProgressBtn" class="btn btn-secondary" onclick="saveProgress()" style="display: none;">
@@ -721,6 +721,18 @@
     </div>
 
     <!-- Load SuperDoc from local node_modules -->
+    <script>
+        window.testModeToggle = function() {
+            console.log(" TESTING MODE TOGGLE...");
+            const role = getCurrentUserRole();
+            const superdoc = window.currentSuperdoc;
+            const toolbar = document.querySelector("#superdoc-toolbar");
+            console.log("Role:", role, "Expected:", getSuperdocMode(role));
+            console.log("SuperDoc Mode:", superdoc && superdoc.getMode ? superdoc.getMode() : (superdoc && superdoc.mode ? superdoc.mode : "unknown"));
+            console.log("Toolbar:", !!toolbar);
+            return { role, expectedMode: getSuperdocMode(role), currentMode: superdoc ? superdoc.getDocumentMode() : "none" };
+        };
+    </script>
     <script src="./node_modules/@harbour-enterprises/superdoc/dist/superdoc.umd.js"></script>
     <script>
         // SuperDoc variables
@@ -792,8 +804,18 @@
                                 populateUserSwitcher();
                                 updateButtonStates();
                             }
+                        } else if (data.platform === 'word') {
+                            console.log('WEB: Processing Word user switch - updating SuperDoc');
+                            // Update SuperDoc mode based on Word user role
+                            if (currentDocumentId && currentSuperdoc) {
+                                const userRole = data.currentUser.role;
+                                const documentMode = getSuperdocMode(userRole);
+                                console.log('WEB: Setting SuperDoc mode:', documentMode, 'for Word role:', userRole);
+                                updateSuperdocMode(documentMode);
+                                updateButtonStates();
+                            }
                         } else {
-                            console.log(`📡 WEB: Ignoring ${data.platform || 'legacy'} user switch event`);
+                            console.log('WEB: Ignoring unknown user switch event');
                         }
                     } else if (data.type === 'permission-changed') {
                         console.log(`📡 SSE: Permission changed for ${data.user.name}`);
@@ -913,6 +935,12 @@
                     // Update button states based on new user role
                     updateButtonStates();
                     
+                    // Reinitialize SuperDoc with new role-based mode
+                    if (currentDocumentId && currentSuperdoc) {
+                        console.log('🔄 Reinitializing SuperDoc for new role:', currentUser.role);
+                        loadSuperdoc(currentDocumentId, getCurrentUserRole());
+                    }
+                    
                     // Add notification
                     addNotification(`Web user switched to ${currentUser.name} (${currentUser.role})`, 'info');
                     
@@ -928,14 +956,32 @@
             }
         }
         
+        // Role validation
+        const VALID_ROLES = ['editor', 'viewer', 'suggester'];
+        function validateRole(role) {
+            return VALID_ROLES.includes(role);
+        }
+
         // Get current user role for permission checks
         function getCurrentUserRole() {
-            return window.currentUser ? window.currentUser.role : 'editor'; // Default to editor if no user
+            const role = window.currentUser?.role || 'viewer'; // Default to viewer
+            return validateRole(role) ? role : 'viewer'; // Ensure role is valid
+        }
+
+        // SuperDoc mode mapping - maps user roles to SuperDoc document modes
+        function getSuperdocMode(userRole) {
+            switch(userRole) {
+                case 'suggester': return 'suggesting';
+                case 'editor': return 'editing';
+                case 'viewer': return 'viewing';
+                default: return 'viewing'; // Safe default
+            }
         }
         
         // Check if current user can edit
         function canCurrentUserEdit() {
-            return getCurrentUserRole() === 'editor';
+            const role = getCurrentUserRole();
+            return role === 'editor' || role === 'suggester';
         }
 
         // Control user selector during checkout
@@ -1370,10 +1416,18 @@
             // Update status messages and SuperDoc mode
             if (!currentDocumentState.isCheckedOut) {
                 showStatus('📄 Document available for checkout', 'info');
-                updateSuperdocMode('editing'); // Allow editing when available
+                // Use role-based mode when document is available
+                const userRole = getCurrentUserRole();
+                const roleBased = getSuperdocMode(userRole);
+                console.log(' CHECKOUT: Document available, applying role-based mode:', roleBased, 'for role:', userRole);
+                updateSuperdocMode(roleBased);
             } else if (currentDocumentState.checkedOutBy === 'web') {
                 showStatus('🔒 Document checked out by you', 'success');
-                updateSuperdocMode('editing'); // Allow editing when I have it
+                // Use role-based mode when I have checkout
+                const userRole = getCurrentUserRole();
+                const roleBased = getSuperdocMode(userRole);
+                console.log(' CHECKOUT: Document checked out by me, applying role-based mode:', roleBased, 'for role:', userRole);
+                updateSuperdocMode(roleBased);
             } else {
                 showStatus(`🔒 Document checked out by ${currentDocumentState.checkedOutBy} - Document is READ-ONLY`, 'error');
                 updateSuperdocMode('viewing'); // Lock to read-only when someone else has it
@@ -1385,8 +1439,8 @@
             if (currentSuperdoc) {
                 try {
                     // Try to update the mode if SuperDoc supports it
-                    if (currentSuperdoc.setDocumentMode) {
-                        currentSuperdoc.setDocumentMode(mode);
+                    if (currentSuperdoc.setMode) {
+                        currentSuperdoc.setMode(mode);
                         console.log(`SuperDoc mode updated to: ${mode}`);
                     } else if (currentSuperdoc.setReadOnly) {
                         // Alternative API if available
@@ -1635,8 +1689,23 @@
                 // Update document title
                 document.getElementById('document-title').textContent = fileName;
 
-                // Determine document mode based on checkout state
-                const documentMode = (currentDocumentState.isCheckedOut && currentDocumentState.checkedOutBy !== 'web') ? 'viewing' : 'editing';
+                // Determine document mode based on user role (with checkout override)
+                const userRole = getCurrentUserRole();
+                let documentMode = getSuperdocMode(userRole);
+                
+                console.log('🔍 SUPERDOC INIT DEBUG:');
+                console.log('  User Role:', userRole);
+                console.log('  Mapped Mode:', documentMode);
+                console.log('  Checkout State:', currentDocumentState.isCheckedOut);
+                console.log('  Checked Out By:', currentDocumentState.checkedOutBy);
+                
+                // Override to viewing mode if document is checked out by someone else
+                if (currentDocumentState.isCheckedOut && currentDocumentState.checkedOutBy !== 'web') {
+                    console.log('  🔒 OVERRIDE: Document checked out, forcing viewing mode');
+                    documentMode = 'viewing';
+                }
+                
+                console.log('  📋 FINAL MODE:', documentMode);
                 
                 // Create SuperDoc instance
                 currentSuperdoc = new SuperDocClass({
@@ -1644,7 +1713,7 @@
                     toolbar: '#superdoc-toolbar',
                     document: `http://localhost:3001/api/document/${documentId}`,
                     documentMode: documentMode,
-                    pagination: true,
+                    role: userRole,
                     rulers: true,
                     zoom: 1.0,
                     licenseKey: 'agplv3',
@@ -1653,8 +1722,21 @@
                         showStatus('Document loaded successfully! Ready for redlining.', 'success');
                         currentDocumentId = documentId;
                         
-                        // Ensure the correct mode is applied after SuperDoc is ready
-                        const currentMode = (currentDocumentState.isCheckedOut && currentDocumentState.checkedOutBy !== 'web') ? 'viewing' : 'editing';
+                        // Ensure the correct role-based mode is applied after SuperDoc is ready
+                        const userRole = getCurrentUserRole();
+                        let currentMode = getSuperdocMode(userRole);
+                        
+                        // Override to viewing if checked out by someone else
+                        if (currentDocumentState.isCheckedOut && currentDocumentState.checkedOutBy !== 'web') {
+                            currentMode = 'viewing';
+                        }
+                        
+                        console.log('🔄 ONREADY: Applying final mode:', currentMode, 'for role:', userRole);
+                        // Force suggester role to suggesting mode
+                        if (userRole === 'suggester' && currentMode === 'suggesting') {
+                            console.log(' FORCING SUGGESTER MODE: Explicitly setting to suggesting');
+                            setTimeout(() => { updateSuperdocMode('suggesting'); }, 100);
+                        }
                         updateSuperdocMode(currentMode);
                     },
                     onEditorCreate: (event) => {
@@ -2109,3 +2191,10 @@
     </script>
 </body>
 </html>
+
+
+
+
+
+
+

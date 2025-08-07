@@ -895,7 +895,7 @@
 
         // Check if current user can edit
         function canCurrentUserEdit() {
-            return getCurrentUserRole() === 'editor';
+            return getCurrentUserRole() === 'editor' || getCurrentUserRole() === 'suggester';
         }
 
         // Control user selector during checkout
@@ -1241,7 +1241,7 @@
                 console.log(`🎨 Applied read-only mode: ${accessInfo.reason}`);
                 
                 // Skip automatic locking to prevent crashes
-                console.log('🔒 Would lock document (manual testing mode)');
+                console.log('DISABLED: Would lock document - SuperDoc handles protection');
                 
             } else {
                 // Apply edit mode styling
@@ -1254,7 +1254,7 @@
                 console.log('🎨 Applied edit mode: full access granted');
                 
                 // Skip automatic unlocking to prevent crashes
-                console.log('🔓 Would unlock document (manual testing mode)');
+                console.log('DISABLED: Would unlock document - SuperDoc handles protection');
             }
         }
 
@@ -2467,3 +2467,4 @@
     </script>
 </body>
 </html>
+
