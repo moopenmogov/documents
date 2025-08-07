@@ -12,6 +12,49 @@ A powerful local application that enables seamless collaboration between Microso
 
 ---
 
+## **🔧 Daily Usage Commands**
+
+### **🚀 Initial Setup**
+```bash
+# First time only - install dependencies
+npm install
+
+# Start all services
+start.bat          # Windows (recommended)
+# OR manually: npm run start-api && npm run start-web && npm run start-addin
+```
+
+### **🔄 Restart Everything**
+```bash
+# Stop all services and restart fresh
+end.bat && start.bat     # Windows
+```
+
+### **🛑 Close All Services**
+```bash
+# Stop all running servers and processes
+end.bat           # Windows
+```
+
+### **📥 Update Software (when main branch changes)**
+```bash
+# Stop services first
+end.bat
+
+# Pull latest changes
+git pull origin main
+
+# Install any new dependencies
+npm install
+
+# Restart services
+start.bat
+```
+
+**💡 Pro Tip:** Always run `end.bat` before `git pull` to avoid port conflicts!
+
+---
+
 ## **✨ Features**
 
 - **🔄 Bidirectional Sync** - Changes in Word sync to web, and vice versa
