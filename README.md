@@ -27,7 +27,7 @@ start.bat          # Windows (recommended)
 ### **🔄 Restart Everything**
 ```bash
 # Stop all services and restart fresh
-end.bat && start.bat     # Windows
+start.bat     # Windows (automatically stops existing services first)
 ```
 
 ### **🛑 Close All Services**
