@@ -1712,12 +1712,12 @@
             const buttonConfigs = {
                 'BothOnly': {
                     // No checkout: Both platforms can view/edit
-                    visible: ['checkoutBtn', 'viewOnlyBtn', 'shareToWebBtn'],
+                    visible: ['checkoutBtn', 'sendVendorBtn', 'viewOnlyBtn', 'shareToWebBtn'],
                     hidden: ['saveProgressBtn', 'checkinBtn', 'cancelBtn']
                 },
                 'AddInCheckOut': {
                     // Word has checkout: Word add-in can edit
-                    visible: ['saveProgressBtn', 'checkinBtn', 'cancelBtn', 'shareToWebBtn'],
+                    visible: ['sendVendorBtn', 'saveProgressBtn', 'checkinBtn', 'cancelBtn', 'shareToWebBtn'],
                     hidden: ['checkoutBtn', 'viewOnlyBtn']
                 },
                 'WebViewCheckOut': {
@@ -1740,10 +1740,17 @@
                 if (button) button.style.display = 'none';
             });
             
-            // Show required buttons
+            // Show required buttons (with role-based filtering)
             config.visible.forEach(buttonId => {
                 const button = document.getElementById(buttonId);
-                if (button) button.style.display = 'inline-block';
+                if (button) {
+                    // Hide sendVendorBtn for non-editors
+                    if (buttonId === 'sendVendorBtn' && getCurrentUserRole() !== 'editor') {
+                        button.style.display = 'none';
+                    } else {
+                        button.style.display = 'inline-block';
+                    }
+                }
             });
             
             console.log(`🎨 Updated button visibility for scenario: ${scenario}`, config);
@@ -2570,6 +2577,7 @@
     </script>
 </body>
 </html>
+
 
 
 
