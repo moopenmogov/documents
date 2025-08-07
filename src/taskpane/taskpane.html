@@ -2415,6 +2415,17 @@
                     shouldShow = true;
                 }
                 // Hidden when document is available for editors
+            } else if (userRole === 'suggester') {
+                // Suggesters see banner when checked out (same as editors)
+                if (isCheckedOut) {
+                    if (checkedOutBy === 'word') {
+                        bannerText = 'doc doc u ... right here right meow';
+                    } else if (checkedOutBy === 'web') {
+                        bannerText = "YA CAN'T SAVE HERE FORREST -- THE WEB GOT YA DOC!";
+                    }
+                    shouldShow = true;
+                }
+                // Hidden when document is available for suggesters
             }
             
             if (shouldShow && bannerText) {
