@@ -361,7 +361,7 @@
                 transform: translateY(0);
                 opacity: 1;
             }
-        }        
+        }
         /* Vendor Button Styles */
         .btn-vendor {
             background: #107c10 !important; /* Green for vendor actions */
@@ -382,7 +382,7 @@
             background: #cc3333 !important;
             border-color: #cc3333 !important;
         }
-
+        
         /* Notification Modal Styles */
         .notification-modal {
             position: fixed;
@@ -1027,7 +1027,7 @@
         function validateRole(role) {
             return VALID_ROLES.includes(role);
         }
-
+        
         // Get current user role for permission checks
         function getCurrentUserRole() {
             const role = window.currentUser?.role || 'viewer'; // Default to viewer
@@ -1910,7 +1910,7 @@
                 addNotification('Error sending document to vendor', 'error');
             }
         }
-
+        
         // ===== NOTIFICATION SYSTEM =====
         
         function addNotification(message, type = 'info') {
@@ -2355,28 +2355,6 @@
 
 
 
-                // Override vendor checkout function
-        async function overrideVendorCheckout() {
-            console.log("🔓 Overriding vendor checkout...");
-            try {
-                const response = await fetch("http://localhost:3001/api/vendor/override", {
-                    method: "POST",
-                    headers: { "Content-Type": "application/json" },
-                    body: JSON.stringify({ source: "web" })
-                });
-                const result = await response.json();
-                if (result.success) {
-                    addNotification("Document reclaimed from vendor", "success");
-                    await fetchDocumentStatus();
-                    updateButtonStates();
-                } else {
-                    addNotification("Failed to override vendor checkout", "error");
-                }
-            } catch (error) {
-                console.error("Error overriding vendor checkout:", error);
-                addNotification("Error overriding vendor checkout", "error");
-            }
-        }
 
 
     </script>
