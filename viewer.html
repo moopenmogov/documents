@@ -361,8 +361,18 @@
                 transform: translateY(0);
                 opacity: 1;
             }
+        }        
+        /* Vendor Button Styles */
+        .btn-vendor {
+            background: #107c10 !important; /* Green for vendor actions */
+            border-color: #107c10 !important;
         }
         
+        .btn-vendor:hover {
+            background: #0e6b0e !important;
+            border-color: #0e6b0e !important;
+        }
+
         /* Notification Modal Styles */
         .notification-modal {
             position: fixed;
@@ -370,7 +380,7 @@
             left: 0;
             width: 100%;
             height: 100%;
-            z-index: 1000;
+            z-index: 10000;
             display: flex;
             justify-content: center;
             align-items: center;
@@ -655,7 +665,7 @@
                 <button id="checkoutBtn" class="btn" onclick="checkoutDocument()" style="display: none;">
                     Check-out Document
                 </button>                
-                <button id="sendVendorBtn" class="btn" onclick="openVendorModal()" style="display: none;">
+                <button id="sendVendorBtn" class="btn btn-vendor" onclick="openVendorModal()" style="display: none;">
                     📤 Send to Vendor
                 </button>
                 
@@ -1858,7 +1868,7 @@
             console.log(`📤 Sending document to vendor: ${vendor} (${name} - ${email})`);
             
             try {
-                const response = await fetch('/api/vendor/send', {
+                const response = await fetch('http://localhost:3001/api/vendor/send', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({
@@ -2301,6 +2311,8 @@
     </script>
 </body>
 </html>
+
+
 
 
 
