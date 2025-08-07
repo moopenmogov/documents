@@ -49,13 +49,15 @@ let documentState = {
 let webUsers = {
     'user1': { id: 'user1', name: 'Warren Peace', email: 'warren@opengov.com', role: 'editor' },
     'user2': { id: 'user2', name: 'Gettysburger King', email: 'gettysburger@opengov.com', role: 'viewer' },
-    'user5': { id: 'user5', name: 'Yuri Lee Laffed', email: 'reese@opengov.com', role: 'suggester' }
+    'user5': { id: 'user5', name: 'Yuri Lee Laffed', email: 'reese@opengov.com', role: 'suggester' },
+    'vendor1': { id: 'vendor1', name: 'Mo--T', email: 'moti@real.builders', role: 'suggester', vendor: 'Moti\'s Builders' }
 };
 
 let wordUsers = {
     'user3': { id: 'user3', name: 'Phil A Minyon', email: 'phil@opengov.com', role: 'editor' },
     'user4': { id: 'user4', name: 'Dee Nial', email: 'dee@opengov.com', role: 'viewer' },
-    'user6': { id: 'user6', name: 'Boregard Snoozington', email: 'chuck@opengov.com', role: 'suggester' }
+    'user6': { id: 'user6', name: 'Boregard Snoozington', email: 'chuck@opengov.com', role: 'suggester' },
+    'vendor2': { id: 'vendor2', name: 'Hari Seldon', email: 'hari@sel.don', role: 'suggester', vendor: 'Motis Builders' }
 };
 
 // Combined user pool for reference
@@ -395,6 +397,57 @@ app.post('/api/cancel-checkout', (req, res) => {
         message: 'Checkout cancelled successfully',
         checkoutState: documentState
     });
+});
+
+// Send document to vendor
+app.post('/api/vendor/send', (req, res) => {
+    const { vendor, name, email, source } = req.body;
+    
+    if (documentState.isCheckedOut) {
+        return res.status(409).json({
+            success: false,
+            error: 'Document is already checked out'
+        });
+    }
+    
+    documentState.isCheckedOut = true;
+    documentState.checkedOutBy = 'vendor';
+    documentState.checkedOutAt = new Date().toISOString();
+    documentState.vendorInfo = { vendor, name, email, sentBy: source };
+    
+    console.log(`📤 Document sent to vendor: ${vendor}`);
+    
+    broadcastSSE({
+        type: 'document-sent-to-vendor',
+        message: `Document sent to ${vendor}`,
+        vendorInfo: documentState.vendorInfo,
+        timestamp: new Date().toISOString()
+    });
+    
+    res.json({ success: true, vendorInfo: documentState.vendorInfo });
+});
+
+// Override vendor checkout
+app.post('/api/vendor/override', (req, res) => {
+    const { source } = req.body;
+    
+    if (!documentState.isCheckedOut || documentState.checkedOutBy !== 'vendor') {
+        return res.status(400).json({ success: false, error: 'Not checked out by vendor' });
+    }
+    
+    documentState.isCheckedOut = false;
+    documentState.checkedOutBy = null;
+    documentState.vendorInfo = null;
+    
+    console.log(`🔓 Editor override by ${source}`);
+    
+    broadcastSSE({
+        type: 'vendor-checkout-overridden',
+        message: 'Editor reclaimed document from vendor',
+        timestamp: new Date().toISOString()
+    });
+    
+    res.json({ success: true });
 });
 
 // Upload DOCX from Word add-in
@@ -806,3 +859,5 @@ app.post('/api/document/:documentId/permissions', (req, res) => {
 app.listen(PORT, () => {
     console.log(`🔧 API Server running on http://localhost:${PORT}`);
 });
+
+
