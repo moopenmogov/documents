@@ -623,6 +623,8 @@ app.get('/api/user/current', (req, res) => {
 
 // Legacy endpoint - returns all users for backward compatibility
 app.get('/api/users', (req, res) => {
+    // Regenerate allUsers to include any updates
+    const allUsers = { ...webUsers, ...wordUsers };
     res.json({
         success: true,
         users: Object.values(allUsers)
