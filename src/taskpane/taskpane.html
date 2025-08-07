@@ -364,7 +364,7 @@
             left: 0;
             width: 100%;
             height: 100%;
-            z-index: 1000;
+            z-index: 10000; /* Ensure modal appears above all buttons */
             display: flex;
             justify-content: center;
             align-items: center;
@@ -1321,12 +1321,12 @@
                 enableUserSelection();
             }
             
-            // Continue with existing scenario-based logic for editors
+            // Apply scenario-based button visibility (independent of edit permissions)
+            const currentScenario = detectCollaborationScenario();
+            updateButtonVisibilityForScenario(currentScenario);
+            
+            // Continue with existing logic for editors
             if (accessInfo.canEdit) {
-                // User is an editor - use normal scenario-based logic
-                const currentScenario = detectCollaborationScenario();
-                updateButtonVisibilityForScenario(currentScenario);
-                
                 // Update status messages for editors
                 if (!currentDocumentState.isCheckedOut) {
                     showStatus('documentStatus', '📄 Document available for checkout', 'info');
