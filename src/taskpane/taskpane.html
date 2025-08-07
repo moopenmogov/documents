@@ -938,7 +938,7 @@
 
         // Check if current user can edit
         function canCurrentUserEdit() {
-            return getCurrentUserRole() === 'editor' || getCurrentUserRole() === 'suggester';
+            return getCurrentUserRole() === 'editor' || getCurrentUserRole() === 'suggester' || getCurrentUserRole() === 'vendor';
         }
 
         // Control user selector during checkout
@@ -2570,6 +2570,7 @@
     </script>
 </body>
 </html>
+
 
 
 

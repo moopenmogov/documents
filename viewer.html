@@ -1010,7 +1010,7 @@
         }
         
         // Role validation
-        const VALID_ROLES = ['editor', 'viewer', 'suggester'];
+        const VALID_ROLES = ['editor', 'viewer', 'suggester', 'vendor'];
         function validateRole(role) {
             return VALID_ROLES.includes(role);
         }
@@ -1025,6 +1025,7 @@
         function getSuperdocMode(userRole) {
             switch(userRole) {
                 case 'suggester': return 'suggesting';
+                case 'vendor': return 'suggesting'; // Vendors edit in suggesting mode
                 case 'editor': return 'editing';
                 case 'viewer': return 'viewing';
                 default: return 'viewing'; // Safe default
@@ -1034,7 +1035,7 @@
         // Check if current user can edit
         function canCurrentUserEdit() {
             const role = getCurrentUserRole();
-            return role === 'editor' || role === 'suggester';
+            return role === 'editor' || role === 'suggester' || role === 'vendor';
         }
 
         // Control user selector during checkout
@@ -2250,7 +2251,7 @@
                 const button = document.getElementById(buttonId);
                 if (button) {
                     // Hide sendVendorBtn for non-editors
-                    if (buttonId === 'sendVendorBtn' && !canCurrentUserEdit()) {
+                    if (buttonId === 'sendVendorBtn' && getCurrentUserRole() !== 'editor') {
                         button.style.display = 'none';
                     } else {
                         button.style.display = 'inline-block';
@@ -2311,6 +2312,7 @@
     </script>
 </body>
 </html>
+
 
 
 

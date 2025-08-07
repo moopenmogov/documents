@@ -50,14 +50,14 @@ let webUsers = {
     'user1': { id: 'user1', name: 'Warren Peace', email: 'warren@opengov.com', role: 'editor' },
     'user2': { id: 'user2', name: 'Gettysburger King', email: 'gettysburger@opengov.com', role: 'viewer' },
     'user5': { id: 'user5', name: 'Yuri Lee Laffed', email: 'reese@opengov.com', role: 'suggester' },
-    'vendor1': { id: 'vendor1', name: 'Mo--T', email: 'moti@real.builders', role: 'suggester', vendor: 'Moti\'s Builders' }
+    'vendor1': { id: 'vendor1', name: 'Mo--T', email: 'moti@real.builders', role: 'vendor', vendor: 'Moti\'s Builders' }
 };
 
 let wordUsers = {
     'user3': { id: 'user3', name: 'Phil A Minyon', email: 'phil@opengov.com', role: 'editor' },
     'user4': { id: 'user4', name: 'Dee Nial', email: 'dee@opengov.com', role: 'viewer' },
     'user6': { id: 'user6', name: 'Boregard Snoozington', email: 'chuck@opengov.com', role: 'suggester' },
-    'vendor2': { id: 'vendor2', name: 'Hari Seldon', email: 'hari@sel.don', role: 'suggester', vendor: 'Motis Builders' }
+    'vendor2': { id: 'vendor2', name: 'Hari Seldon', email: 'hari@sel.don', role: 'vendor', vendor: 'Motis Builders' }
 };
 
 // Combined user pool for reference
@@ -859,5 +859,6 @@ app.post('/api/document/:documentId/permissions', (req, res) => {
 app.listen(PORT, () => {
     console.log(`🔧 API Server running on http://localhost:${PORT}`);
 });
+
 
 
