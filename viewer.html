@@ -1470,8 +1470,7 @@
             updateWebUIForAccessLevel(accessInfo);
             
             // Apply scenario-based button logic for all users (not just when canEdit)
-            const currentScenario = detectCollaborationScenario();
-            updateButtonVisibilityForScenario(currentScenario);
+            updateButtonVisibilityFromMatrix();
             
             // Update checkout banner
             updateCheckoutBanner();
@@ -2121,7 +2120,7 @@
             console.log('  isCheckedOut:', currentDocumentState.isCheckedOut);
             console.log('  checkedOutBy:', currentDocumentState.checkedOutBy);
             console.log('  User role:', getCurrentUserRole());
-            console.log('  Scenario:', detectCollaborationScenario());
+            console.log('  Scenario:', null /* TODO: replace with state matrix */);
             
             // Check button visibility
             ['checkoutBtn', 'overrideVendorBtn', 'sendVendorBtn'].forEach(id => {
@@ -2135,7 +2134,7 @@
         function debugWebViewerButtons() {
             console.log('🔍 WEB VIEWER BUTTON DEBUG:');
             console.log('├── Current document state:', currentDocumentState);
-            console.log('├── Detected scenario:', detectCollaborationScenario());
+            console.log('├── Detected scenario:', null /* TODO: replace with state matrix */);
             console.log('├── Button elements exist:');
             
             ['checkoutBtn', 'sendVendorBtn', 'overrideVendorBtn', 'saveProgressBtn', 'checkinBtn', 'cancelBtn', 'viewOnlyBtn'].forEach(buttonId => {
@@ -2146,12 +2145,12 @@
                 }
             });
             
-            const scenario = detectCollaborationScenario();
+            const scenario = null /* TODO: replace with state matrix */;
             const config = getButtonConfigForScenario(scenario);
             console.log('├── Expected config for scenario:', config);
             console.log('└── Force updating buttons now...');
             
-            updateButtonVisibilityForScenario(scenario);
+            updateButtonVisibilityFromMatrix() /* TODO: replace with state matrix */;
         }
         
         // Make debug function globally available
@@ -2217,7 +2216,7 @@
         // ===== MILESTONE 1: STATE DETECTION LOGIC =====
         
         // Detect current collaboration scenario (simplified 3-scenario model)
-        function detectCollaborationScenario() {
+        function null /* TODO: replace with state matrix */ {
             // If scenario is forced for testing, return that
             if (window.forcedScenario) {
                 return window.forcedScenario;
@@ -2249,14 +2248,14 @@
             console.log('├── Current document:', currentDocumentState.currentDocument?.filename || 'None');
             console.log('├── SuperDoc instance:', !!currentSuperdoc);
             console.log('├── Current document ID:', currentDocumentId || 'None');
-            console.log('└── Detected scenario:', detectCollaborationScenario());
+            console.log('└── Detected scenario:', null /* TODO: replace with state matrix */);
             
             return {
                 hasServerDoc,
                 hasLocalDoc,
                 isCheckedOut: currentDocumentState.isCheckedOut,
                 checkedOutBy: currentDocumentState.checkedOutBy,
-                scenario: detectCollaborationScenario(),
+                scenario: null /* TODO: replace with state matrix */,
                 superdocActive: !!currentSuperdoc,
                 documentId: currentDocumentId
             };
@@ -2275,72 +2274,26 @@
         
 
         
-        // ===== MILESTONE 2: BUTTON VISIBILITY LOGIC =====
+        // ===== STATE MATRIX BUTTON LOGIC (PLACEHOLDER) =====
         
-        // Get button configuration for each scenario
-        function getButtonConfigForScenario(scenario) {
-            const buttonConfigs = {
-                'BothOnly': {
-                    // No checkout: Both platforms can view/edit
-                    visible: ['checkoutBtn', 'sendVendorBtn', 'overrideVendorBtn', 'viewOnlyBtn'],
-                    hidden: ['saveProgressBtn', 'checkinBtn', 'cancelBtn']
-                },
-                'AddInCheckOut': {
-                    // Word has checkout: Web viewer is read-only
-                    visible: ['viewOnlyBtn'],
-                    hidden: ['checkoutBtn', 'sendVendorBtn', 'overrideVendorBtn', 'saveProgressBtn', 'checkinBtn', 'cancelBtn']
-                },
-                'WebViewCheckOut': {
-                    // Web has checkout: Web viewer can edit
-                    visible: ['saveProgressBtn', 'checkinBtn', 'cancelBtn'],
-                    hidden: ['checkoutBtn', 'viewOnlyBtn']
-                }
-            };
-            
-            return buttonConfigs[scenario] || buttonConfigs['BothOnly'];
-        }
-        
-        // Update button visibility based on scenario
-        function updateButtonVisibilityForScenario(scenario) {
-            const config = getButtonConfigForScenario(scenario);
-            
-            // Hide all managed buttons first
+        // TODO: Implement state matrix lookup function
+        function updateButtonVisibilityFromMatrix() {
+            console.log('🚧 State matrix implementation pending...');
+            // Temporarily hide all scenario buttons to avoid confusion
             ['checkoutBtn', 'sendVendorBtn', 'overrideVendorBtn', 'saveProgressBtn', 'checkinBtn', 'cancelBtn', 'viewOnlyBtn'].forEach(buttonId => {
                 const button = document.getElementById(buttonId);
                 if (button) button.style.display = 'none';
             });
-            
-            // Show required buttons (with role-based filtering)
-            config.visible.forEach(buttonId => {
-                const button = document.getElementById(buttonId);
-                if (button) {
-                    // Hide sendVendorBtn for non-editors
-                    if (buttonId === 'sendVendorBtn' && getCurrentUserRole() !== 'editor') {
-                        button.style.display = 'none';
-                    // Show overrideVendorBtn for editors when ANYONE has checkout
-                    } else if (buttonId === 'overrideVendorBtn') {
-                        if (getCurrentUserRole() === 'editor' && currentDocumentState.isCheckedOut) {
-                            button.style.display = 'inline-block';
-                        } else {
-                            button.style.display = 'none';
-                        }
-                    } else {
-                        button.style.display = 'inline-block';
-                    }
-                }
-            });
-            
-            console.log(`🎨 Updated button visibility for scenario: ${scenario}`, config);
         }
         
-        // ===== END MILESTONE 2 BUTTON VISIBILITY =====
+        // ===== END STATE MATRIX BUTTON LOGIC =====
         
         // Make debugging functions globally available
         // Force a specific scenario for testing (overrides detection logic)
         function debugForceScenario(scenarioName) {
             window.forcedScenario = scenarioName;
             console.log(`🎭 Forced scenario to: ${scenarioName}`);
-            updateButtonVisibilityForScenario(scenarioName);
+            updateButtonVisibilityFromMatrix() /* TODO: replace with state matrix */;
         }
 
         window.debugCurrentState = debugCurrentState;
