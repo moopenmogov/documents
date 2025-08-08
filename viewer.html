@@ -1291,26 +1291,7 @@
             return role === 'editor' || role === 'suggester' || role === 'vendor';
         }
 
-        // Control user selector during checkout
-        function disableUserSelection() {
-            const switcher = document.getElementById('userSwitcher');
-            if (switcher) {
-                switcher.disabled = true;
-                switcher.style.opacity = '0.5';
-                switcher.style.cursor = 'not-allowed';
-                console.log('🔒 WEB: User selection disabled during checkout');
-            }
-        }
-
-        function enableUserSelection() {
-            const switcher = document.getElementById('userSwitcher');
-            if (switcher) {
-                switcher.disabled = false;
-                switcher.style.opacity = '1';
-                switcher.style.cursor = 'pointer';
-                console.log('🔓 WEB: User selection enabled after checkin');
-            }
-        }
+        // User selection is always enabled - no locking mechanism
         
         // ========================================
         // TESTING FUNCTIONS
@@ -1710,11 +1691,7 @@
             // Banner is now controlled by state matrix
             
             // Control user selection based on checkout state
-            if (currentDocumentState.isCheckedOut && currentDocumentState.checkedOutBy === 'web') {
-                disableUserSelection();
-            } else {
-                enableUserSelection();
-            }
+            if (currentDocumentState.isCheckedOut && currentDocumentState.checkedOutBy === 'web') {} else {}
             
             // Update status messages and SuperDoc mode
             if (!currentDocumentState.isCheckedOut) {
@@ -1820,10 +1797,7 @@
                 if (response.ok) {
                     showStatus('✅ Document checked out successfully', 'success');
                     
-                    // Disable user selection during checkout
-                    disableUserSelection();
-                    
-                    await fetchDocumentStatus(); // Refresh UI
+                    // Disable user selection during checkoutawait fetchDocumentStatus(); // Refresh UI
                     
                     // Try to load the current document
                     if (currentDocumentState.currentDocument && currentDocumentState.currentDocument.id) {
@@ -1930,10 +1904,7 @@
                 if (response.ok) {
                     showStatus('✅ Document checked in successfully', 'success');
                     
-                    // Re-enable user selection after successful checkin
-                    enableUserSelection();
-                    
-                    await fetchDocumentStatus(); // Refresh UI
+                    // Re-enable user selection after successful checkinawait fetchDocumentStatus(); // Refresh UI
                 } else {
                     const error = await response.json();
                     showStatus(`❌ ${error.error}`, 'error');
@@ -1956,10 +1927,7 @@
                 if (response.ok) {
                     showStatus('✅ Checkout cancelled', 'success');
                     
-                    // Re-enable user selection after cancelling checkout
-                    enableUserSelection();
-                    
-                    await fetchDocumentStatus(); // Refresh UI
+                    // Re-enable user selection after cancelling checkoutawait fetchDocumentStatus(); // Refresh UI
                 } else {
                     const error = await response.json();
                     showStatus(`❌ ${error.error}`, 'error');
