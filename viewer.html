@@ -1534,6 +1534,25 @@
                     console.error('Error updating SuperDoc mode:', error);
                 }
             }
+
+            // Enforce suggestor/vendor lock: when suggesting, block direct edits at the DOM level
+            const editorRoot = document.getElementById('superdoc');
+            if (editorRoot) {
+                if (mode === 'suggesting') {
+                    editorRoot.classList.add('suggesting-guard');
+                    editorRoot.addEventListener('beforeinput', suggestingGuardHandler, { passive: false });
+                } else {
+                    editorRoot.classList.remove('suggesting-guard');
+                    editorRoot.removeEventListener('beforeinput', suggestingGuardHandler, { passive: false });
+                }
+            }
+        }
+
+        function suggestingGuardHandler(event) {
+            const blockedTypes = ['insertText', 'insertFromPaste', 'deleteByCut', 'deleteContentBackward', 'deleteContentForward'];
+            if (blockedTypes.includes(event.inputType)) {
+                event.preventDefault();
+            }
         }
         
         // Fetch current document status
@@ -1544,6 +1563,8 @@
                     const data = await response.json();
                     currentDocumentState.isCheckedOut = data.checkoutState.isCheckedOut;
                     currentDocumentState.checkedOutBy = data.checkoutState.checkedOutBy;
+                    currentDocumentState.checkedOutUser = data.checkoutState.checkedOutUser || null;
+                    currentDocumentState.checkedOutUserId = data.checkoutState.checkedOutUserId || null;
                     currentDocumentState.currentDocument = data.currentDocument;
                     // State will be updated by SSE event handler automatically
                 }
