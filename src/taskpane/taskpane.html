@@ -1927,7 +1927,7 @@
                     closeVendorModal();
                     // Show confirmation modal
                     openVendorConfirmationModal();
-                    updateButtonStates();
+                    // No need to update button states - document stays unlocked, vendor is just invited
                 } else {
                     addNotification(`Failed to send to vendor: ${result.error}`, 'error');
                 }
