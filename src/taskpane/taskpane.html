@@ -595,9 +595,9 @@
             background: rgba(23, 162, 184, 0.5);
         }
         
-        /* Checked out state - nice red color */
+        /* Checked out state - nice red color - high specificity to override duplicates */
         .checkout-status.checked-out {
-            background: #dc3545;
+            background: #dc3545 !important;
         }
     </style>
 </head>

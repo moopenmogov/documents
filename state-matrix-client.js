@@ -35,9 +35,13 @@ function applyStateMatrixToUI(config) {
             
             // Add checked-out class for red styling when document is checked out
             if (config.checkoutStatus.text.includes('Checked out by')) {
+                console.log('🔴 Adding checked-out class - text contains "Checked out by":', config.checkoutStatus.text);
                 checkoutStatus.classList.add('checked-out');
+                console.log('🎨 Classes after adding:', checkoutStatus.classList.toString());
             } else {
+                console.log('🔵 Removing checked-out class - text does not contain "Checked out by":', config.checkoutStatus.text);
                 checkoutStatus.classList.remove('checked-out');
+                console.log('🎨 Classes after removing:', checkoutStatus.classList.toString());
             }
         } else {
             checkoutStatus.style.display = 'none';

@@ -880,9 +880,9 @@
             flex-shrink: 0 !important;
         }
         
-        /* Checked out state - nice red color */
+        /* Checked out state - nice red color - high specificity to override duplicates */
         .checkout-status.checked-out {
-            background: #dc3545;
+            background: #dc3545 !important;
         }
     </style>
 </head>
@@ -3071,6 +3071,33 @@
                     };
                     
                     testSequence();
+                };
+                
+                // Debug function to test checkout banner colors
+                window.debugCheckoutColors = function() {
+                    console.log('🎨 Checkout Banner Color Debug:');
+                    const banner = document.getElementById('checkoutStatus');
+                    if (!banner) {
+                        console.log('❌ Checkout banner not found');
+                        return;
+                    }
+                    
+                    console.log('📋 Banner element:', banner);
+                    console.log('📝 Current text:', banner.textContent);
+                    console.log('🎨 Current classes:', banner.classList.toString());
+                    console.log('🖌️ Computed background color:', getComputedStyle(banner).backgroundColor);
+                    
+                    // Test adding/removing the checked-out class
+                    console.log('🧪 Testing class manipulation:');
+                    banner.classList.add('checked-out');
+                    console.log('✅ Added "checked-out" class');
+                    console.log('🖌️ New background color:', getComputedStyle(banner).backgroundColor);
+                    
+                    setTimeout(() => {
+                        banner.classList.remove('checked-out');
+                        console.log('❌ Removed "checked-out" class');
+                        console.log('🖌️ Background color after removal:', getComputedStyle(banner).backgroundColor);
+                    }, 2000);
                 };
             }, 1000); // Small delay to ensure SSE connection is established
         });
