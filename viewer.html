@@ -2215,25 +2215,7 @@
 
         // ===== MILESTONE 1: STATE DETECTION LOGIC =====
         
-        // Detect current collaboration scenario (simplified 3-scenario model)
-        function null /* TODO: replace with state matrix */ {
-            // If scenario is forced for testing, return that
-            if (window.forcedScenario) {
-                return window.forcedScenario;
-            }
-            
-            const isCheckedOut = currentDocumentState.isCheckedOut || false;
-            const checkedOutBy = currentDocumentState.checkedOutBy;
-            
-            // Simplified logic: Assume same document, focus on checkout state
-            if (isCheckedOut && checkedOutBy === 'word') {
-                return 'AddInCheckOut';
-            } else if (isCheckedOut && checkedOutBy === 'web') {
-                return 'WebViewCheckOut'; 
-            } else {
-                return 'BothOnly';
-            }
-        }
+        // Old scenario detection removed; state matrix now drives UI.
         
         // Debug helper: Show current collaboration state
         function debugCurrentState() {
