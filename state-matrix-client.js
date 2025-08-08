@@ -26,10 +26,34 @@ function applyStateMatrixToUI(config) {
         }
     });
     
-    // Apply banner - EXACT copy from web viewer
+    // Apply checkout status banner
+    const checkoutStatus = document.getElementById('checkoutStatus');
+    if (checkoutStatus && config.checkoutStatus) {
+        if (config.checkoutStatus.show) {
+            checkoutStatus.textContent = config.checkoutStatus.text;
+            checkoutStatus.style.display = 'block';
+        } else {
+            checkoutStatus.style.display = 'none';
+            checkoutStatus.textContent = '';
+        }
+    }
+    
+    // Apply viewer message
+    const viewerMessage = document.getElementById('viewerMessage');
+    if (viewerMessage && config.viewerMessage) {
+        if (config.viewerMessage.show) {
+            viewerMessage.textContent = config.viewerMessage.text;
+            viewerMessage.style.display = 'block';
+        } else {
+            viewerMessage.style.display = 'none';
+            viewerMessage.textContent = '';
+        }
+    }
+    
+    // Legacy banner support (for any remaining old banners)
     const banner = document.getElementById('checkoutBanner');
     if (banner) {
-        if (config.banner.show && config.banner.text) {
+        if (config.banner && config.banner.show && config.banner.text) {
             banner.textContent = config.banner.text;
             banner.style.display = 'block';
         } else {

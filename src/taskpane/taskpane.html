@@ -294,19 +294,29 @@
         }
         
         /* Checkout Status Banner */
-        .checkout-banner {
-            background: #dc3545;
+                
+        /* New Standardized Banners */
+        .checkout-status {
+            background: #17a2b8;
             color: white;
-            padding: 10px 15px;
+            padding: 8px 16px;
             text-align: center;
-            font-weight: 600;
-            font-size: 12px;
-            margin-bottom: 15px;
+            font-weight: 500;
+            margin: 8px 0;
             border-radius: 4px;
-            border: 2px solid #b02a37;
-            box-shadow: 0 2px 6px rgba(220, 53, 69, 0.3);
-            display: none;
-            animation: slideDown 0.3s ease-out;
+            font-size: 14px;
+        }
+        
+        .viewer-message {
+            background: #ffc107;
+            color: #212529;
+            padding: 6px 12px;
+            text-align: center;
+            font-weight: 400;
+            margin: 6px 0;
+            border-radius: 4px;
+            font-size: 13px;
+            font-style: italic;
         }
         
         @keyframes slideDown {
@@ -626,9 +636,18 @@
                 </div>
             </div>
         
-            <!-- Checkout Status Banner -->
-            <div id="checkoutBanner" class="checkout-banner">
-                Document checkout status will appear here
+            <!-- Checkout Status -->
+            <div id="checkoutStatus" class="checkout-status">
+                Available for check-out
+            </div>
+            
+            <!-- Viewer Message -->
+            <div id="viewerMessage" class="viewer-message" style="display: none;">
+                You can look but don't touch
+            </div>
+            
+            <!-- Legacy Banner (for remaining edge cases) -->
+            <div id="checkoutBanner" class="checkout-banner" style="display: none;">
             </div>
             
             <div class="sync-section">
