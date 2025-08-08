@@ -632,11 +632,11 @@
     <div class="opengov-header">
         <div class="opengov-logo">
             <img src="assets/opengov-logo.png" alt="OpenGov" style="height: 60px; width: auto;">
-        </div>
+                </div>
         <div class="opengov-text">
             <h1 class="main-title">Redline Like You Mean It: The Future of Contracting</h1>
-        </div>
-    </div>
+                </div>
+                </div>
 
     <!-- User Controls (Demo Mode) -->
     <div class="user-controls">
@@ -644,14 +644,14 @@
             <span class="user-label">Current User:</span>
             <span id="currentUserDisplay" class="user-name">Loading...</span>
             <span id="currentUserRole" class="user-role">(editor)</span>
-        </div>
+                </div>
         <div class="user-switcher">
             <label for="userSwitcher">Switch User (Demo):</label>
             <select id="userSwitcher" class="user-select" onchange="switchUser(this.value)">
                 <option value="">Loading users...</option>
             </select>
-        </div>
-    </div>
+                </div>
+                </div>
 
     <!-- Main Content Area with Two Columns -->
     <div class="main-content">
@@ -662,13 +662,16 @@
                 <div class="document-buttons">
                     <button class="btn-view-latest" onclick="viewReadOnly()">View Latest</button>
                     <button class="btn-open" onclick="openNewFile()">Open</button>
+                    <button id="overrideBtn" class="btn btn-secondary" onclick="overrideCheckout()" style="display: none;">
+                        Override Check-out
+                    </button>
                 </div>
-            </div>
+                </div>
 
             <!-- Checkout Status Banner -->
             <div id="checkoutBanner" class="checkout-banner">
                 Document checkout status will appear here
-            </div>
+                </div>
 
             <!-- Checkout Controls -->
             <div class="checkout-controls">
@@ -678,9 +681,7 @@
                 <button id="sendVendorBtn" class="btn btn-vendor" onclick="openVendorModal()" style="display: none;">
                     📤 Send to Vendor
                 </button>
-                <button id="overrideBtn" class="btn btn-warning" onclick="overrideCheckout()" style="display: none;">
-                    🔓 Override Check-out
-                </button>
+
                 
                 <button id="saveProgressBtn" class="btn btn-secondary" onclick="saveProgress()" style="display: none;">
                     💾 Save Progress
@@ -693,9 +694,8 @@
                 <button id="cancelBtn" class="btn btn-secondary" onclick="cancelCheckout()" style="display: none;">
                     ❌ Cancel Check-out
                 </button>
-            </div>
-
-        </div>
+                </div>
+                </div>
         
         <!-- Right Column -->
         <div class="right-column">
@@ -707,11 +707,11 @@
                 <div class="notification-window-body" id="notificationWindowBody">
                     <div class="no-notifications">
                         No notifications yet
-                    </div>
                 </div>
-            </div>
-        </div>
-    </div>
+                </div>
+                </div>
+                </div>
+                </div>
 
 
     
@@ -726,9 +726,9 @@
                 <h2>Welcome to OpenGov Contract Redlining</h2>
                 <p>Real-time collaboration and redlining - the future of contracting!</p>
                 <p>Ready for document collaboration workflow.</p>
-            </div>
-        </div>
-    </div>
+                </div>
+                </div>
+                </div>
 
     <!-- Notification Modal -->
     <div id="notificationModal" class="notification-modal" style="display: none;">
@@ -737,14 +737,14 @@
             <div class="notification-modal-header">
                 <h3 class="notification-modal-title">🔔 Notifications</h3>
                 <button class="notification-modal-close" onclick="closeNotificationModal()">×</button>
-            </div>
+                </div>
             <div class="notification-modal-body" id="notificationModalBody">
                 <div class="no-notifications">
                     No notifications yet
                 </div>
-            </div>
-        </div>
-    </div>
+                </div>
+                </div>
+                </div>
 
     <!-- Send to Vendor Modal -->
     <div id="vendorModal" class="notification-modal" style="display: none;">
@@ -753,24 +753,24 @@
             <div class="notification-modal-header">
                 <h3 class="notification-modal-title">📤 Send to Vendor</h3>
                 <button class="notification-modal-close" onclick="closeVendorModal()">×</button>
-            </div>
+                </div>
             <div class="notification-modal-body">
                 <form id="vendorForm" onsubmit="sendToVendor(event)">
                     <div style="margin-bottom: 15px;">
                         <label style="display: block; margin-bottom: 5px; font-weight: 600;">Vendor:</label>
                         <input type="text" id="vendorCompany" value="Moti's Builders" readonly 
                                style="width: 100%; padding: 8px; border: 1px solid #ccc; border-radius: 4px; background: #f5f5f5;">
-                    </div>
+                </div>
                     <div style="margin-bottom: 15px;">
                         <label style="display: block; margin-bottom: 5px; font-weight: 600;">Contact Name:</label>
                         <input type="text" id="vendorName" value="Mo--T" required
                                style="width: 100%; padding: 8px; border: 1px solid #ccc; border-radius: 4px;">
-                    </div>
+                </div>
                     <div style="margin-bottom: 20px;">
                         <label style="display: block; margin-bottom: 5px; font-weight: 600;">Email:</label>
                         <input type="email" id="vendorEmail" value="moti@real.builders" required
                                style="width: 100%; padding: 8px; border: 1px solid #ccc; border-radius: 4px;">
-                    </div>
+                </div>
                     <div style="display: flex; gap: 10px; justify-content: flex-end;">
                         <button type="button" onclick="closeVendorModal()" 
                                 style="padding: 8px 16px; border: 1px solid #ccc; background: white; border-radius: 4px; cursor: pointer;">
@@ -780,11 +780,11 @@
                                 style="padding: 8px 16px; border: none; background: #0078d4; color: white; border-radius: 4px; cursor: pointer;">
                             Send to Vendor
                         </button>
-                    </div>
+                </div>
                 </form>
-            </div>
-        </div>
-    </div>
+                </div>
+                </div>
+                </div>
 
     <!-- Load SuperDoc from local node_modules -->
     <script>
@@ -2007,7 +2007,7 @@
                     <div class="notification-item ${notification.type}">
                         <p class="notification-message">${notification.message}</p>
                         <p class="notification-timestamp">${timeAgo}</p>
-                    </div>
+                </div>
                 `;
             }).join('');
             
