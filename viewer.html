@@ -2304,9 +2304,9 @@
                     // Hide sendVendorBtn for non-editors
                     if (buttonId === 'sendVendorBtn' && getCurrentUserRole() !== 'editor') {
                         button.style.display = 'none';
-                    // Show overrideVendorBtn only for editors when vendor has checkout
+                    // Show overrideVendorBtn for editors when ANYONE has checkout
                     } else if (buttonId === 'overrideVendorBtn') {
-                        if (getCurrentUserRole() === 'editor' && currentDocumentState.isCheckedOut && currentDocumentState.checkedOutBy === 'vendor') {
+                        if (getCurrentUserRole() === 'editor' && currentDocumentState.isCheckedOut) {
                             button.style.display = 'inline-block';
                         } else {
                             button.style.display = 'none';
