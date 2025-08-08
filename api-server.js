@@ -404,30 +404,32 @@ app.post('/api/cancel-checkout', (req, res) => {
 
 // Send document to vendor
 app.post('/api/vendor/send', (req, res) => {
-    const { vendor, name, email, source } = req.body;
+    const { vendor, name, email, notes, source } = req.body;
     
-    if (documentState.isCheckedOut) {
-        return res.status(409).json({
-            success: false,
-            error: 'Document is already checked out'
-        });
+    // REMOVED: Auto-locking behavior - vendors are now just invited, document stays unlocked
+    // Store vendor invitation info without locking the document
+    const vendorInvitation = { 
+        vendor, 
+        name, 
+        email, 
+        notes: notes || '', 
+        sentBy: source, 
+        sentAt: new Date().toISOString() 
+    };
+    
+    console.log(`📤 Vendor invitation sent: ${vendor} (${name})`);
+    if (notes) {
+        console.log(`📝 Notes: ${notes}`);
     }
     
-    documentState.isCheckedOut = true;
-    documentState.checkedOutBy = 'vendor';
-    documentState.checkedOutAt = new Date().toISOString();
-    documentState.vendorInfo = { vendor, name, email, sentBy: source };
-    
-    console.log(`📤 Document sent to vendor: ${vendor}`);
-    
     broadcastSSE({
-        type: 'document-sent-to-vendor',
-        message: `Document sent to ${vendor}`,
-        vendorInfo: documentState.vendorInfo,
+        type: 'vendor-invited',
+        message: `Vendor ${vendor} has been invited to redline`,
+        vendorInvitation: vendorInvitation,
         timestamp: new Date().toISOString()
     });
     
-    res.json({ success: true, vendorInfo: documentState.vendorInfo });
+    res.json({ success: true, vendorInvitation: vendorInvitation });
 });
 
 // Override any checkout (generic)

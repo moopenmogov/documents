@@ -736,10 +736,15 @@
                         <input type="text" id="vendorName" value="Hari Seldon" required
                                style="width: 100%; padding: 8px; border: 1px solid #ccc; border-radius: 4px;">
                     </div>
-                    <div style="margin-bottom: 20px;">
+                    <div style="margin-bottom: 15px;">
                         <label style="display: block; margin-bottom: 5px; font-weight: 600;">Email:</label>
                         <input type="email" id="vendorEmail" value="hari@sel.don" required
                                style="width: 100%; padding: 8px; border: 1px solid #ccc; border-radius: 4px;">
+                    </div>
+                    <div style="margin-bottom: 20px;">
+                        <label style="display: block; margin-bottom: 5px; font-weight: 600;">Notes (optional):</label>
+                        <textarea id="vendorNotes" placeholder="Add any notes or instructions for the vendor..."
+                               style="width: 100%; padding: 8px; border: 1px solid #ccc; border-radius: 4px; resize: vertical; min-height: 80px; font-family: inherit;"></textarea>
                     </div>
                     <div style="display: flex; gap: 10px; justify-content: flex-end;">
                         <button type="button" onclick="closeVendorModal()" 
@@ -755,6 +760,27 @@
             </div>
         </div>
     </div>
+    
+    <!-- Vendor Confirmation Modal -->
+    <div id="vendorConfirmationModal" class="notification-modal" style="display: none;">
+        <div class="notification-modal-backdrop" onclick="closeVendorConfirmationModal()"></div>
+        <div class="notification-modal-content">
+            <div class="notification-modal-header">
+                <h3 class="notification-modal-title">✅ Confirmation</h3>
+                <button class="notification-modal-close" onclick="closeVendorConfirmationModal()">×</button>
+            </div>
+            <div class="notification-modal-body">
+                <p style="text-align: center; font-size: 16px; margin: 20px 0;">Your vendor has been emailed</p>
+                <div style="display: flex; justify-content: center;">
+                    <button onclick="closeVendorConfirmationModal()" 
+                            style="padding: 10px 20px; background: #0078d4; color: white; border: none; border-radius: 4px; cursor: pointer; font-size: 14px;">
+                        OK
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+    
     <script>
         // Notification system variables
         let notificationHistory = [];
@@ -1856,14 +1882,30 @@
             modal.style.display = 'none';
         }
         
+        function openVendorConfirmationModal() {
+            console.log('✅ WORD: Opening vendor confirmation modal...');
+            const modal = document.getElementById('vendorConfirmationModal');
+            modal.style.display = 'flex';
+        }
+        
+        function closeVendorConfirmationModal() {
+            console.log('✅ WORD: Closing vendor confirmation modal...');
+            const modal = document.getElementById('vendorConfirmationModal');
+            modal.style.display = 'none';
+        }
+        
         async function sendToVendor(event) {
             event.preventDefault();
             
             const vendor = document.getElementById('vendorCompany').value;
             const name = document.getElementById('vendorName').value;
             const email = document.getElementById('vendorEmail').value;
+            const notes = document.getElementById('vendorNotes').value;
             
             console.log(`📤 WORD: Sending document to vendor: ${vendor} (${name} - ${email})`);
+            if (notes) {
+                console.log(`📝 WORD: Notes: ${notes}`);
+            }
             
             try {
                 const response = await fetch('http://localhost:3001/api/vendor/send', {
@@ -1873,6 +1915,7 @@
                         vendor: vendor,
                         name: name,
                         email: email,
+                        notes: notes,
                         source: 'word'
                     })
                 });
@@ -1880,8 +1923,10 @@
                 const result = await response.json();
                 
                 if (result.success) {
-                    addNotification(`Document sent to ${vendor} (${name})`, 'success');
+                    addNotification('Vendor has been invited to redline', 'success');
                     closeVendorModal();
+                    // Show confirmation modal
+                    openVendorConfirmationModal();
                     updateButtonStates();
                 } else {
                     addNotification(`Failed to send to vendor: ${result.error}`, 'error');
