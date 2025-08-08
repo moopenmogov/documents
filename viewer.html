@@ -874,7 +874,7 @@
                                 window.currentUser = data.currentUser;
                                 updateCurrentUserDisplay();
                                 populateUserSwitcher();
-                                updateButtonStates();
+                                // State will be updated by SSE event handler automatically
                             }
                         } else if (data.platform === 'word') {
                             console.log('WEB: Processing Word user switch - updating SuperDoc');
@@ -884,7 +884,7 @@
                                 const documentMode = getSuperdocMode(userRole);
                                 console.log('WEB: Setting SuperDoc mode:', documentMode, 'for Word role:', userRole);
                                 updateSuperdocMode(documentMode);
-                                updateButtonStates();
+                                // State will be updated by SSE event handler automatically
                             }
                         } else {
                             console.log('WEB: Ignoring unknown user switch event');
@@ -896,7 +896,7 @@
                             // Update current user role
                             currentUser.role = data.role;
                             updateCurrentUserDisplay();
-                            updateButtonStates();
+                            // State will be updated by SSE event handler automatically
                             addNotification(`Your access level changed to ${data.role}`, 'info');
                         }
                     }
@@ -951,7 +951,7 @@
                 console.log('✅ WEB: Independent user system initialized successfully');
                 
                 // Update button states after initialization
-                updateButtonStates();
+                // State will be updated by SSE event handler automatically
             } catch (error) {
                 console.error('❌ WEB: Failed to initialize user system:', error);
             }
@@ -1005,7 +1005,7 @@
                     updateCurrentUserDisplay();
                     
                     // Update button states based on new user role
-                    updateButtonStates();
+                    // State will be updated by SSE event handler automatically
                     
                     // Reinitialize SuperDoc with new role-based mode
                     if (currentDocumentId && currentSuperdoc) {
@@ -1546,7 +1546,7 @@
                     currentDocumentState.isCheckedOut = data.checkoutState.isCheckedOut;
                     currentDocumentState.checkedOutBy = data.checkoutState.checkedOutBy;
                     currentDocumentState.currentDocument = data.currentDocument;
-                    updateButtonStates();
+                    // State will be updated by SSE event handler automatically
                 }
             } catch (error) {
                 console.error('Failed to fetch document status:', error);
@@ -1891,7 +1891,7 @@
                 if (result.success) {
                     addNotification("Document reclaimed from vendor", "success");
                     await fetchDocumentStatus();
-                    updateButtonStates();
+                    // State will be updated by SSE event handler automatically
                 } else {
                     addNotification("Failed to override vendor checkout", "error");
                 }
@@ -1927,7 +1927,7 @@
                 if (result.success) {
                     addNotification(`Document sent to ${vendor} (${name})`, 'success');
                     closeVendorModal();
-                    updateButtonStates();
+                    // State will be updated by SSE event handler automatically
                 } else {
                     addNotification(`Failed to send to vendor: ${result.error}`, 'error');
                 }
@@ -2114,6 +2114,22 @@
         
         // Make test function globally available
         window.testCheckoutBanner = testCheckoutBanner;
+        
+        // Debug function to check current state
+        function debugCurrentState() {
+            console.log('🔍 CURRENT STATE DEBUG:');
+            console.log('  isCheckedOut:', currentDocumentState.isCheckedOut);
+            console.log('  checkedOutBy:', currentDocumentState.checkedOutBy);
+            console.log('  User role:', getCurrentUserRole());
+            console.log('  Scenario:', detectCollaborationScenario());
+            
+            // Check button visibility
+            ['checkoutBtn', 'overrideVendorBtn', 'sendVendorBtn'].forEach(id => {
+                const btn = document.getElementById(id);
+                console.log(`  ${id}: ${btn ? (btn.style.display || 'visible') : 'missing'}`);
+            });
+        }
+        window.debugCurrentState = debugCurrentState;
         
         // Debug function for button visibility issues
         function debugWebViewerButtons() {
