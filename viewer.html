@@ -1880,6 +1880,29 @@
             const modal = document.getElementById('vendorModal');
             modal.style.display = 'none';
         }
+
+        // Override vendor checkout
+        async function overrideVendorCheckout() {
+            console.log("🔓 Overriding vendor checkout...");
+            try {
+                const response = await fetch("http://localhost:3001/api/vendor/override", {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify({ source: "web" })
+                });
+                const result = await response.json();
+                if (result.success) {
+                    addNotification("Document reclaimed from vendor", "success");
+                    await fetchDocumentStatus();
+                    updateButtonStates();
+                } else {
+                    addNotification("Failed to override vendor checkout", "error");
+                }
+            } catch (error) {
+                console.error("Error overriding vendor checkout:", error);
+                addNotification("Error overriding vendor checkout", "error");
+            }
+        }
         
         async function sendToVendor(event) {
             event.preventDefault();
@@ -2244,7 +2267,7 @@
             const buttonConfigs = {
                 'BothOnly': {
                     // No checkout: Both platforms can view/edit
-                    visible: ['checkoutBtn', 'sendVendorBtn', 'viewOnlyBtn'],
+                    visible: ['checkoutBtn', 'sendVendorBtn', 'overrideVendorBtn', 'viewOnlyBtn'],
                     hidden: ['saveProgressBtn', 'checkinBtn', 'cancelBtn']
                 },
                 'AddInCheckOut': {
