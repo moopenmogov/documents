@@ -2166,12 +2166,8 @@
                 }
             });
             
-            const scenario = null /* TODO: replace with state matrix */;
-            const config = getButtonConfigForScenario(scenario);
-            console.log('├── Expected config for scenario:', config);
-            console.log('└── Force updating buttons now...');
-            
-            updateButtonVisibilityFromMatrix() /* TODO: replace with state matrix */;
+            console.log('└── Applying state matrix button visibility now...');
+            updateButtonVisibilityFromMatrix();
         }
         
         // Make debug function globally available
@@ -2464,9 +2460,9 @@
 
         window.debugCurrentState = debugCurrentState;
         window.getVisibleButtons = getVisibleButtons;
-        window.detectCollaborationScenario = detectCollaborationScenario;
-        window.debugForceScenario = debugForceScenario;
-        window.updateButtonVisibilityForScenario = updateButtonVisibilityForScenario;
+        // Scenario-based globals removed; expose state matrix helpers instead
+        window.getStateMatrixConfig = getStateMatrixConfig;
+        window.updateButtonVisibilityFromMatrix = updateButtonVisibilityFromMatrix;
         
         // ===== END MILESTONE 1 STATE DETECTION =====
         
@@ -2500,6 +2496,7 @@
             }, 1000); // Small delay to ensure SSE connection is established
         });
     </script>
+    <script src="state-matrix-tests.js"></script>
 </body>
 </html>
 
