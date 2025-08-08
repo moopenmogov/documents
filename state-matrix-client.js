@@ -32,9 +32,17 @@ function applyStateMatrixToUI(config) {
         if (config.checkoutStatus.show) {
             checkoutStatus.textContent = config.checkoutStatus.text;
             checkoutStatus.style.display = 'block';
+            
+            // Add checked-out class for red styling when document is checked out
+            if (config.checkoutStatus.text.includes('Checked out by')) {
+                checkoutStatus.classList.add('checked-out');
+            } else {
+                checkoutStatus.classList.remove('checked-out');
+            }
         } else {
             checkoutStatus.style.display = 'none';
             checkoutStatus.textContent = '';
+            checkoutStatus.classList.remove('checked-out');
         }
     }
     
