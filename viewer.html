@@ -1469,12 +1469,9 @@
             // Apply visual feedback based on access level
             updateWebUIForAccessLevel(accessInfo);
             
-            // Continue with existing scenario-based logic for editors
-            if (accessInfo.canEdit) {
-                // User is an editor - use normal scenario-based logic
-                const currentScenario = detectCollaborationScenario();
-                updateButtonVisibilityForScenario(currentScenario);
-            }
+            // Apply scenario-based button logic for all users (not just when canEdit)
+            const currentScenario = detectCollaborationScenario();
+            updateButtonVisibilityForScenario(currentScenario);
             
             // Update checkout banner
             updateCheckoutBanner();
