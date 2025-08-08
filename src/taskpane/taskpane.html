@@ -1,4 +1,4 @@
-<!DOCTYPE html>
+﻿<!DOCTYPE html>
 <html>
 <head>
     <meta charset="UTF-8" />
@@ -8,6 +8,7 @@
 
     <!-- Office JavaScript API -->
     <script type="text/javascript" src="https://appsforoffice.microsoft.com/lib/1/hosted/office.js"></script>
+    <script src="../../state-matrix-client.js"></script>
 
     <style>
         body {
@@ -936,6 +937,10 @@
             return currentUser ? currentUser.role : 'editor'; // Default to editor if no user
         }
 
+        function getCurrentUser() {
+            return currentUser;
+        }
+
         // Check if current user can edit
         function canCurrentUserEdit() {
             return getCurrentUserRole() === 'editor' || getCurrentUserRole() === 'suggester' || getCurrentUserRole() === 'vendor';
@@ -1321,9 +1326,9 @@
                 enableUserSelection();
             }
             
-            // Apply scenario-based button visibility (independent of edit permissions)
-            const currentScenario = detectCollaborationScenario();
-            updateButtonVisibilityForScenario(currentScenario);
+            // Apply shared state matrix (replaces scenario logic)
+            await updateUIFromStateMatrix('word', getCurrentUser, getCurrentUserRole, currentDocumentState);
+
             
             // Continue with existing logic for editors
             if (accessInfo.canEdit) {
@@ -1647,136 +1652,9 @@
             });
         }
         
-        // ===== MILESTONE 1: STATE DETECTION LOGIC =====
-        
-                // Detect current collaboration scenario (simplified 3-scenario model)
-        function detectCollaborationScenario() {
-            // If scenario is forced for testing, return that
-            if (window.forcedScenario) {
-                return window.forcedScenario;
-            }
-            
-            const isCheckedOut = currentDocumentState.isCheckedOut || false;
-            const checkedOutBy = currentDocumentState.checkedOutBy;
+        // ===== OLD STATE MANAGEMENT REMOVED =====
+        // (Replaced with shared state matrix API)
 
-            // Simplified logic: Assume same document, focus on checkout state
-            if (isCheckedOut && checkedOutBy === 'word') {
-                return 'AddInCheckOut';
-            } else if (isCheckedOut && checkedOutBy === 'web') {
-                return 'WebViewCheckOut';
-            } else {
-                return 'BothOnly';
-            }
-        }
-        
-        // Debug helper: Show current collaboration state  
-        function debugCurrentState() {
-            const hasServerDoc = !!(currentDocumentState.currentDocument && currentDocumentState.currentDocument.id);
-            const hasLocalDoc = !!document.querySelector('#document-title')?.textContent && 
-                               document.querySelector('#document-title').textContent !== 'No document loaded';
-            
-            console.log('🔍 WORD ADD-IN STATE ANALYSIS:');
-            console.log('├── Server has document:', hasServerDoc);
-            console.log('├── Word has document:', hasLocalDoc);
-            console.log('├── Is checked out:', currentDocumentState.isCheckedOut);
-            console.log('├── Checked out by:', currentDocumentState.checkedOutBy);
-            console.log('├── Current document:', currentDocumentState.currentDocument?.filename || 'None');
-            console.log('└── Detected scenario:', detectCollaborationScenario());
-            
-            return {
-                hasServerDoc,
-                hasLocalDoc,
-                isCheckedOut: currentDocumentState.isCheckedOut,
-                checkedOutBy: currentDocumentState.checkedOutBy,
-                scenario: detectCollaborationScenario()
-            };
-        }
-        
-        // Debug helper: Get currently visible buttons
-        function getVisibleButtons() {
-            return Array.from(document.querySelectorAll('button'))
-                .filter(btn => !btn.style.display || btn.style.display !== 'none')
-                .map(btn => ({
-                    id: btn.id,
-                    text: btn.textContent.trim(),
-                    visible: true
-                }));
-        }
-        
-
-        
-        // ===== MILESTONE 2: BUTTON VISIBILITY LOGIC =====
-        
-        // Get button configuration for each scenario
-        function getButtonConfigForScenario(scenario) {
-            const buttonConfigs = {
-                'BothOnly': {
-                    // No checkout: Both platforms can view/edit
-                    visible: ['checkoutBtn', 'sendVendorBtn', 'viewOnlyBtn', 'shareToWebBtn'],
-                    hidden: ['saveProgressBtn', 'checkinBtn', 'cancelBtn']
-                },
-                'AddInCheckOut': {
-                    // Word has checkout: Word add-in can edit
-                    visible: ['sendVendorBtn', 'saveProgressBtn', 'checkinBtn', 'cancelBtn', 'shareToWebBtn'],
-                    hidden: ['checkoutBtn', 'viewOnlyBtn']
-                },
-                'WebViewCheckOut': {
-                    // Web has checkout: Word add-in is read-only
-                    visible: ['viewOnlyBtn', 'shareToWebBtn'],
-                    hidden: ['checkoutBtn', 'sendVendorBtn', 'saveProgressBtn', 'checkinBtn', 'cancelBtn']
-                }
-            };
-            
-            return buttonConfigs[scenario] || buttonConfigs['BothOnly'];
-        }
-        
-        // Update button visibility based on scenario
-        function updateButtonVisibilityForScenario(scenario) {
-            const config = getButtonConfigForScenario(scenario);
-            
-            // Hide all managed buttons first
-            ['checkoutBtn', 'sendVendorBtn', 'saveProgressBtn', 'checkinBtn', 'cancelBtn', 'viewOnlyBtn', 'shareToWebBtn'].forEach(buttonId => {
-                const button = document.getElementById(buttonId);
-                if (button) button.style.display = 'none';
-            });
-            
-            // Show required buttons (with role-based filtering)
-            config.visible.forEach(buttonId => {
-                const button = document.getElementById(buttonId);
-                if (button) {
-                    // Hide sendVendorBtn for non-editors
-                    if (buttonId === 'sendVendorBtn' && getCurrentUserRole() !== 'editor') {
-                        button.style.display = 'none';
-                    // Hide checkoutBtn for viewers
-                    } else if (buttonId === 'checkoutBtn' && getCurrentUserRole() === 'viewer') {
-                        button.style.display = 'none';
-                    } else {
-                        button.style.display = 'inline-block';
-                    }
-                }
-            });
-            
-            console.log(`🎨 Updated button visibility for scenario: ${scenario}`, config);
-        }
-        
-        // ===== END MILESTONE 2 BUTTON VISIBILITY =====
-        
-        // Make debugging functions globally available
-        // Force a specific scenario for testing (overrides detection logic)
-        function debugForceScenario(scenarioName) {
-            window.forcedScenario = scenarioName;
-            console.log(`🎭 Forced scenario to: ${scenarioName}`);
-            updateButtonVisibilityForScenario(scenarioName);
-        }
-
-        window.debugCurrentState = debugCurrentState;
-        window.debugForceScenario = debugForceScenario;
-        window.getVisibleButtons = getVisibleButtons;
-        window.detectCollaborationScenario = detectCollaborationScenario;
-        window.updateButtonVisibilityForScenario = updateButtonVisibilityForScenario;
-        window.shareToWeb = shareToWeb;
-        
-        // ===== END MILESTONE 1 STATE DETECTION =====
         
         // Clean up any existing locks from previous sessions
         async function cleanupExistingLocks() {
