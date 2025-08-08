@@ -33,15 +33,29 @@ function applyStateMatrixToUI(config) {
             checkoutStatus.textContent = config.checkoutStatus.text;
             checkoutStatus.style.display = 'block';
             
-            // Add checked-out class for red styling when document is checked out
+            // Apply colors directly via JavaScript (CSS wasn't working due to specificity issues)
             if (config.checkoutStatus.text.includes('Checked out by')) {
-                console.log('🔴 Adding checked-out class - text contains "Checked out by":', config.checkoutStatus.text);
+                console.log('🔴 Applying red background - text contains "Checked out by":', config.checkoutStatus.text);
+                checkoutStatus.style.backgroundColor = '#dc3545';
+                checkoutStatus.style.color = 'white';
+                checkoutStatus.style.padding = '8px 16px';
+                checkoutStatus.style.borderRadius = '4px';
+                checkoutStatus.style.fontSize = '18px';
+                checkoutStatus.style.fontWeight = '500';
+                checkoutStatus.style.margin = '8px 0';
                 checkoutStatus.classList.add('checked-out');
-                console.log('🎨 Classes after adding:', checkoutStatus.classList.toString());
+                console.log('🎨 Applied red checkout styling');
             } else {
-                console.log('🔵 Removing checked-out class - text does not contain "Checked out by":', config.checkoutStatus.text);
+                console.log('🔵 Applying teal background - text does not contain "Checked out by":', config.checkoutStatus.text);
+                checkoutStatus.style.backgroundColor = '#17a2b8';
+                checkoutStatus.style.color = 'white';
+                checkoutStatus.style.padding = '8px 16px';
+                checkoutStatus.style.borderRadius = '4px';
+                checkoutStatus.style.fontSize = '18px';
+                checkoutStatus.style.fontWeight = '500';
+                checkoutStatus.style.margin = '8px 0';
                 checkoutStatus.classList.remove('checked-out');
-                console.log('🎨 Classes after removing:', checkoutStatus.classList.toString());
+                console.log('🎨 Applied teal checkout styling');
             }
         } else {
             checkoutStatus.style.display = 'none';

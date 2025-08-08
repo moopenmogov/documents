@@ -771,21 +771,22 @@
             text-align: center !important;
         }
         
-        /* Checkout Status Banner */
-        .checkout-status {
-            background: #17a2b8;
-            color: white;
-            padding: 8px 16px;
-            text-align: center;
-            font-weight: 500;
-            margin: 8px 0;
-            border-radius: 4px;
-            font-size: 18px;
+        /* Checkout Status Banner - high specificity */
+        div#checkoutStatus.checkout-status {
+            background: #17a2b8 !important;
+            color: white !important;
+            padding: 8px 16px !important;
+            text-align: center !important;
+            font-weight: 500 !important;
+            margin: 8px 0 !important;
+            border-radius: 4px !important;
+            font-size: 18px !important;
+            display: block !important;
         }
         
-        /* Checked out state - red color */
-        .checkout-status.checked-out {
-            background: #dc3545;
+        /* Checked out state - red color - high specificity */
+        div#checkoutStatus.checkout-status.checked-out {
+            background: #dc3545 !important;
         }
         
         .main-content-3col .right-column {
@@ -2994,17 +2995,27 @@
                     console.log('📝 Current text:', banner.textContent);
                     console.log('🎨 Current classes:', banner.classList.toString());
                     console.log('🖌️ Computed background color:', getComputedStyle(banner).backgroundColor);
+                    console.log('🖌️ All computed styles:', getComputedStyle(banner));
                     
-                    // Test adding/removing the checked-out class
-                    console.log('🧪 Testing class manipulation:');
-                    banner.classList.add('checked-out');
-                    console.log('✅ Added "checked-out" class');
-                    console.log('🖌️ New background color:', getComputedStyle(banner).backgroundColor);
+                    // Force styles directly as a test
+                    console.log('🧪 Forcing styles directly:');
+                    banner.style.backgroundColor = '#dc3545';
+                    banner.style.color = 'white';
+                    banner.style.padding = '8px 16px';
+                    banner.style.borderRadius = '4px';
+                    console.log('🔴 Forced red background directly');
+                    console.log('🖌️ Background after force:', getComputedStyle(banner).backgroundColor);
                     
                     setTimeout(() => {
-                        banner.classList.remove('checked-out');
-                        console.log('❌ Removed "checked-out" class');
-                        console.log('🖌️ Background color after removal:', getComputedStyle(banner).backgroundColor);
+                        banner.style.backgroundColor = '#17a2b8';
+                        console.log('🔵 Forced teal background');
+                        console.log('🖌️ Background after teal force:', getComputedStyle(banner).backgroundColor);
+                        
+                        setTimeout(() => {
+                            banner.style.backgroundColor = '';
+                            console.log('🧪 Removed forced styles');
+                            console.log('🖌️ Background after reset:', getComputedStyle(banner).backgroundColor);
+                        }, 2000);
                     }, 2000);
                 };
             }, 1000); // Small delay to ensure SSE connection is established
