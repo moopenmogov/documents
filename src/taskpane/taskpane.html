@@ -651,6 +651,10 @@
             <button id="cancelBtn" class="button button-secondary" onclick="cancelCheckout()" style="display: none;">
                 ❌ Cancel Check-out
             </button>
+
+            <button id="overrideBtn" class="button button-warning" onclick="overrideCheckout()" style="display: none;">
+                🔓 Override Check-out
+            </button>
         
 
             
@@ -1531,6 +1535,27 @@
             }
         }
         
+        // Override any checkout
+        async function overrideCheckout() {
+            console.log('ðŸ“ WORD: Calling override API...');
+            try {
+                const response = await fetch('http://localhost:3001/api/override', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ source: 'word' })
+                });
+                
+                if (response.ok) {
+                    console.log('âœ… WORD: Override successful');
+                    await fetchDocumentStatus();
+                } else {
+                    console.error('âŒ WORD: Override failed:', response.status);
+                }
+            } catch (error) {
+                console.error('âŒ WORD: Override error:', error);
+            }
+        }
+
         // View read-only (load latest without checkout)
         async function viewReadOnly() {
             try {

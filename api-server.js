@@ -427,12 +427,12 @@ app.post('/api/vendor/send', (req, res) => {
     res.json({ success: true, vendorInfo: documentState.vendorInfo });
 });
 
-// Override vendor checkout
-app.post('/api/vendor/override', (req, res) => {
+// Override any checkout (generic)
+app.post('/api/override', (req, res) => {
     const { source } = req.body;
     
-    if (!documentState.isCheckedOut || documentState.checkedOutBy !== 'vendor') {
-        return res.status(400).json({ success: false, error: 'Not checked out by vendor' });
+    if (!documentState.isCheckedOut) {
+        return res.status(400).json({ success: false, error: 'Document not checked out' });
     }
     
     documentState.isCheckedOut = false;

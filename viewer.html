@@ -1,4 +1,4 @@
-<!DOCTYPE html>
+﻿<!DOCTYPE html>
 <html lang="en">
 <head>
     <meta charset="UTF-8">
@@ -678,8 +678,8 @@
                 <button id="sendVendorBtn" class="btn btn-vendor" onclick="openVendorModal()" style="display: none;">
                     📤 Send to Vendor
                 </button>
-                <button id="overrideVendorBtn" class="btn btn-warning" onclick="overrideVendorCheckout()" style="display: none;">
-                    🔓 Override Vendor Checkout
+                <button id="overrideBtn" class="btn btn-warning" onclick="overrideCheckout()" style="display: none;">
+                    🔓 Override Check-out
                 </button>
                 
                 <button id="saveProgressBtn" class="btn btn-secondary" onclick="saveProgress()" style="display: none;">
@@ -1905,26 +1905,26 @@
         }
 
         // Override vendor checkout
-        async function overrideVendorCheckout() {
-            console.log("🔓 Overriding vendor checkout...");
+        async function overrideCheckout() {
+            console.log("🔓 Overriding checkout...");
             try {
-                const response = await fetch("http://localhost:3001/api/vendor/override", {
+                const response = await fetch("http://localhost:3001/api/override", {
                     method: "POST",
                     headers: { "Content-Type": "application/json" },
                     body: JSON.stringify({ source: "web" })
                 });
                 const result = await response.json();
                 if (result.success) {
-                    addNotification("Document reclaimed from vendor", "success");
+                    addNotification("Document reclaimed", "success");
                     await fetchDocumentStatus();
                     // Update state matrix after status change
                     updateButtonVisibilityFromMatrix();
                 } else {
-                    addNotification("Failed to override vendor checkout", "error");
+                    addNotification("Failed to override checkout", "error");
                 }
             } catch (error) {
-                console.error("Error overriding vendor checkout:", error);
-                addNotification("Error overriding vendor checkout", "error");
+                console.error("Error Overriding checkout:", error);
+                addNotification("Error Overriding checkout", "error");
             }
         }
         

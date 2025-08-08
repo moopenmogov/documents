@@ -11,8 +11,7 @@ function applyStateMatrixToUI(config) {
     // Apply button visibility - EXACT copy from web viewer
     const buttonMap = {
         checkoutBtn: config.buttons.checkoutBtn,
-        overrideVendorBtn: config.buttons.overrideBtn,  // Web viewer uses this ID
-        overrideBtn: config.buttons.overrideBtn,        // Word add-in uses this ID
+        overrideBtn: config.buttons.overrideBtn,        // Both platforms now use this ID
         sendVendorBtn: config.buttons.sendVendorBtn,
         saveProgressBtn: config.buttons.checkedInBtns,
         checkinBtn: config.buttons.checkedInBtns,
