@@ -11,6 +11,9 @@ const PORT = 3001;
 app.use(cors());
 app.use(express.json({ limit: '50mb' }));
 
+// Serve static files from uploads directory
+app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
+
 // Create uploads directory if it doesn't exist
 const uploadsDir = './uploads';
 if (!fs.existsSync(uploadsDir)) {
@@ -522,6 +525,26 @@ app.get('/api/document/:documentId', (req, res) => {
 // Get current document info
 app.get('/api/current-document', (req, res) => {
     res.json(currentDocument);
+});
+
+// Get default document endpoint
+app.get('/api/default-document', (req, res) => {
+    const defaultFile = 'CONTRACT FOR CONTRACTS.docx';
+    const defaultPath = path.join(uploadsDir, defaultFile);
+    
+    if (fs.existsSync(defaultPath)) {
+        currentDocument = {
+            id: 'default-doc',
+            filename: defaultFile,
+            filePath: defaultPath,
+            lastUpdated: new Date().toISOString()
+        };
+        
+        console.log('✅ Default document set:', defaultFile);
+        res.json(currentDocument);
+    } else {
+        res.status(404).json({ error: 'Default document not found' });
+    }
 });
 
 // Update document from web viewer (placeholder for future bidirectional sync)

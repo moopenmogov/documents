@@ -626,10 +626,10 @@
         <div id="addin-controls-area">
             <div class="document-info">
                 <div class="document-title-section">
-                    <p class="document-title" id="document-title">No document loaded</p>
+                <p class="document-title" id="document-title">No document loaded</p>
                 </div>
                 <div class="document-buttons-section">
-                    <div class="document-buttons">
+                <div class="document-buttons">
                         <button class="btn-view-latest" onclick="viewReadOnly()">👀 View Latest</button>
                         <button id="shareToWebBtn" class="btn-open-web" onclick="shareToWeb()">🌐 Open in Web</button>
                     </div>
@@ -670,11 +670,11 @@
             <button id="cancelBtn" class="button button-secondary" onclick="cancelCheckout()" style="display: none;">
                 ❌ Cancel Check-out
             </button>
-
+        
             <button id="overrideBtn" class="button button-secondary" onclick="overrideCheckout()" style="display: none;">
                 Override Check-out
             </button>
-        
+            
 
             
         </div>
@@ -750,7 +750,7 @@
             </div>
         </div>
     </div>
-<script>
+    <script>
         // Notification system variables
         let notificationHistory = [];
         let hasUnreadNotifications = false;
@@ -812,12 +812,12 @@
                         // Only handle word platform user switches
                         if (data.platform === 'word') {
                             console.log(`📡 WORD: Processing word user switch to ${data.currentUser.name}`);
-                            // Update current user if this was triggered by another client
-                            if (data.currentUser.id !== currentUser?.id) {
-                                currentUser = data.currentUser;
-                                updateCurrentUserDisplay();
-                                populateUserSwitcher();
-                                updateButtonStates();
+                        // Update current user if this was triggered by another client
+                        if (data.currentUser.id !== currentUser?.id) {
+                            currentUser = data.currentUser;
+                            updateCurrentUserDisplay();
+                            populateUserSwitcher();
+                            updateButtonStates();
                             }
                         } else {
                             console.log(`📡 WORD: Ignoring ${data.platform || 'legacy'} user switch event`);
@@ -955,7 +955,7 @@
             }
         }
         
-                // Get current user role for permission checks
+        // Get current user role for permission checks
         function getCurrentUserRole() {
             return currentUser ? currentUser.role : 'editor'; // Default to editor if no user
         }
@@ -963,7 +963,7 @@
         function getCurrentUser() {
             return currentUser;
         }
-
+        
         // Check if current user can edit
         function canCurrentUserEdit() {
             return getCurrentUserRole() === 'editor' || getCurrentUserRole() === 'suggester' || getCurrentUserRole() === 'vendor';
@@ -1145,7 +1145,7 @@
                 attributeFilter: ['class', 'style']
             });
         }
-
+        
         // Make test functions available globally
         window.testUserSystemWord = testUserSystemWord;
         window.debugUserStateWord = debugUserStateWord;
@@ -1333,12 +1333,12 @@
             // Continue with existing logic for editors
             if (accessInfo.canEdit) {
                 // Update status messages for editors
-                if (!currentDocumentState.isCheckedOut) {
-                    showStatus('documentStatus', '📄 Document available for checkout', 'info');
-                } else if (currentDocumentState.checkedOutBy === 'word') {
-                    showStatus('documentStatus', '🔒 Document checked out by you', 'success');
-                } else {
-                    showStatus('documentStatus', `🔒 Document checked out by ${currentDocumentState.checkedOutBy}`, 'error');
+            if (!currentDocumentState.isCheckedOut) {
+                showStatus('documentStatus', '📄 Document available for checkout', 'info');
+            } else if (currentDocumentState.checkedOutBy === 'word') {
+                showStatus('documentStatus', '🔒 Document checked out by you', 'success');
+            } else {
+                showStatus('documentStatus', `🔒 Document checked out by ${currentDocumentState.checkedOutBy}`, 'error');
                 }
             }
         }
@@ -1430,6 +1430,23 @@
             }
         }
         
+
+        // Load default document if available (for startup initialization)
+        async function loadDefaultDocumentIfAvailable() {
+            try {
+                const response = await fetch('http://localhost:3001/api/default-document');
+                if (response.ok) {
+                    const doc = await response.json();
+                    console.log('🏠 WORD: Loading default document:', doc.filename);
+                    document.getElementById('document-title').textContent = doc.filename;
+                    await loadDocumentContent();
+                } else {
+                    console.log('ℹ️ WORD: No default document available, starting empty');
+                }
+            } catch (error) {
+                console.log('ℹ️ WORD: No default document, starting empty');
+            }
+        }
         // Save progress (keep checkout)
         async function saveProgress() {
             try {
@@ -1542,7 +1559,7 @@
                 console.error('âŒ WORD: Override error:', error);
             }
         }
-
+        
         // View read-only (load latest without checkout)
         async function viewReadOnly() {
             try {
@@ -1793,6 +1810,7 @@
                     // Skip automatic cleanup due to crashes - do manual testing instead
                     console.log('🚨 Skipping automatic cleanup to prevent crashes');
                     await initializeUserSystem();
+                    await loadDefaultDocumentIfAvailable();
                     // Skip lock protection setup due to crashes
                     fetchDocumentStatus();
                     
@@ -1868,7 +1886,7 @@
                 addNotification('Error sending document to vendor', 'error');
             }
         }
-
+        
         // ===== NOTIFICATION SYSTEM =====
         
         function addNotification(message, type = 'info') {
@@ -2389,7 +2407,7 @@
             
             if (userRole === 'viewer') {
                 // Viewers ALWAYS see banner
-                if (!isCheckedOut) {
+            if (!isCheckedOut) {
                     bannerText = 'u no change this';
                 } else if (checkedOutBy === 'web') {
                     bannerText = 'u no change this - also checked out by web';
@@ -2399,9 +2417,9 @@
             } else if (userRole === 'editor') {
                 // Editors see banner when checked out (by them or others)
                 if (isCheckedOut) {
-                    if (checkedOutBy === 'word') {
+            if (checkedOutBy === 'word') {
                         bannerText = 'doc doc u ... right here right meow';
-                    } else if (checkedOutBy === 'web') {
+            } else if (checkedOutBy === 'web') {
                         bannerText = "YA CAN'T SAVE HERE FORREST -- THE WEB GOT YA DOC!";
                     }
                     shouldShow = true;
@@ -2421,8 +2439,8 @@
             }
             
             if (shouldShow && bannerText) {
-                banner.textContent = bannerText;
-                banner.style.display = 'block';
+            banner.textContent = bannerText;
+            banner.style.display = 'block';
                 console.log(`🚨 WORD: Banner updated: ${bannerText}`);
             } else {
                 banner.style.display = 'none';
