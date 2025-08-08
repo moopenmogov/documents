@@ -836,19 +836,23 @@
                     } else if (data.type === 'document-checked-out') {
                         console.log(`📡 SSE: ${data.message}`);
                         fetchDocumentStatus(); // Refresh UI when checkout state changes
+                        updateButtonStates();
                     } else if (data.type === 'document-checked-in') {
                         console.log(`📡 SSE: ${data.message}`);
                         fetchDocumentStatus(); // Refresh UI when checkout state changes
+                        updateButtonStates();
                     } else if (data.type === 'document-saved') {
                         console.log(`📡 SSE: ${data.message}`);
                         // No need to refresh buttons for save progress (still checked out)
                     } else if (data.type === 'checkout-cancelled') {
                         console.log(`📡 SSE: ${data.message}`);
                         fetchDocumentStatus(); // Refresh UI when checkout state changes
+                        updateButtonStates();
                     } else if (data.type === 'document-uploaded') {
                         console.log(`📡 SSE: ${data.message}`);
                         console.log(`📄 Auto-loading document: ${data.filename} (ID: ${data.documentId})`);
                         fetchDocumentStatus(); // Refresh UI when new document is available
+                        updateButtonStates();
                         // Auto-load the uploaded document
                         if (data.documentId && data.filename) {
                             console.log(`🚀 Calling loadSuperdoc(${data.documentId}, ${data.filename})`);
@@ -859,9 +863,11 @@
                     } else if (data.type === 'document-sent-to-vendor') {
                         console.log(`📡 SSE: ${data.message}`);
                         fetchDocumentStatus(); // Refresh UI when document sent to vendor
+                        updateButtonStates();
                     } else if (data.type === 'vendor-checkout-overridden') {
                         console.log(`📡 SSE: ${data.message}`);
                         fetchDocumentStatus(); // Refresh UI when vendor checkout overridden
+                        updateButtonStates();
                     } else if (data.type === 'user-switched') {
                         console.log(`📡 WEB SSE: User switched event received:`, data);
                         
@@ -874,7 +880,8 @@
                                 window.currentUser = data.currentUser;
                                 updateCurrentUserDisplay();
                                 populateUserSwitcher();
-                                updateButtonVisibilityFromMatrix();
+                                updateButtonStates();
+                                // State will be updated by SSE event handler automatically
                             }
                         } else if (data.platform === 'word') {
                             console.log('WEB: Processing Word user switch - updating SuperDoc');
@@ -884,7 +891,7 @@
                                 const documentMode = getSuperdocMode(userRole);
                                 console.log('WEB: Setting SuperDoc mode:', documentMode, 'for Word role:', userRole);
                                 updateSuperdocMode(documentMode);
-                                updateButtonVisibilityFromMatrix();
+                                // State will be updated by SSE event handler automatically
                             }
                         } else {
                             console.log('WEB: Ignoring unknown user switch event');
@@ -896,8 +903,7 @@
                             // Update current user role
                             currentUser.role = data.role;
                             updateCurrentUserDisplay();
-                            // Update state matrix after status change
-                    updateButtonVisibilityFromMatrix();
+                            // State will be updated by SSE event handler automatically
                             addNotification(`Your access level changed to ${data.role}`, 'info');
                         }
                     }
@@ -1004,14 +1010,14 @@
                     currentUser = data.user;
                     window.currentUser = data.user; // Also update global variable
                     updateCurrentUserDisplay();
-                    
+                    updateButtonStates();
                     // Update button states based on new user role
-                    updateButtonVisibilityFromMatrix();
+                    // State will be updated by SSE event handler automatically
                     
                     // Reinitialize SuperDoc with new role-based mode
                     if (currentDocumentId && currentSuperdoc) {
                         console.log('🔄 Reinitializing SuperDoc for new role:', currentUser.role);
-                        loadSuperdoc(currentDocumentId, currentDocumentState.currentDocument?.filename || 'document.docx');
+                        loadSuperdoc(currentDocumentId, getCurrentUserRole());
                     }
                     
                     // Add notification
@@ -1036,13 +1042,14 @@
         }
         
         // Get current user role for permission checks
-        function getCurrentUser() {
-            return currentUser;
-        }
-
         function getCurrentUserRole() {
             const role = window.currentUser?.role || 'viewer'; // Default to viewer
             return validateRole(role) ? role : 'viewer'; // Ensure role is valid
+        }
+
+        // Helper: return current user object for matrix/self-check detection
+        function getCurrentUser() {
+            return window.currentUser || null;
         }
 
         // SuperDoc mode mapping - maps user roles to SuperDoc document modes
@@ -1416,8 +1423,7 @@
             
             if (!accessInfo.canEdit) {
                 // Apply read-only mode
-                // State matrix now controls all button visibility - only hide non-matrix buttons
-                hideButtons(['openBtn', 'viewOnlyBtn']);
+                hideButtons(['checkoutBtn', 'sendVendorBtn', 'overrideVendorBtn', 'saveProgressBtn', 'checkinBtn', 'cancelBtn', 'openBtn', 'viewOnlyBtn']);
                 updateSuperdocMode('viewing');
                 
                 // Apply read-only styling
@@ -1478,10 +1484,8 @@
             // Apply scenario-based button logic for all users (not just when canEdit)
             updateButtonVisibilityFromMatrix();
             
-            // Banner is now controlled by state matrix
-            
-            // Control user selection based on checkout state
-            if (currentDocumentState.isCheckedOut && currentDocumentState.checkedOutBy === 'web') {
+            // Control user selection based on checkout state (disable for any checkout)
+            if (currentDocumentState.isCheckedOut) {
                 disableUserSelection();
             } else {
                 enableUserSelection();
@@ -1571,8 +1575,8 @@
                     currentDocumentState.checkedOutUser = data.checkoutState.checkedOutUser || null;
                     currentDocumentState.checkedOutUserId = data.checkoutState.checkedOutUserId || null;
                     currentDocumentState.currentDocument = data.currentDocument;
-                    // Update state matrix after status change
-                    updateButtonVisibilityFromMatrix();
+                    updateButtonStates();
+                    // State will be updated by SSE event handler automatically
                 }
             } catch (error) {
                 console.error('Failed to fetch document status:', error);
@@ -1917,8 +1921,7 @@
                 if (result.success) {
                     addNotification("Document reclaimed from vendor", "success");
                     await fetchDocumentStatus();
-                    // Update state matrix after status change
-                    updateButtonVisibilityFromMatrix();
+                    // State will be updated by SSE event handler automatically
                 } else {
                     addNotification("Failed to override vendor checkout", "error");
                 }
@@ -1954,8 +1957,7 @@
                 if (result.success) {
                     addNotification(`Document sent to ${vendor} (${name})`, 'success');
                     closeVendorModal();
-                    // Update state matrix after status change
-                    updateButtonVisibilityFromMatrix();
+                    // State will be updated by SSE event handler automatically
                 } else {
                     addNotification(`Failed to send to vendor: ${result.error}`, 'error');
                 }
@@ -2124,18 +2126,13 @@
             // Test web checkout
             currentDocumentState.isCheckedOut = true;
             currentDocumentState.checkedOutBy = 'web';
-            updateCheckoutBanner();
-            
             setTimeout(() => {
                 // Test word checkout
                 currentDocumentState.checkedOutBy = 'word';
-                updateCheckoutBanner();
-                
                 setTimeout(() => {
                     // Test no checkout
                     currentDocumentState.isCheckedOut = false;
                     currentDocumentState.checkedOutBy = null;
-                    updateCheckoutBanner();
                 }, 2000);
             }, 2000);
         }
@@ -2290,15 +2287,172 @@
          * @param {object} documentState - { isCheckedOut, checkedOutBy, checkedOutUser }
          * @returns {object} { buttons: {...}, banner: { text, show } }
          */
-
-
+        function getStateMatrixConfig(userRole, platform, documentState) {
+            const { isCheckedOut, checkedOutBy, checkedOutUser } = documentState;
+            const currentUser = getCurrentUser();
+            
+            // Determine if this is self-checkout
+            const isSelfCheckout = isCheckedOut && 
+                checkedOutBy === platform && 
+                checkedOutUser === currentUser?.id;
+            
+            // Initialize result
+            const result = {
+                buttons: {
+                    checkoutBtn: false,
+                    overrideBtn: false, 
+                    sendVendorBtn: false,
+                    checkedInBtns: false // saveProgressBtn, checkinBtn, cancelBtn
+                },
+                banner: {
+                    text: '',
+                    show: false
+                }
+            };
+            
+            // VIEWERS - Always read-only, role-specific banners
+            if (userRole === 'viewer') {
+                result.banner.show = true;
+                if (!isCheckedOut) {
+                    result.banner.text = 'u no change this';
+                } else if (checkedOutBy === 'word' && platform === 'web') {
+                    result.banner.text = 'u no change this - also checked out by word';
+                } else if (checkedOutBy === 'web' && platform === 'word') {
+                    result.banner.text = 'web has the doc locked up';
+                } else if (checkedOutBy === 'web' && platform === 'web') {
+                    result.banner.text = 'u no change this - doc checked out';
+                } else if (checkedOutBy === 'word' && platform === 'word') {
+                    result.banner.text = 'another word user has doc';
+                } else if (checkedOutBy === 'vendor') {
+                    result.banner.text = 'vendor be redlining';
+                }
+                return result; // Viewers get no buttons
+            }
+            
+            // EDITORS - Full privileges, can override others
+            if (userRole === 'editor') {
+                if (!isCheckedOut) {
+                    // Available: checkout + send vendor
+                    result.buttons.checkoutBtn = true;
+                    result.buttons.sendVendorBtn = true;
+                } else if (isSelfCheckout) {
+                    // Self checkout: checked-in buttons only
+                    result.buttons.checkedInBtns = true;
+                } else {
+                    // Someone else has checkout: override + appropriate banner
+                    result.buttons.overrideBtn = true;
+                    result.banner.show = true;
+                    
+                    if (checkedOutBy === 'word' && platform === 'web') {
+                        result.banner.text = "YA CAN'T SAVE HERE FORREST -- WORD GOT YA DOC!";
+                    } else if (checkedOutBy === 'web' && platform === 'word') {
+                        result.banner.text = 'web viewer has doc locked';
+                    } else if (checkedOutBy === 'web' && platform === 'web') {
+                        result.banner.text = 'doc doc u ... right here right meow';
+                    } else if (checkedOutBy === 'word' && platform === 'word') {
+                        result.banner.text = 'another word user has doc';
+                    } else if (checkedOutBy === 'vendor') {
+                        result.banner.text = 'vendor be redlining';
+                    }
+                }
+                return result;
+            }
+            
+            // SUGGESTERS & VENDORS - Can checkout, no override privilege
+            if (userRole === 'suggester' || userRole === 'vendor') {
+                if (!isCheckedOut) {
+                    // Available: checkout only (no send vendor for non-editors)
+                    result.buttons.checkoutBtn = true;
+                } else if (isSelfCheckout) {
+                    // Self checkout: checked-in buttons only
+                    result.buttons.checkedInBtns = true;
+                } else {
+                    // Someone else has checkout: banner only, NO override
+                    result.banner.show = true;
+                    
+                    if (checkedOutBy === 'word' && platform === 'web') {
+                        result.banner.text = "YA CAN'T SAVE HERE FORREST -- WORD GOT YA DOC!";
+                    } else if (checkedOutBy === 'web' && platform === 'word') {
+                        result.banner.text = 'web viewer has doc locked';
+                    } else if (checkedOutBy === 'web' && platform === 'web') {
+                        result.banner.text = 'doc doc u ... right here right meow';
+                    } else if (checkedOutBy === 'word' && platform === 'word') {
+                        result.banner.text = 'another word user has doc';
+                    } else if (checkedOutBy === 'vendor') {
+                        result.banner.text = 'vendor be redlining';
+                    }
+                }
+                return result;
+            }
+            
+            // Fallback for unknown roles
+            console.warn(`⚠️ Unknown user role: ${userRole}`);
+            return result;
+        }
+        
+        /**
+         * Get current document state in format expected by state matrix
+         */
+        function getDocumentStateForMatrix() {
+            return {
+                isCheckedOut: currentDocumentState.isCheckedOut || false,
+                checkedOutBy: currentDocumentState.checkedOutBy || null,
+                checkedOutUser: currentDocumentState.checkedOutUser || null
+            };
+        }
+        
+        /**
+         * Apply state matrix configuration to actual UI elements
+         */
+        function applyStateMatrixToUI(config) {
+            // Apply button visibility
+            const buttonMap = {
+                checkoutBtn: config.buttons.checkoutBtn,
+                overrideVendorBtn: config.buttons.overrideBtn,
+                sendVendorBtn: config.buttons.sendVendorBtn,
+                saveProgressBtn: config.buttons.checkedInBtns,
+                checkinBtn: config.buttons.checkedInBtns,
+                cancelBtn: config.buttons.checkedInBtns,
+                viewOnlyBtn: false // Not in our matrix
+            };
+            
+            Object.entries(buttonMap).forEach(([buttonId, shouldShow]) => {
+                const button = document.getElementById(buttonId);
+                if (button) {
+                    button.style.display = shouldShow ? 'inline-block' : 'none';
+                }
+            });
+            
+            // Apply banner
+            const banner = document.getElementById('checkoutBanner');
+            if (banner) {
+                if (config.banner.show && config.banner.text) {
+                    banner.textContent = config.banner.text;
+                    banner.style.display = 'block';
+                } else {
+                    // Hide and clear text so tests don't flag stale content
+                    banner.style.display = 'none';
+                    banner.textContent = '';
+                }
+            }
+        }
         
         /**
          * Main state matrix implementation - replaces old scenario logic
          */
         function updateButtonVisibilityFromMatrix() {
-            // Use the shared state matrix client instead of local logic
-            updateUIFromStateMatrix('web', getCurrentUser, getCurrentUserRole, currentDocumentState);
+            const userRole = getCurrentUserRole();
+            const platform = 'web'; // TODO: Add platform detection for Word add-in
+            const documentState = getDocumentStateForMatrix();
+            
+            console.log('🎯 STATE MATRIX UPDATE:', { userRole, platform, documentState });
+            
+            const config = getStateMatrixConfig(userRole, platform, documentState);
+            console.log('📋 Matrix config:', config);
+            
+            applyStateMatrixToUI(config);
+            
+            console.log('✅ State matrix applied to UI');
         }
         
         // ===== END STATE MATRIX IMPLEMENTATION =====
@@ -2314,7 +2468,7 @@
         window.debugCurrentState = debugCurrentState;
         window.getVisibleButtons = getVisibleButtons;
         // Scenario-based globals removed; expose state matrix helpers instead
-
+        window.getStateMatrixConfig = getStateMatrixConfig;
         window.updateButtonVisibilityFromMatrix = updateButtonVisibilityFromMatrix;
         
         // ===== END MILESTONE 1 STATE DETECTION =====
@@ -2349,7 +2503,7 @@
             }, 1000); // Small delay to ensure SSE connection is established
         });
     </script>
-    <script src="state-matrix-client.js"></script>`r`n    <script src="state-matrix-tests.js"></script>
+    <script src="state-matrix-tests.js"></script>
 </body>
 </html>
 

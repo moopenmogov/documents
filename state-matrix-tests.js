@@ -207,12 +207,24 @@ function validateStateTest(userRole, platform, testCase) {
 /**
  * Debug current state vs expected - for live testing
  */
-function debugStateMatrixLive() {
+async function debugStateMatrixLive() {
     if (!window.getCurrentUserRole || !window.getStateMatrixConfig) {
         console.error('❌ State matrix functions not available. Make sure viewer.html is loaded.');
         return;
     }
     
+    // Ensure we have the freshest status before comparing
+    if (typeof window.fetchDocumentStatus === 'function') {
+        try {
+            await window.fetchDocumentStatus();
+        } catch (e) {
+            console.warn('⚠️ Failed to prefetch status for live debug:', e);
+        }
+    }
+    if (typeof window.updateButtonStates === 'function') {
+        try { window.updateButtonStates(); } catch (e) {}
+    }
+
     const userRole = window.getCurrentUserRole();
     const platform = 'web';
     const documentState = {
