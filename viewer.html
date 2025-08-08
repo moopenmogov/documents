@@ -951,7 +951,7 @@
                 console.log('✅ WEB: Independent user system initialized successfully');
                 
                 // Update button states after initialization
-                // State will be updated by SSE event handler automatically
+                updateButtonStates();
             } catch (error) {
                 console.error('❌ WEB: Failed to initialize user system:', error);
             }
