@@ -1895,18 +1895,28 @@
         }
         
         async function sendToVendor(event) {
-            event.preventDefault();
-            
+            if (event && event.preventDefault) event.preventDefault();
+
             const vendor = document.getElementById('vendorCompany').value;
             const name = document.getElementById('vendorName').value;
             const email = document.getElementById('vendorEmail').value;
             const notes = document.getElementById('vendorNotes').value;
-            
+
             console.log(`📤 WORD: Sending document to vendor: ${vendor} (${name} - ${email})`);
             if (notes) {
                 console.log(`📝 WORD: Notes: ${notes}`);
             }
-            
+
+            // Immediate UX: close modal and show confirmation, then fire API in background
+            try {
+                closeVendorModal();
+                addNotification('Vendor has been invited to redline', 'success');
+                setTimeout(() => openVendorConfirmationModal(), 0);
+            } catch (e) {
+                console.warn('WORD: Could not show immediate confirmation UI:', e);
+            }
+
+            // Fire-and-forget API call (non-blocking UI)
             try {
                 const response = await fetch('http://localhost:3001/api/vendor/send', {
                     method: 'POST',
@@ -1919,17 +1929,10 @@
                         source: 'word'
                     })
                 });
-                
-                const result = await response.json();
-                
-                if (result.success) {
-                    addNotification('Vendor has been invited to redline', 'success');
-                    closeVendorModal();
-                    // Show confirmation modal
-                    openVendorConfirmationModal();
-                    // No need to update button states - document stays unlocked, vendor is just invited
-                } else {
-                    addNotification(`Failed to send to vendor: ${result.error}`, 'error');
+
+                const result = await response.json().catch(() => ({ success: false, error: 'Invalid JSON' }));
+                if (!result.success) {
+                    addNotification(`Failed to send to vendor: ${result.error || 'Unknown error'}`, 'error');
                 }
             } catch (error) {
                 console.error('WORD: Error sending to vendor:', error);
