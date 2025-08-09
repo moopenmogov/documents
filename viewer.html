@@ -794,6 +794,11 @@
             flex-shrink: 0 !important;
         }
     </style>
+    <script>
+        // Work around SuperDoc UMD builds referencing a global __IS_DEBUG__
+        // Ensure it exists before the library initializes to prevent ReferenceError
+        window.__IS_DEBUG__ = false;
+    </script>
 </head>
 <body>
     <div class="opengov-header">
