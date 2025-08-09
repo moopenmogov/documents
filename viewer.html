@@ -411,7 +411,7 @@
                 opacity: 1;
             }
         }
-
+        
         
         .viewer-message {
             background: #ffc107;
@@ -829,6 +829,14 @@
             margin-right: auto !important;
             width: 100% !important;
         }
+        /* FINAL: make the .superdoc root itself NOT stretch full-bleed */
+        #superdoc .superdoc {
+            width: auto !important;
+            max-width: 820px !important;
+            display: block !important;
+            margin-left: auto !important;
+            margin-right: auto !important;
+        }
         .main-content-3col { min-height: calc(100vh - 140px); }
         /* Simple dropdown styles */
         .dropdown { position: relative; display: inline-block; }
@@ -905,8 +913,8 @@
             <div id="checkoutStatus" class="checkout-status">Available for check-out</div>
             <div id="viewerMessage" class="viewer-message" style="display: none;">You can look but don't touch</div>
             <div id="checkoutBanner" class="checkout-banner" style="display: none;"></div>
-        </div>
-        
+    </div>
+
         <!-- Right Column: INTERACTIONS + NOTIFICATIONS -->
         <div class="right-column">
             <!-- Interactions: Open (primary) + Document actions dropdown + Users button -->
@@ -923,7 +931,7 @@
                     </div>
                 </div>
                 <button class="btn btn-secondary" onclick="openUsersModal()">Users</button>
-            </div>
+    </div>
 
             <!-- Notification Window -->
             <div class="notification-window">
