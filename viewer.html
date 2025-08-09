@@ -795,21 +795,41 @@
         }
         /* Stretch columns to bottom */
         .main-content-3col { align-items: flex-start !important; }
-        .right-column { position: sticky; top: 10px; align-self: flex-start; height: calc(100vh - 20px); display: flex; flex-direction: column; }
+        .right-column { position: sticky; top: 10px; align-self: flex-start; height: calc(100vh - 200px); display: flex; flex-direction: column; }
         .notification-window { flex: 1 1 auto; overflow: auto; }
         /* Narrow SuperDoc container for Word-like view */
         #superdoc { max-width: 820px !important; margin-left: auto !important; margin-right: auto !important; display:flex; justify-content:center; }
+        .viewer-container { display:flex; justify-content:center; }
         /* Constrain internal SuperDoc wrapper and document (high specificity) */
         #superdoc .superdoc,
         #superdoc .superdoc__layers,
         #superdoc .superdoc__document,
-        #superdoc .document {
+        #superdoc .document,
+        #superdoc .superdoc__sub-document,
+        #superdoc .sub-document,
+        #superdoc .pages,
+        #superdoc .page,
+        #superdoc .super-editor-container,
+        #superdoc .super-editor {
             max-width: 820px !important;
             margin-left: auto !important;
             margin-right: auto !important;
             width: 100% !important;
         }
-        #superdoc .superdoc__layers { justify-content: center !important; }
+        #superdoc .superdoc__layers, #superdoc .layers { justify-content: center !important; }
+        /* Also clamp helper layers */
+        #superdoc .superdoc__selection-layer,
+        #superdoc .comments-container,
+        #superdoc .superdoc__comments-layer,
+        #superdoc .comments-layer,
+        #superdoc .ai-highlight-container,
+        #superdoc .ai-highlight-layer {
+            max-width: 820px !important;
+            margin-left: auto !important;
+            margin-right: auto !important;
+            width: 100% !important;
+        }
+        .main-content-3col { min-height: calc(100vh - 140px); }
         /* Simple dropdown styles */
         .dropdown { position: relative; display: inline-block; }
         .dropdown-menu {
@@ -2880,6 +2900,7 @@
                 const superdoc = new SuperDocToUse({
                     selector: '#superdoc',
                     toolbar: '#superdoc-toolbar',
+                    pagination: true,
                     document: {
                         id: documentData.id,
                         type: 'docx',
