@@ -2680,6 +2680,7 @@
                 
                 const superdoc = new SuperDocToUse({
                     selector: '#superdoc',
+                    toolbar: '#superdoc-toolbar',
                     document: {
                         id: documentData.id,
                         type: 'docx',
@@ -2689,9 +2690,6 @@
                     role: superdocUserRole, // Use 'role' at top level according to official docs
                     licenseKey: 'agplv3',
                     modules: {
-                        toolbar: {
-                            selector: 'superdoc-toolbar' // The ID of the DOM element to render toolbar into
-                        },
                         comments: {
                             readOnly: documentMode === 'viewing', // Read-only comments for viewers
                             allowResolve: documentMode !== 'viewing' // Allow resolving comments for editors/suggesters
@@ -2887,38 +2885,7 @@
                         }
                     });
                     
-                    // Test setDocumentMode method from documentation
-                    console.log('🔧 Testing setDocumentMode method:');
-                    try {
-                        if (typeof superdoc.setDocumentMode === 'function') {
-                            console.log('  setDocumentMode method exists - trying to set mode to:', expectedMode);
-                            superdoc.setDocumentMode(expectedMode);
-                            console.log('  ✅ setDocumentMode called successfully');
-                            
-                            // Wait a bit and check if mode changed
-                            setTimeout(() => {
-                                console.log('🔍 Checking mode after setDocumentMode:');
-                                methods.forEach(method => {
-                                    try {
-                                        let value;
-                                        if (method.includes('.')) {
-                                            const parts = method.split('.');
-                                            value = superdoc[parts[0]]?.[parts[1]];
-                                        } else {
-                                            value = typeof superdoc[method] === 'function' ? superdoc[method]() : superdoc[method];
-                                        }
-                                        if (value && value !== 'unknown') {
-                                            console.log(`    After setDocumentMode - ${method}: ${value}`);
-                                        }
-                                    } catch (e) {}
-                                });
-                            }, 1000);
-                        } else {
-                            console.log('  ❌ setDocumentMode method not found');
-                        }
-                    } catch (e) {
-                        console.log('  ❌ Error calling setDocumentMode:', e.message);
-                    }
+                    // Note: Do not toggle mode after init; we set mode at initialization for stability
                     
                     console.log(`  User role: ${currentRole}`);
                     console.log(`  Expected mode: ${expectedMode}`);
