@@ -652,12 +652,9 @@ app.get('/api/user/current', (req, res) => {
 
 // Legacy endpoint - returns all users for backward compatibility
 app.get('/api/users', (req, res) => {
-    // Regenerate allUsers to include any updates
-    const allUsers = { ...webUsers, ...wordUsers };
-    res.json({
-        success: true,
-        users: Object.values(allUsers)
-    });
+    // Return the canonical 4 users from the web viewer across both platforms
+    const users = Object.values(webUsers);
+    res.json({ success: true, users });
 });
 
 // PLATFORM-SPECIFIC USER ENDPOINTS
