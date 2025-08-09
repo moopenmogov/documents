@@ -80,6 +80,10 @@ documentState.wordUser = currentWordUser;
 // Document permissions
 let documentPermissions = {};
 
+// Document approvals (per document per user)
+// Shape: { [documentId]: { [userId]: { status: 'approved'|'unapproved', approvedBy, approvedAt } } }
+let documentApprovals = {};
+
 // Store SSE connections
 let sseConnections = [];
 
@@ -831,6 +835,60 @@ app.get('/api/document/:documentId/permissions', (req, res) => {
         success: true,
         permissions: documentPermissions[documentId]
     });
+});
+
+// ===== APPROVALS API =====
+
+// Get approvals for a document
+app.get('/api/document/:documentId/approvals', (req, res) => {
+    const { documentId } = req.params;
+    const approvalsMap = documentApprovals[documentId] || {};
+    const approvals = Object.entries(approvalsMap).map(([userId, a]) => ({ userId, ...a }));
+    res.json({ success: true, approvals });
+});
+
+// Update approval for a user on a document
+// Body: { userId, action: 'approve'|'unapprove', actorId }
+app.post('/api/document/:documentId/approvals', (req, res) => {
+    const { documentId } = req.params;
+    const { userId, action, actorId } = req.body || {};
+
+    if (!userId || !action || !actorId) {
+        return res.status(400).json({ success: false, error: 'Missing userId, action, or actorId' });
+    }
+
+    const actor = mockUsers[actorId];
+    const target = mockUsers[userId];
+    if (!actor || !target) {
+        return res.status(404).json({ success: false, error: 'Actor or target user not found' });
+    }
+
+    // Rule: users can only approve themselves unless actor is editor
+    const isEditor = actor.role === 'editor';
+    if (!isEditor && actorId !== userId) {
+        return res.status(403).json({ success: false, error: 'Only editors can approve/unapprove others' });
+    }
+
+    const status = action === 'approve' ? 'approved' : 'unapproved';
+    if (!documentApprovals[documentId]) documentApprovals[documentId] = {};
+    documentApprovals[documentId][userId] = {
+        status,
+        approvedBy: actorId,
+        approvedAt: new Date().toISOString()
+    };
+
+    // Broadcast SSE for UI updates and notification log
+    broadcastSSE({
+        type: 'approvals-updated',
+        documentId,
+        userId,
+        status,
+        actorId,
+        message: `${actor.name} ${status === 'approved' ? 'approved' : 'unapproved'} ${target.name}`,
+        timestamp: new Date().toISOString()
+    });
+
+    res.json({ success: true, approval: { userId, ...documentApprovals[documentId][userId] } });
 });
 
 // Update user permission for document
