@@ -852,19 +852,24 @@
             z-index: 1000;
         }
         .dropdown-menu button { width: 100%; text-align: left; }
-        /* Unified button styling */
+        /* Unified button styling (pink theme) */
+        :root {
+            --btn-pink: #e91e63;       /* base */
+            --btn-pink-hover: #d81b60; /* hover */
+        }
         button.btn, .btn, .dropdown-menu button, .btn-open, .btn-secondary, .btn-vendor, .btn-view-latest {
-            background: #0078d4 !important;
+            background: var(--btn-pink) !important;
             color: #ffffff !important;
             border: none !important;
-            padding: 8px 12px !important;
-            border-radius: 6px !important;
+            padding: 10px 14px !important;
+            border-radius: 8px !important;
             font-size: 14px !important;
             font-weight: 600 !important;
             cursor: pointer !important;
             transition: background-color .2s ease !important;
+            min-height: 36px !important;
         }
-        .btn:hover, .dropdown-menu button:hover, .btn-open:hover, .btn-secondary:hover, .btn-vendor:hover { background: #106ebe !important; }
+        .btn:hover, .dropdown-menu button:hover, .btn-open:hover, .btn-secondary:hover, .btn-vendor:hover { background: var(--btn-pink-hover) !important; }
     </style>
     <script>
         // Work around SuperDoc UMD builds referencing a global __IS_DEBUG__
@@ -894,6 +899,56 @@
             <select id="userSwitcher" class="user-select" onchange="switchUser(this.value)">
                 <option value="">Loading users...</option>
             </select>
+        </div>
+    </div>
+
+    <!-- PRE-EDITOR 2x2 GRID LAYOUT -->
+    <style>
+        .controls-grid { display: grid; grid-template-columns: 1fr 1fr; grid-template-rows: auto auto; gap: 12px; padding: 0 20px; }
+        .grid-card { background: #ffffff; border: 1px solid #e9ecef; border-radius: 8px; padding: 10px; }
+        .grid-title { font-weight: 600; margin-bottom: 8px; color: #495057; }
+        .grid-actions { display: flex; gap: 8px; flex-wrap: wrap; }
+        .grid-notifications { grid-column: 2; grid-row: 1 / span 2; display: flex; flex-direction: column; }
+        .status-bar { font-size: 14px; margin-bottom: 6px; color: #495057; }
+    </style>
+
+    <div class="controls-grid">
+        <!-- Top-left: Workflows (Users) -->
+        <div class="grid-card" style="grid-column:1; grid-row:1;">
+            <div class="grid-title">Workflows</div>
+            <div class="grid-actions">
+                <button class="btn btn-secondary" onclick="openUsersModal()">Users</button>
+        </div>
+    </div>
+
+        <!-- Bottom-left: Work on document (Open + actions) -->
+        <div class="grid-card" style="grid-column:1; grid-row:2;">
+            <div class="grid-title">Work on Document</div>
+            <div class="grid-actions">
+                <button class="btn-open" onclick="openNewFile()">Open</button>
+                <div class="dropdown" id="docActionsDropdown_grid">
+                    <button class="btn btn-secondary" onclick="toggleDocActionsMenu()">Document ▾</button>
+                    <div class="dropdown-menu" id="docActionsMenu">
+                        <button onclick="checkoutDocument()">Check-out Document</button>
+                        <button onclick="checkinDocument()">Save & Check-in</button>
+                        <button onclick="cancelCheckout()">Cancel Check-out</button>
+                        <button onclick="viewReadOnly()">View Latest</button>
+                        <button onclick="overrideCheckout()">Override Check-out</button>
+                    </div>
+                </div>
+                <button class="btn btn-vendor" onclick="openVendorModal()">📤 Send to Vendor</button>
+            </div>
+    </div>
+
+        <!-- Right: Status & Notifications (span 2 rows) -->
+        <div class="grid-card grid-notifications">
+            <div class="status-bar">Status: <span id="statusMirror">—</span></div>
+            <div class="notification-window" style="flex:1 1 auto; overflow:auto;">
+                <div class="notification-window-header">🔔 Notifications</div>
+                <div class="notification-window-body" id="notificationWindowBody_grid">
+                    <div class="no-notifications">No notifications yet</div>
+                </div>
+            </div>
         </div>
     </div>
 
@@ -2548,6 +2603,23 @@
             }
         }
 
+        // Mirror checkout status into the grid status bar whenever it changes
+        const mirrorStatus = () => {
+            const src = document.getElementById('checkoutStatus');
+            const dst = document.getElementById('statusMirror');
+            if (src && dst) dst.textContent = src.textContent || '—';
+        };
+        // Observe checkoutStatus text changes
+        const statusEl = document.getElementById('checkoutStatus');
+        if (statusEl) {
+            const mo = new MutationObserver(mirrorStatus);
+            mo.observe(statusEl, { characterData: true, subtree: true, childList: true });
+            mirrorStatus();
+        } else {
+            // fallback after load
+            window.addEventListener('load', mirrorStatus);
+        }
+
         // ===== Users modal (Milestone 4) =====
         async function openUsersModal() {
             const modal = document.getElementById('usersModal');
@@ -2566,8 +2638,11 @@
                 const usersResp = await fetch('http://localhost:3001/api/users');
                 const usersData = await usersResp.json();
                 let users = usersData.users || [];
-                if (!users.length && window.getAvailableUsers) {
-                    users = (getAvailableUsers() || []);
+                // Secondary fallbacks
+                if (!users.length && window.getAvailableUsers) users = (getAvailableUsers() || []);
+                if (!users.length && window.webUsers) users = Object.values(window.webUsers);
+                if (!users.length) {
+                    addNotification('Error loading users/approvals', 'error');
                 }
 
                 // Determine current document id; fall back to 'default-doc'
