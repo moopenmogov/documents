@@ -1,4 +1,58 @@
+This is a BRIEF.
+
+Purpose of the brief is to:
+
+- Provide absolute clarity about the purpose of the application
+- Create an embeddable tool that we can deploy immediately behind a flag
+- Unlock a massive feedback pool (our customers)
+- Transform GTM sales pitches for contracting 
+- Accelerate development
+
+So...read this first. Think about it. Challenge it. Tell me what you hate. And then go look at what I built and fix it. Make it better.
+
+Nothing about this is final. Nothing is absolute. No one doesn't not always sometimes make mistakes. Except me, so consider this gospel. But that actually brings up an important point. That's why everything is pink - it makes it an obvious protoytpe.
+
+And when we get to a point where we're all proud of this -- with *us* including our customers, we launch it.
+
+Let's begin.
+
+I wrote this file. Correction, I write this file. I actively modify it. 100% of the words here are mine (minus the earlier series that look like an excitable cartoon wrote them).
+
+Everything else came from AI. A combination of Claude 3.5, Claude 4, and 5o, most recently. I worked closely and was simultaneously its architect, prodcut manager, designer, customer, support team member, and more. It was the same back to me.
+
+Some requirements and features are therefore probably stupid. The ones I specified or built, I assume. That context is important for understanding why this exists.
+
+The purpose of this application is to make contracting delightful. The essence of contracting is a legally binding agreement, typically in a written form. It is arguably the essence of democracy, if not solely due to its importance in the foundation of capitalism.
+
+Executing contracts between governments and its citizens is, therefore, one of the most important things that it does. You know, do what you say and say what you do. That kind of thing.
+
+Back to this application.
+
+Government agencies almost always use Word. They write and manage their contracting process in Word. Or at least, everything relating to the written contract. The execution of the contract, management of its spend, vendoer performance, etc, happens elsewhere. We call that the contract record.
+
+This is the contract document.
+
+It's designed to be a bidirectional system that is tailored to the government contracting process, which is as follows:
+
+STEPS 
+
+
+
+
+
+
 # 🚀 OpenGov Document Collaboration Tool
+
+
+
+
+
+
+
+
+
+
+
 
 A powerful local application that enables seamless collaboration between Microsoft Word and web-based document editing.
 
