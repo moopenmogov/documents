@@ -999,6 +999,38 @@
         </div>
     </div>
 
+    <!-- Users Modal -->
+    <div id="usersModal" class="notification-modal" style="display:none;">
+        <div class="notification-modal-backdrop" onclick="closeUsersModal()"></div>
+        <div class="notification-modal-content" style="max-width:700px; width:90%;">
+            <div class="notification-modal-header">
+                <h3 class="notification-modal-title">👥 Users</h3>
+                <button class="notification-modal-close" onclick="closeUsersModal()">×</button>
+            </div>
+            <div class="notification-modal-body">
+                <div id="usersModalBody">
+                    <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:8px;">
+                        <div style="font-weight:600;">User Permissions and Approval Status</div>
+                        <button class="btn btn-secondary" onclick="refreshUsersModal()">Refresh</button>
+                    </div>
+                    <div style="overflow:auto; max-height:50vh; border:1px solid #e9ecef; border-radius:6px;">
+                        <table style="width:100%; border-collapse:collapse; font-size:14px;">
+                            <thead style="position:sticky; top:0; background:#f8f9fa;">
+                                <tr>
+                                    <th style="text-align:left; padding:8px; border-bottom:1px solid #e9ecef;">Name</th>
+                                    <th style="text-align:left; padding:8px; border-bottom:1px solid #e9ecef;">Role</th>
+                                    <th style="text-align:left; padding:8px; border-bottom:1px solid #e9ecef;">Approval</th>
+                                    <th style="text-align:left; padding:8px; border-bottom:1px solid #e9ecef;">Action</th>
+                                </tr>
+                            </thead>
+                            <tbody id="usersTableBody"></tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
     <!-- Load SuperDoc from local node_modules -->
     <script>
         window.testModeToggle = function() {
@@ -2474,10 +2506,92 @@
             }
         }
 
-        // ===== Users modal (skeleton) =====
-        function openUsersModal() {
-            // Placeholder: will implement full modal in next milestone
-            addNotification('Users modal (skeleton) opened - coming next', 'info');
+        // ===== Users modal (Milestone 4) =====
+        async function openUsersModal() {
+            const modal = document.getElementById('usersModal');
+            if (!modal) return;
+            modal.style.display = 'flex';
+            await refreshUsersModal();
+        }
+        function closeUsersModal() {
+            const modal = document.getElementById('usersModal');
+            if (!modal) return;
+            modal.style.display = 'none';
+        }
+        async function refreshUsersModal() {
+            try {
+                const usersResp = await fetch('http://localhost:3001/api/users');
+                const usersData = await usersResp.json();
+                const users = usersData.users || [];
+
+                // Determine current document id; fall back to 'default-doc'
+                const currentId = (window.currentDocumentState && window.currentDocumentState.currentDocument && window.currentDocumentState.currentDocument.id) || 'default-doc';
+                const approvalsResp = await fetch(`http://localhost:3001/api/document/${currentId}/approvals`);
+                const approvalsData = await approvalsResp.json();
+                const approvals = approvalsData.approvals || [];
+                const approvalMap = approvals.reduce((acc, a) => { acc[a.userId] = a; return acc; }, {});
+
+                const tbody = document.getElementById('usersTableBody');
+                if (!tbody) return;
+                tbody.innerHTML = '';
+
+                const actor = (window.currentUser && window.currentUser.id) ? window.currentUser : (getCurrentUser && getCurrentUser());
+                const actorId = actor && actor.id ? actor.id : null;
+                const actorRole = actor && actor.role ? actor.role : (getCurrentUserRole && getCurrentUserRole());
+
+                users.forEach(u => {
+                    const tr = document.createElement('tr');
+                    tr.innerHTML = `
+                        <td style="padding:8px; border-bottom:1px solid #f1f3f5;">${u.name}</td>
+                        <td style="padding:8px; border-bottom:1px solid #f1f3f5;">${u.role}</td>
+                        <td style="padding:8px; border-bottom:1px solid #f1f3f5;">${(approvalMap[u.id]?.status || 'unapproved').toUpperCase()}</td>
+                        <td style="padding:8px; border-bottom:1px solid #f1f3f5;">
+                            <button class="btn btn-secondary" data-user="${u.id}" data-status="${approvalMap[u.id]?.status || 'unapproved'}">${(approvalMap[u.id]?.status === 'approved') ? 'Unapprove' : 'Approve'}</button>
+                        </td>
+                    `;
+                    tbody.appendChild(tr);
+                });
+
+                tbody.querySelectorAll('button').forEach(btn => {
+                    btn.addEventListener('click', async (e) => {
+                        const targetUserId = btn.getAttribute('data-user');
+                        const currentStatus = btn.getAttribute('data-status') || 'unapproved';
+                        const nextAction = currentStatus === 'approved' ? 'unapprove' : 'approve';
+
+                        // Rules: self-only unless editor
+                        if (actorRole !== 'editor' && actorId !== targetUserId) {
+                            addNotification('Only editors can approve/unapprove others', 'error');
+                            return;
+                        }
+
+                        // Editor confirming acting on behalf of others
+                        if (actorRole === 'editor' && actorId !== targetUserId) {
+                            const proceed = confirm('You are approving/unapproving on behalf of another user. Continue?');
+                            if (!proceed) return;
+                        }
+
+                        try {
+                            const currentId2 = currentId;
+                            const resp = await fetch(`http://localhost:3001/api/document/${currentId2}/approvals`, {
+                                method: 'POST',
+                                headers: { 'Content-Type': 'application/json' },
+                                body: JSON.stringify({ userId: targetUserId, action: nextAction, actorId })
+                            });
+                            const result = await resp.json();
+                            if (result.success) {
+                                addNotification(`Approval updated: ${nextAction.toUpperCase()} (${targetUserId})`, 'success');
+                                await refreshUsersModal();
+                            } else {
+                                addNotification(`Failed to update approval: ${result.error || 'Unknown error'}`, 'error');
+                            }
+                        } catch (err) {
+                            addNotification('Error updating approval', 'error');
+                        }
+                    });
+                });
+            } catch (err) {
+                addNotification('Error loading users/approvals', 'error');
+            }
         }
 
         // Debug notification location
