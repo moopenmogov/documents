@@ -895,17 +895,8 @@
 
     <!-- CLEAN 3-COLUMN LAYOUT -->
     <div class="main-content-3col" style="display: flex !important; flex-direction: row !important; gap: 20px; padding: 20px; align-items: flex-start !important; width: 100% !important; box-sizing: border-box !important;">
-        <!-- Left Column: ALL BUTTONS -->
-        <div class="left-column buttons-column" style="width: 250px !important; flex-shrink: 0 !important; display: flex !important; flex-direction: column !important; gap: 5px;">
-            
-            <button class="btn-open" onclick="openNewFile()">Open</button>
-            <button id="overrideBtn" class="btn btn-secondary" onclick="overrideCheckout()" style="display: none;">Override Check-out</button>
-            <button id="checkoutBtn" class="btn" onclick="checkoutDocument()" style="display: none;">Check-out Document</button>                
-            <button id="sendVendorBtn" class="btn btn-vendor" onclick="openVendorModal()" style="display: none;">📤 Send to Vendor</button>
-            <button id="saveProgressBtn" class="btn btn-secondary" onclick="saveProgress()" style="display: none;">💾 Save Progress</button>
-            <button id="checkinBtn" class="btn" onclick="checkinDocument()" style="display: none;">✅ Save & Check-in</button>
-            <button id="cancelBtn" class="btn btn-secondary" onclick="cancelCheckout()" style="display: none;">❌ Cancel Check-out</button>
-        </div>
+        <!-- Left Column intentionally empty to maximize editor space -->
+        <div class="left-column buttons-column" style="width: 0 !important; flex-shrink: 0 !important; display: flex !important; flex-direction: column !important; gap: 5px;"></div>
         
         <!-- Center Column: TITLE + BANNERS -->
         <div class="center-column title-banner-column" style="flex: 1 !important; text-align: center !important;">
@@ -918,7 +909,7 @@
         <!-- Right Column: INTERACTIONS + NOTIFICATIONS -->
         <div class="right-column">
             <!-- Interactions: Open (primary) + Document actions dropdown + Users button -->
-            <div style="display:flex; gap:8px; align-items:center; justify-content:flex-end; margin-bottom:8px;">
+            <div style="display:flex; gap:8px; align-items:center; justify-content:flex-end; margin-bottom:8px; flex-wrap: wrap;">
                 <button class="btn-open" onclick="openNewFile()">Open</button>
                 <div class="dropdown" id="docActionsDropdown">
                     <button class="btn btn-secondary" onclick="toggleDocActionsMenu()">Document ▾</button>
@@ -930,6 +921,7 @@
                         <button onclick="overrideCheckout()">Override Check-out</button>
                     </div>
                 </div>
+                <button class="btn btn-vendor" onclick="openVendorModal()">📤 Send to Vendor</button>
                 <button class="btn btn-secondary" onclick="openUsersModal()">Users</button>
     </div>
 
@@ -2566,9 +2558,13 @@
         }
         async function refreshUsersModal() {
             try {
+                // Fallback to state matrix current users if needed
                 const usersResp = await fetch('http://localhost:3001/api/users');
                 const usersData = await usersResp.json();
-                const users = usersData.users || [];
+                let users = usersData.users || [];
+                if (!users.length && window.getAvailableUsers) {
+                    users = (getAvailableUsers() || []);
+                }
 
                 // Determine current document id; fall back to 'default-doc'
                 const currentId = (window.currentDocumentState && window.currentDocumentState.currentDocument && window.currentDocumentState.currentDocument.id) || 'default-doc';
