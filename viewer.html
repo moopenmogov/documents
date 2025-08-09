@@ -1027,8 +1027,11 @@
                             console.warn('⚠️ Missing documentId or filename in SSE event:', data);
                         }
                     } else if (data.type === 'document-sent-to-vendor') {
+                        console.log(`📡 SSE (ignored for state): ${data.message}`);
+                        addNotification(data.message || 'Vendor has been invited to redline', 'info');
+                    } else if (data.type === 'vendor-invited') {
                         console.log(`📡 SSE: ${data.message}`);
-                        fetchDocumentStatus(); // Refresh UI when document sent to vendor
+                        addNotification(data.message || 'Vendor has been invited to redline', 'info');
                     } else if (data.type === 'vendor-checkout-overridden') {
                         console.log(`📡 SSE: ${data.message}`);
                         fetchDocumentStatus(); // Refresh UI when vendor checkout overridden
