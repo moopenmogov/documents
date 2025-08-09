@@ -1,4 +1,4 @@
-const express = require('express');
+﻿const express = require('express');
 const cors = require('cors');
 const multer = require('multer');
 const fs = require('fs');
@@ -10,6 +10,9 @@ const PORT = 3001;
 // Enable CORS and JSON parsing
 app.use(cors());
 app.use(express.json({ limit: '50mb' }));
+
+// Serve static files from uploads directory
+app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
 
 // Create uploads directory if it doesn't exist
 const uploadsDir = './uploads';
@@ -401,30 +404,32 @@ app.post('/api/cancel-checkout', (req, res) => {
 
 // Send document to vendor
 app.post('/api/vendor/send', (req, res) => {
-    const { vendor, name, email, source } = req.body;
+    const { vendor, name, email, notes, source } = req.body;
     
-    if (documentState.isCheckedOut) {
-        return res.status(409).json({
-            success: false,
-            error: 'Document is already checked out'
-        });
+    // REMOVED: Auto-locking behavior - vendors are now just invited, document stays unlocked
+    // Store vendor invitation info without locking the document
+    const vendorInvitation = { 
+        vendor, 
+        name, 
+        email, 
+        notes: notes || '', 
+        sentBy: source, 
+        sentAt: new Date().toISOString() 
+    };
+    
+    console.log(`📤 Vendor invitation sent: ${vendor} (${name})`);
+    if (notes) {
+        console.log(`📝 Notes: ${notes}`);
     }
     
-    documentState.isCheckedOut = true;
-    documentState.checkedOutBy = 'vendor';
-    documentState.checkedOutAt = new Date().toISOString();
-    documentState.vendorInfo = { vendor, name, email, sentBy: source };
-    
-    console.log(`📤 Document sent to vendor: ${vendor}`);
-    
     broadcastSSE({
-        type: 'document-sent-to-vendor',
-        message: `Document sent to ${vendor}`,
-        vendorInfo: documentState.vendorInfo,
+        type: 'vendor-invited',
+        message: `Vendor ${vendor} has been invited to redline`,
+        vendorInvitation: vendorInvitation,
         timestamp: new Date().toISOString()
     });
     
-    res.json({ success: true, vendorInfo: documentState.vendorInfo });
+    res.json({ success: true, vendorInvitation: vendorInvitation });
 });
 
 // Override any checkout (generic)
@@ -522,6 +527,26 @@ app.get('/api/document/:documentId', (req, res) => {
 // Get current document info
 app.get('/api/current-document', (req, res) => {
     res.json(currentDocument);
+});
+
+// Get default document endpoint
+app.get('/api/default-document', (req, res) => {
+    const defaultFile = 'CONTRACT FOR CONTRACTS.docx';
+    const defaultPath = path.join(uploadsDir, defaultFile);
+    
+    if (fs.existsSync(defaultPath)) {
+        currentDocument = {
+            id: 'default-doc',
+            filename: defaultFile,
+            filePath: defaultPath,
+            lastUpdated: new Date().toISOString()
+        };
+        
+        console.log('✅ Default document set:', defaultFile);
+        res.json(currentDocument);
+    } else {
+        res.status(404).json({ error: 'Default document not found' });
+    }
 });
 
 // Update document from web viewer (placeholder for future bidirectional sync)
@@ -933,28 +958,21 @@ function getStateMatrixConfig(userRole, platform, docState, currentUser) {
             sendVendorBtn: false,
             checkedInBtns: false // saveProgressBtn, checkinBtn, cancelBtn
         },
-        banner: {
-            text: '',
-            show: false
+        checkoutStatus: {
+            show: !!(currentDocument.filename && currentDocument.id),
+            text: isCheckedOut ? 
+                `Checked out by ${checkedOutUser?.name || checkedOutBy}` : 
+                'Available for check-out'
+        },
+        viewerMessage: {
+            show: userRole === 'viewer' && !!(currentDocument.filename && currentDocument.id),
+            text: 'You can look but don\'t touch'
         }
     };
     
     // VIEWERS - Always read-only, role-specific banners
     if (userRole === 'viewer') {
-        result.banner.show = true;
-        if (!isCheckedOut) {
-            result.banner.text = 'u no change this';
-        } else if (checkedOutBy === 'word' && platform === 'web') {
-            result.banner.text = 'u no change this - also checked out by word';
-        } else if (checkedOutBy === 'web' && platform === 'word') {
-            result.banner.text = 'web has the doc locked up';
-        } else if (checkedOutBy === 'web' && platform === 'web') {
-            result.banner.text = 'u no change this - doc checked out';
-        } else if (checkedOutBy === 'word' && platform === 'word') {
-            result.banner.text = 'another word user has doc';
-        } else if (checkedOutBy === 'vendor') {
-            result.banner.text = 'vendor be redlining';
-        }
+        
         return result; // Viewers get no buttons
     }
     
@@ -970,19 +988,6 @@ function getStateMatrixConfig(userRole, platform, docState, currentUser) {
         } else {
             // Someone else has checkout: override + appropriate banner
             result.buttons.overrideBtn = true;
-            result.banner.show = true;
-            
-            if (checkedOutBy === 'word' && platform === 'web') {
-                result.banner.text = "YA CAN'T SAVE HERE FORREST -- WORD GOT YA DOC!";
-            } else if (checkedOutBy === 'web' && platform === 'word') {
-                result.banner.text = 'web viewer has doc locked';
-            } else if (checkedOutBy === 'web' && platform === 'web') {
-                result.banner.text = 'doc doc u ... right here right meow';
-            } else if (checkedOutBy === 'word' && platform === 'word') {
-                result.banner.text = 'another word user has doc';
-            } else if (checkedOutBy === 'vendor') {
-                result.banner.text = 'vendor be redlining';
-            }
         }
         return result;
     }
@@ -997,19 +1002,7 @@ function getStateMatrixConfig(userRole, platform, docState, currentUser) {
             result.buttons.checkedInBtns = true;
         } else {
             // Someone else has checkout: banner only, NO override
-            result.banner.show = true;
             
-            if (checkedOutBy === 'word' && platform === 'web') {
-                result.banner.text = "YA CAN'T SAVE HERE FORREST -- WORD GOT YA DOC!";
-            } else if (checkedOutBy === 'web' && platform === 'word') {
-                result.banner.text = 'web viewer has doc locked';
-            } else if (checkedOutBy === 'web' && platform === 'web') {
-                result.banner.text = 'doc doc u ... right here right meow';
-            } else if (checkedOutBy === 'word' && platform === 'word') {
-                result.banner.text = 'another word user has doc';
-            } else if (checkedOutBy === 'vendor') {
-                result.banner.text = 'vendor be redlining';
-            }
         }
         return result;
     }

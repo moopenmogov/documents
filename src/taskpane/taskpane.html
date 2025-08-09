@@ -201,7 +201,7 @@
         }
         
                 .btn-view-latest {
-            background: #17a2b8;
+            background: #495057;
             color: white;
             padding: 8px 12px;
             border: none;
@@ -215,7 +215,7 @@
         }
 
         .btn-view-latest:hover {
-            background: #138496;
+            background: #343a40;
         }
 
         .btn-open-web {
@@ -294,19 +294,29 @@
         }
         
         /* Checkout Status Banner */
-        .checkout-banner {
-            background: #dc3545;
+                
+        /* New Standardized Banners */
+        .checkout-status {
+            background: #17a2b8;
             color: white;
-            padding: 10px 15px;
+            padding: 8px 16px;
             text-align: center;
-            font-weight: 600;
-            font-size: 12px;
-            margin-bottom: 15px;
+            font-weight: 500;
+            margin: 8px 0;
             border-radius: 4px;
-            border: 2px solid #b02a37;
-            box-shadow: 0 2px 6px rgba(220, 53, 69, 0.3);
-            display: none;
-            animation: slideDown 0.3s ease-out;
+            font-size: 14px;
+        }
+        
+        .viewer-message {
+            background: #ffc107;
+            color: #212529;
+            padding: 6px 12px;
+            text-align: center;
+            font-weight: 400;
+            margin: 6px 0;
+            border-radius: 4px;
+            font-size: 13px;
+            font-style: italic;
         }
         
         @keyframes slideDown {
@@ -584,6 +594,11 @@
         .notification-window::-webkit-scrollbar-thumb:hover {
             background: rgba(23, 162, 184, 0.5);
         }
+        
+        /* Checked out state - nice red color - high specificity to override duplicates */
+        .checkout-status.checked-out {
+            background: #dc3545 !important;
+        }
     </style>
 </head>
 <body>
@@ -616,19 +631,28 @@
         <div id="addin-controls-area">
             <div class="document-info">
                 <div class="document-title-section">
-                    <p class="document-title" id="document-title">No document loaded</p>
+                <p class="document-title" id="document-title">No document loaded</p>
                 </div>
                 <div class="document-buttons-section">
-                    <div class="document-buttons">
+                <div class="document-buttons">
                         <button class="btn-view-latest" onclick="viewReadOnly()">👀 View Latest</button>
                         <button id="shareToWebBtn" class="btn-open-web" onclick="shareToWeb()">🌐 Open in Web</button>
                     </div>
                 </div>
             </div>
         
-            <!-- Checkout Status Banner -->
-            <div id="checkoutBanner" class="checkout-banner">
-                Document checkout status will appear here
+            <!-- Checkout Status -->
+            <div id="checkoutStatus" class="checkout-status">
+                Available for check-out
+            </div>
+            
+            <!-- Viewer Message -->
+            <div id="viewerMessage" class="viewer-message" style="display: none;">
+                You can look but don't touch
+            </div>
+            
+            <!-- Legacy Banner (for remaining edge cases) -->
+            <div id="checkoutBanner" class="checkout-banner" style="display: none;">
             </div>
             
             <div class="sync-section">
@@ -651,11 +675,11 @@
             <button id="cancelBtn" class="button button-secondary" onclick="cancelCheckout()" style="display: none;">
                 ❌ Cancel Check-out
             </button>
-
-            <button id="overrideBtn" class="button button-warning" onclick="overrideCheckout()" style="display: none;">
-                🔓 Override Check-out
-            </button>
         
+            <button id="overrideBtn" class="button button-secondary" onclick="overrideCheckout()" style="display: none;">
+                Override Check-out
+            </button>
+            
 
             
         </div>
@@ -712,10 +736,15 @@
                         <input type="text" id="vendorName" value="Hari Seldon" required
                                style="width: 100%; padding: 8px; border: 1px solid #ccc; border-radius: 4px;">
                     </div>
-                    <div style="margin-bottom: 20px;">
+                    <div style="margin-bottom: 15px;">
                         <label style="display: block; margin-bottom: 5px; font-weight: 600;">Email:</label>
                         <input type="email" id="vendorEmail" value="hari@sel.don" required
                                style="width: 100%; padding: 8px; border: 1px solid #ccc; border-radius: 4px;">
+                    </div>
+                    <div style="margin-bottom: 20px;">
+                        <label style="display: block; margin-bottom: 5px; font-weight: 600;">Notes (optional):</label>
+                        <textarea id="vendorNotes" placeholder="Add any notes or instructions for the vendor..."
+                               style="width: 100%; padding: 8px; border: 1px solid #ccc; border-radius: 4px; resize: vertical; min-height: 80px; font-family: inherit;"></textarea>
                     </div>
                     <div style="display: flex; gap: 10px; justify-content: flex-end;">
                         <button type="button" onclick="closeVendorModal()" 
@@ -731,7 +760,28 @@
             </div>
         </div>
     </div>
-<script>
+    
+    <!-- Vendor Confirmation Modal -->
+    <div id="vendorConfirmationModal" class="notification-modal" style="display: none;">
+        <div class="notification-modal-backdrop" onclick="closeVendorConfirmationModal()"></div>
+        <div class="notification-modal-content">
+            <div class="notification-modal-header">
+                <h3 class="notification-modal-title">✅ Confirmation</h3>
+                <button class="notification-modal-close" onclick="closeVendorConfirmationModal()">×</button>
+            </div>
+            <div class="notification-modal-body">
+                <p style="text-align: center; font-size: 16px; margin: 20px 0;">Your vendor has been emailed</p>
+                <div style="display: flex; justify-content: center;">
+                    <button onclick="closeVendorConfirmationModal()" 
+                            style="padding: 10px 20px; background: #0078d4; color: white; border: none; border-radius: 4px; cursor: pointer; font-size: 14px;">
+                        OK
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <script>
         // Notification system variables
         let notificationHistory = [];
         let hasUnreadNotifications = false;
@@ -793,12 +843,12 @@
                         // Only handle word platform user switches
                         if (data.platform === 'word') {
                             console.log(`📡 WORD: Processing word user switch to ${data.currentUser.name}`);
-                            // Update current user if this was triggered by another client
-                            if (data.currentUser.id !== currentUser?.id) {
-                                currentUser = data.currentUser;
-                                updateCurrentUserDisplay();
-                                populateUserSwitcher();
-                                updateButtonStates();
+                        // Update current user if this was triggered by another client
+                        if (data.currentUser.id !== currentUser?.id) {
+                            currentUser = data.currentUser;
+                            updateCurrentUserDisplay();
+                            populateUserSwitcher();
+                            updateButtonStates();
                             }
                         } else {
                             console.log(`📡 WORD: Ignoring ${data.platform || 'legacy'} user switch event`);
@@ -936,7 +986,7 @@
             }
         }
         
-                // Get current user role for permission checks
+        // Get current user role for permission checks
         function getCurrentUserRole() {
             return currentUser ? currentUser.role : 'editor'; // Default to editor if no user
         }
@@ -944,32 +994,13 @@
         function getCurrentUser() {
             return currentUser;
         }
-
+        
         // Check if current user can edit
         function canCurrentUserEdit() {
             return getCurrentUserRole() === 'editor' || getCurrentUserRole() === 'suggester' || getCurrentUserRole() === 'vendor';
         }
 
-        // Control user selector during checkout
-        function disableUserSelection() {
-            const switcher = document.getElementById('userSwitcher');
-            if (switcher) {
-                switcher.disabled = true;
-                switcher.style.opacity = '0.5';
-                switcher.style.cursor = 'not-allowed';
-                console.log('🔒 WORD: User selection disabled during checkout');
-            }
-        }
-
-        function enableUserSelection() {
-            const switcher = document.getElementById('userSwitcher');
-            if (switcher) {
-                switcher.disabled = false;
-                switcher.style.opacity = '1';
-                switcher.style.cursor = 'pointer';
-                console.log('🔓 WORD: User selection enabled after checkin');
-            }
-        }
+        // User selection is always enabled - no locking mechanism
         
         // ========================================
         // TESTING FUNCTIONS (Word Add-in)
@@ -1145,7 +1176,7 @@
                 attributeFilter: ['class', 'style']
             });
         }
-
+        
         // Make test functions available globally
         window.testUserSystemWord = testUserSystemWord;
         window.debugUserStateWord = debugUserStateWord;
@@ -1324,11 +1355,7 @@
             updateCheckoutBanner();
             
             // Control user selection based on checkout state
-            if (currentDocumentState.isCheckedOut && currentDocumentState.checkedOutBy === 'word') {
-                disableUserSelection();
-            } else {
-                enableUserSelection();
-            }
+            if (currentDocumentState.isCheckedOut && currentDocumentState.checkedOutBy === 'word') {} else {}
             
             // Apply shared state matrix (replaces scenario logic)
             await updateUIFromStateMatrix('word', getCurrentUser, getCurrentUserRole, currentDocumentState);
@@ -1337,12 +1364,12 @@
             // Continue with existing logic for editors
             if (accessInfo.canEdit) {
                 // Update status messages for editors
-                if (!currentDocumentState.isCheckedOut) {
-                    showStatus('documentStatus', '📄 Document available for checkout', 'info');
-                } else if (currentDocumentState.checkedOutBy === 'word') {
-                    showStatus('documentStatus', '🔒 Document checked out by you', 'success');
-                } else {
-                    showStatus('documentStatus', `🔒 Document checked out by ${currentDocumentState.checkedOutBy}`, 'error');
+            if (!currentDocumentState.isCheckedOut) {
+                showStatus('documentStatus', '📄 Document available for checkout', 'info');
+            } else if (currentDocumentState.checkedOutBy === 'word') {
+                showStatus('documentStatus', '🔒 Document checked out by you', 'success');
+            } else {
+                showStatus('documentStatus', `🔒 Document checked out by ${currentDocumentState.checkedOutBy}`, 'error');
                 }
             }
         }
@@ -1391,10 +1418,7 @@
                     const result = await response.json();
                     showStatus('documentStatus', '✅ Document checked out successfully', 'success');
                     
-                    // Disable user selection during checkout
-                    disableUserSelection();
-                    
-                    await fetchDocumentStatus(); // Refresh UI (includes unlocking)
+                    // Disable user selection during checkoutawait fetchDocumentStatus(); // Refresh UI (includes unlocking)
                     
                     // Load document content using working method
                     await loadDocumentContent();
@@ -1437,6 +1461,23 @@
             }
         }
         
+
+        // Load default document if available (for startup initialization)
+        async function loadDefaultDocumentIfAvailable() {
+            try {
+                const response = await fetch('http://localhost:3001/api/default-document');
+                if (response.ok) {
+                    const doc = await response.json();
+                    console.log('🏠 WORD: Loading default document:', doc.filename);
+                    document.getElementById('document-title').textContent = doc.filename;
+                    await loadDocumentContent();
+                } else {
+                    console.log('ℹ️ WORD: No default document available, starting empty');
+                }
+            } catch (error) {
+                console.log('ℹ️ WORD: No default document, starting empty');
+            }
+        }
         // Save progress (keep checkout)
         async function saveProgress() {
             try {
@@ -1491,10 +1532,7 @@
                 if (response.ok) {
                     showStatus('documentStatus', '✅ Document checked in successfully', 'success');
                     
-                    // Re-enable user selection after successful checkin
-                    enableUserSelection();
-                    
-                    await fetchDocumentStatus(); // Refresh UI (includes re-locking if needed)
+                    // Re-enable user selection after successful checkinawait fetchDocumentStatus(); // Refresh UI (includes re-locking if needed)
                 } else {
                     const error = await response.json();
                     showStatus('documentStatus', `❌ ${error.error}`, 'error');
@@ -1521,10 +1559,7 @@
                 if (response.ok) {
                     showStatus('documentStatus', '✅ Checkout cancelled', 'success');
                     
-                    // Re-enable user selection after cancelling checkout
-                    enableUserSelection();
-                    
-                    await fetchDocumentStatus(); // Refresh UI
+                    // Re-enable user selection after cancelling checkoutawait fetchDocumentStatus(); // Refresh UI
                 } else {
                     const error = await response.json();
                     showStatus('documentStatus', `❌ ${error.error}`, 'error');
@@ -1555,7 +1590,7 @@
                 console.error('âŒ WORD: Override error:', error);
             }
         }
-
+        
         // View read-only (load latest without checkout)
         async function viewReadOnly() {
             try {
@@ -1806,6 +1841,7 @@
                     // Skip automatic cleanup due to crashes - do manual testing instead
                     console.log('🚨 Skipping automatic cleanup to prevent crashes');
                     await initializeUserSystem();
+                    await loadDefaultDocumentIfAvailable();
                     // Skip lock protection setup due to crashes
                     fetchDocumentStatus();
                     
@@ -1846,15 +1882,41 @@
             modal.style.display = 'none';
         }
         
+        function openVendorConfirmationModal() {
+            console.log('✅ WORD: Opening vendor confirmation modal...');
+            const modal = document.getElementById('vendorConfirmationModal');
+            modal.style.display = 'flex';
+        }
+        
+        function closeVendorConfirmationModal() {
+            console.log('✅ WORD: Closing vendor confirmation modal...');
+            const modal = document.getElementById('vendorConfirmationModal');
+            modal.style.display = 'none';
+        }
+        
         async function sendToVendor(event) {
-            event.preventDefault();
-            
+            if (event && event.preventDefault) event.preventDefault();
+
             const vendor = document.getElementById('vendorCompany').value;
             const name = document.getElementById('vendorName').value;
             const email = document.getElementById('vendorEmail').value;
-            
+            const notes = document.getElementById('vendorNotes').value;
+
             console.log(`📤 WORD: Sending document to vendor: ${vendor} (${name} - ${email})`);
-            
+            if (notes) {
+                console.log(`📝 WORD: Notes: ${notes}`);
+            }
+
+            // Immediate UX: close modal and show confirmation, then fire API in background
+            try {
+                closeVendorModal();
+                addNotification('Vendor has been invited to redline', 'success');
+                setTimeout(() => openVendorConfirmationModal(), 0);
+            } catch (e) {
+                console.warn('WORD: Could not show immediate confirmation UI:', e);
+            }
+
+            // Fire-and-forget API call (non-blocking UI)
             try {
                 const response = await fetch('http://localhost:3001/api/vendor/send', {
                     method: 'POST',
@@ -1863,25 +1925,21 @@
                         vendor: vendor,
                         name: name,
                         email: email,
+                        notes: notes,
                         source: 'word'
                     })
                 });
-                
-                const result = await response.json();
-                
-                if (result.success) {
-                    addNotification(`Document sent to ${vendor} (${name})`, 'success');
-                    closeVendorModal();
-                    updateButtonStates();
-                } else {
-                    addNotification(`Failed to send to vendor: ${result.error}`, 'error');
+
+                const result = await response.json().catch(() => ({ success: false, error: 'Invalid JSON' }));
+                if (!result.success) {
+                    addNotification(`Failed to send to vendor: ${result.error || 'Unknown error'}`, 'error');
                 }
             } catch (error) {
                 console.error('WORD: Error sending to vendor:', error);
                 addNotification('Error sending document to vendor', 'error');
             }
         }
-
+        
         // ===== NOTIFICATION SYSTEM =====
         
         function addNotification(message, type = 'info') {
@@ -2402,7 +2460,7 @@
             
             if (userRole === 'viewer') {
                 // Viewers ALWAYS see banner
-                if (!isCheckedOut) {
+            if (!isCheckedOut) {
                     bannerText = 'u no change this';
                 } else if (checkedOutBy === 'web') {
                     bannerText = 'u no change this - also checked out by web';
@@ -2412,9 +2470,9 @@
             } else if (userRole === 'editor') {
                 // Editors see banner when checked out (by them or others)
                 if (isCheckedOut) {
-                    if (checkedOutBy === 'word') {
+            if (checkedOutBy === 'word') {
                         bannerText = 'doc doc u ... right here right meow';
-                    } else if (checkedOutBy === 'web') {
+            } else if (checkedOutBy === 'web') {
                         bannerText = "YA CAN'T SAVE HERE FORREST -- THE WEB GOT YA DOC!";
                     }
                     shouldShow = true;
@@ -2434,8 +2492,8 @@
             }
             
             if (shouldShow && bannerText) {
-                banner.textContent = bannerText;
-                banner.style.display = 'block';
+            banner.textContent = bannerText;
+            banner.style.display = 'block';
                 console.log(`🚨 WORD: Banner updated: ${bannerText}`);
             } else {
                 banner.style.display = 'none';

@@ -26,10 +26,60 @@ function applyStateMatrixToUI(config) {
         }
     });
     
-    // Apply banner - EXACT copy from web viewer
+    // Apply checkout status banner
+    const checkoutStatus = document.getElementById('checkoutStatus');
+    if (checkoutStatus && config.checkoutStatus) {
+        if (config.checkoutStatus.show) {
+            checkoutStatus.textContent = config.checkoutStatus.text;
+            checkoutStatus.style.display = 'block';
+            
+            // Apply colors directly via JavaScript (CSS wasn't working due to specificity issues)
+            if (config.checkoutStatus.text.includes('Checked out by')) {
+                console.log('🔴 Applying red background - text contains "Checked out by":', config.checkoutStatus.text);
+                checkoutStatus.style.backgroundColor = '#dc3545';
+                checkoutStatus.style.color = 'white';
+                checkoutStatus.style.padding = '8px 16px';
+                checkoutStatus.style.borderRadius = '4px';
+                checkoutStatus.style.fontSize = '18px';
+                checkoutStatus.style.fontWeight = '500';
+                checkoutStatus.style.margin = '8px 0';
+                checkoutStatus.classList.add('checked-out');
+                console.log('🎨 Applied red checkout styling');
+            } else {
+                console.log('🔵 Applying teal background - text does not contain "Checked out by":', config.checkoutStatus.text);
+                checkoutStatus.style.backgroundColor = '#17a2b8';
+                checkoutStatus.style.color = 'white';
+                checkoutStatus.style.padding = '8px 16px';
+                checkoutStatus.style.borderRadius = '4px';
+                checkoutStatus.style.fontSize = '18px';
+                checkoutStatus.style.fontWeight = '500';
+                checkoutStatus.style.margin = '8px 0';
+                checkoutStatus.classList.remove('checked-out');
+                console.log('🎨 Applied teal checkout styling');
+            }
+        } else {
+            checkoutStatus.style.display = 'none';
+            checkoutStatus.textContent = '';
+            checkoutStatus.classList.remove('checked-out');
+        }
+    }
+    
+    // Apply viewer message
+    const viewerMessage = document.getElementById('viewerMessage');
+    if (viewerMessage && config.viewerMessage) {
+        if (config.viewerMessage.show) {
+            viewerMessage.textContent = config.viewerMessage.text;
+            viewerMessage.style.display = 'block';
+        } else {
+            viewerMessage.style.display = 'none';
+            viewerMessage.textContent = '';
+        }
+    }
+    
+    // Legacy banner support (for any remaining old banners)
     const banner = document.getElementById('checkoutBanner');
     if (banner) {
-        if (config.banner.show && config.banner.text) {
+        if (config.banner && config.banner.show && config.banner.text) {
             banner.textContent = config.banner.text;
             banner.style.display = 'block';
         } else {
