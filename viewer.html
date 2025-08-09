@@ -793,6 +793,29 @@
             width: 300px !important;
             flex-shrink: 0 !important;
         }
+        /* Simple dropdown styles */
+        .dropdown { position: relative; display: inline-block; }
+        .dropdown-menu {
+            display: none;
+            position: absolute;
+            right: 0;
+            background: #fff;
+            min-width: 220px;
+            box-shadow: 0 2px 8px rgba(0,0,0,0.15);
+            border-radius: 6px;
+            padding: 6px;
+            z-index: 1000;
+        }
+        .dropdown-menu button {
+            width: 100%;
+            text-align: left;
+            background: transparent;
+            border: none;
+            padding: 8px 10px;
+            border-radius: 4px;
+            cursor: pointer;
+        }
+        .dropdown-menu button:hover { background: #f1f3f5; }
     </style>
     <script>
         // Work around SuperDoc UMD builds referencing a global __IS_DEBUG__
@@ -841,14 +864,29 @@
         
         <!-- Center Column: TITLE + BANNERS -->
         <div class="center-column title-banner-column" style="flex: 1 !important; text-align: center !important;">
-        <p class="document-title" id="document-title">No document loaded</p>
+        <p class="document-title" id="document-title" style="margin-bottom:6px;">No document loaded</p>
             <div id="checkoutStatus" class="checkout-status">Available for check-out</div>
             <div id="viewerMessage" class="viewer-message" style="display: none;">You can look but don't touch</div>
             <div id="checkoutBanner" class="checkout-banner" style="display: none;"></div>
         </div>
         
-        <!-- Right Column: NOTIFICATIONS -->
+        <!-- Right Column: INTERACTIONS + NOTIFICATIONS -->
         <div class="right-column">
+            <!-- Interactions: Open (primary) + Document actions dropdown + Users button -->
+            <div style="display:flex; gap:8px; align-items:center; justify-content:flex-end; margin-bottom:8px;">
+                <button class="btn-open" onclick="openNewFile()">Open</button>
+                <div class="dropdown" id="docActionsDropdown">
+                    <button class="btn btn-secondary" onclick="toggleDocActionsMenu()">Document ▾</button>
+                    <div class="dropdown-menu" id="docActionsMenu">
+                        <button onclick="checkoutDocument()">Check-out Document</button>
+                        <button onclick="checkinDocument()">Save & Check-in</button>
+                        <button onclick="cancelCheckout()">Cancel Check-out</button>
+                        <button onclick="viewReadOnly()">View Latest</button>
+                    </div>
+                </div>
+                <button class="btn btn-secondary" onclick="openUsersModal()">Users</button>
+            </div>
+
             <!-- Notification Window -->
             <div class="notification-window">
                 <div class="notification-window-header">
@@ -2418,6 +2456,30 @@
 
         window.updateButtonVisibilityFromMatrix = updateButtonVisibilityFromMatrix;
         
+        // ===== Document dropdown helpers =====
+        function toggleDocActionsMenu() {
+            const menu = document.getElementById('docActionsMenu');
+            if (!menu) return;
+            const isShown = getComputedStyle(menu).display !== 'none';
+            menu.style.display = isShown ? 'none' : 'block';
+            if (!isShown) {
+                // simple auto-close on outside click
+                const onDocClick = (e) => {
+                    if (!menu.contains(e.target) && !document.getElementById('docActionsDropdown').contains(e.target)) {
+                        menu.style.display = 'none';
+                        document.removeEventListener('click', onDocClick);
+                    }
+                };
+                setTimeout(() => document.addEventListener('click', onDocClick), 0);
+            }
+        }
+
+        // ===== Users modal (skeleton) =====
+        function openUsersModal() {
+            // Placeholder: will implement full modal in next milestone
+            addNotification('Users modal (skeleton) opened - coming next', 'info');
+        }
+
         // Debug notification location
         window.debugNotificationLocation = function() {
             console.log('🔍 DEBUGGING NOTIFICATION LOCATION:');
