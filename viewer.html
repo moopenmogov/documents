@@ -851,16 +851,20 @@
             padding: 6px;
             z-index: 1000;
         }
-        .dropdown-menu button {
-            width: 100%;
-            text-align: left;
-            background: transparent;
-            border: none;
-            padding: 8px 10px;
-            border-radius: 4px;
-            cursor: pointer;
+        .dropdown-menu button { width: 100%; text-align: left; }
+        /* Unified button styling */
+        button.btn, .btn, .dropdown-menu button, .btn-open, .btn-secondary, .btn-vendor, .btn-view-latest {
+            background: #0078d4 !important;
+            color: #ffffff !important;
+            border: none !important;
+            padding: 8px 12px !important;
+            border-radius: 6px !important;
+            font-size: 14px !important;
+            font-weight: 600 !important;
+            cursor: pointer !important;
+            transition: background-color .2s ease !important;
         }
-        .dropdown-menu button:hover { background: #f1f3f5; }
+        .btn:hover, .dropdown-menu button:hover, .btn-open:hover, .btn-secondary:hover, .btn-vendor:hover { background: #106ebe !important; }
     </style>
     <script>
         // Work around SuperDoc UMD builds referencing a global __IS_DEBUG__
