@@ -858,23 +858,44 @@
             --btn-pink-hover: #d81b60; /* hover */
         }
         /* Apply to all buttons within the new grid and common button classes */
-        .controls-grid button,
+        /* Primary controls in grid (top-left/bottom-left) */
+        .controls-grid .grid-actions > button,
+        .controls-grid .grid-actions > .dropdown > button,
         button.btn, .btn, .button,
-        .dropdown-menu button, .btn-open, .btn-secondary, .btn-vendor, .btn-view-latest {
+        .btn-open, .btn-secondary, .btn-vendor, .btn-view-latest {
             background: var(--btn-pink) !important;
             color: #ffffff !important;
             border: none !important;
-            padding: 10px 14px !important;
+            padding: 10px 16px !important;
             border-radius: 8px !important;
             font-size: 14px !important;
             font-weight: 600 !important;
             cursor: pointer !important;
             transition: background-color .2s ease !important;
             min-height: 36px !important;
+            min-width: 140px !important;
+            display: inline-flex !important;
+            align-items: center !important;
+            justify-content: center !important;
+            box-shadow: none !important;
+            outline: none !important;
         }
-        .controls-grid button:hover,
+        .controls-grid .grid-actions > button:hover,
+        .controls-grid .grid-actions > .dropdown > button:hover,
         .btn:hover, .button:hover,
         .dropdown-menu button:hover, .btn-open:hover, .btn-secondary:hover, .btn-vendor:hover { background: var(--btn-pink-hover) !important; }
+
+        /* Dropdown menu items: lighter pink shade, uniform sizing */
+        .controls-grid .dropdown .dropdown-menu button {
+            background: #f06292 !important;
+            color: #ffffff !important;
+            border: none !important;
+            padding: 10px 12px !important;
+            border-radius: 6px !important;
+            min-height: 36px !important;
+            min-width: 180px !important;
+        }
+        .controls-grid .dropdown .dropdown-menu button:hover { background: #ec407a !important; }
     </style>
     <script>
         // Work around SuperDoc UMD builds referencing a global __IS_DEBUG__
@@ -913,6 +934,8 @@
         .grid-card { background: #ffffff; border: 1px solid #e9ecef; border-radius: 8px; padding: 10px; }
         .grid-title { font-weight: 600; margin-bottom: 8px; color: #495057; }
         .grid-actions { display: flex; gap: 8px; flex-wrap: wrap; }
+        /* Normalize button baseline */
+        .grid-actions * { box-sizing: border-box; }
         .grid-notifications { grid-column: 2; grid-row: 1 / span 2; display: flex; flex-direction: column; }
         .status-bar { font-size: 14px; margin-bottom: 6px; color: #495057; }
     </style>
