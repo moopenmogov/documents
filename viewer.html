@@ -886,16 +886,21 @@
         .dropdown-menu button:hover, .btn-open:hover, .btn-secondary:hover, .btn-vendor:hover { background: var(--btn-pink-hover) !important; }
 
         /* Dropdown menu items: lighter pink shade, uniform sizing */
-        .controls-grid .dropdown .dropdown-menu button {
+        .controls-grid .dropdown .dropdown-menu button,
+        .controls-grid .dropdown .dropdown-menu .doc-action {
             background: #f06292 !important;
             color: #ffffff !important;
             border: none !important;
             padding: 10px 12px !important;
             border-radius: 6px !important;
             min-height: 36px !important;
-            min-width: 180px !important;
+            min-width: 220px !important;
+            display: block !important;
+            text-align: left !important;
+            box-shadow: none !important;
         }
-        .controls-grid .dropdown .dropdown-menu button:hover { background: #ec407a !important; }
+        .controls-grid .dropdown .dropdown-menu button:hover,
+        .controls-grid .dropdown .dropdown-menu .doc-action:hover { background: #ec407a !important; }
     </style>
     <script>
         // Work around SuperDoc UMD builds referencing a global __IS_DEBUG__
@@ -957,11 +962,11 @@
                 <div class="dropdown" id="docActionsDropdown_grid">
                     <button class="btn btn-secondary" onclick="toggleDocActionsMenu()">Document ▾</button>
                     <div class="dropdown-menu" id="docActionsMenu">
-                        <button onclick="checkoutDocument()">Check-out Document</button>
-                        <button onclick="checkinDocument()">Save & Check-in</button>
-                        <button onclick="cancelCheckout()">Cancel Check-out</button>
-                        <button onclick="viewReadOnly()">View Latest</button>
-                        <button onclick="overrideCheckout()">Override Check-out</button>
+                        <button class="doc-action" onclick="checkoutDocument()">Check-out Document</button>
+                        <button class="doc-action" onclick="checkinDocument()">Save & Check-in</button>
+                        <button class="doc-action" onclick="cancelCheckout()">Cancel Check-out</button>
+                        <button class="doc-action" onclick="viewReadOnly()">View Latest</button>
+                        <button class="doc-action" onclick="overrideCheckout()">Override Check-out</button>
                     </div>
                 </div>
                 <button class="btn btn-vendor" onclick="openVendorModal()">📤 Send to Vendor</button>
@@ -3366,3 +3371,4 @@
     </script>
 </body>
 </html>
+
