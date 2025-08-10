@@ -857,7 +857,10 @@
             --btn-pink: #e91e63;       /* base */
             --btn-pink-hover: #d81b60; /* hover */
         }
-        button.btn, .btn, .dropdown-menu button, .btn-open, .btn-secondary, .btn-vendor, .btn-view-latest {
+        /* Apply to all buttons within the new grid and common button classes */
+        .controls-grid button,
+        button.btn, .btn, .button,
+        .dropdown-menu button, .btn-open, .btn-secondary, .btn-vendor, .btn-view-latest {
             background: var(--btn-pink) !important;
             color: #ffffff !important;
             border: none !important;
@@ -869,7 +872,9 @@
             transition: background-color .2s ease !important;
             min-height: 36px !important;
         }
-        .btn:hover, .dropdown-menu button:hover, .btn-open:hover, .btn-secondary:hover, .btn-vendor:hover { background: var(--btn-pink-hover) !important; }
+        .controls-grid button:hover,
+        .btn:hover, .button:hover,
+        .dropdown-menu button:hover, .btn-open:hover, .btn-secondary:hover, .btn-vendor:hover { background: var(--btn-pink-hover) !important; }
     </style>
     <script>
         // Work around SuperDoc UMD builds referencing a global __IS_DEBUG__
@@ -965,37 +970,8 @@
             <div id="checkoutBanner" class="checkout-banner" style="display: none;"></div>
     </div>
 
-        <!-- Right Column: INTERACTIONS + NOTIFICATIONS -->
-        <div class="right-column">
-            <!-- Interactions: Open (primary) + Document actions dropdown + Users button -->
-            <div style="display:flex; gap:8px; align-items:center; justify-content:flex-end; margin-bottom:8px; flex-wrap: wrap;">
-                <button class="btn-open" onclick="openNewFile()">Open</button>
-                <div class="dropdown" id="docActionsDropdown">
-                    <button class="btn btn-secondary" onclick="toggleDocActionsMenu()">Document ▾</button>
-                    <div class="dropdown-menu" id="docActionsMenu">
-                        <button onclick="checkoutDocument()">Check-out Document</button>
-                        <button onclick="checkinDocument()">Save & Check-in</button>
-                        <button onclick="cancelCheckout()">Cancel Check-out</button>
-                        <button onclick="viewReadOnly()">View Latest</button>
-                        <button onclick="overrideCheckout()">Override Check-out</button>
-                    </div>
-                </div>
-                <button class="btn btn-vendor" onclick="openVendorModal()">📤 Send to Vendor</button>
-                <button class="btn btn-secondary" onclick="openUsersModal()">Users</button>
-    </div>
-
-            <!-- Notification Window -->
-            <div class="notification-window">
-                <div class="notification-window-header">
-                🔔 Notifications
-        </div>
-                <div class="notification-window-body" id="notificationWindowBody">
-                    <div class="no-notifications">
-                        No notifications yet
-    </div>
-                </div>
-                </div>
-                </div>
+        <!-- Right Column removed; controls live in the grid above -->
+        <div class="right-column" style="display:none;"></div>
     </div>
 
 
@@ -2642,7 +2618,13 @@
                 if (!users.length && window.getAvailableUsers) users = (getAvailableUsers() || []);
                 if (!users.length && window.webUsers) users = Object.values(window.webUsers);
                 if (!users.length) {
-                    addNotification('Error loading users/approvals', 'error');
+                    // Last resort static fallback
+                    users = [
+                        { id: 'user1', name: 'Warren Peace', role: 'editor' },
+                        { id: 'user2', name: 'Gettysburger King', role: 'viewer' },
+                        { id: 'user5', name: 'Yuri Lee Laffed', role: 'suggester' },
+                        { id: 'user4', name: 'Mo--T', role: 'suggester' }
+                    ];
                 }
 
                 // Determine current document id; fall back to 'default-doc'
