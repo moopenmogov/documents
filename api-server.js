@@ -985,12 +985,8 @@ app.get('/api/approval-matrix', (req, res) => {
         const targetId = targetUser.id;
         const approvalStatus = approvalsForDoc[targetId]?.status || 'no';
         const isSelf = actor.id === targetId;
-        const isViewer = actor.role === 'viewer';
-        const isEditor = actor.role === 'editor';
-
-        // Visibility: non-viewers can act on self; editors can act on anyone
-        const showButtons = !isViewer && (isSelf || isEditor);
-
+        // Per new requirement: ALL roles (including viewers) are approvers
+        const showButtons = true;
         // Enabled states based on current status
         const approveEnabled = showButtons && approvalStatus !== 'approved';
         const rejectEnabled = showButtons && approvalStatus !== 'rejected';
