@@ -645,6 +645,12 @@
                     <option value="">Loading users...</option>
                 </select>
             </div>
+        <!-- Dynamic Document Actions dropdown placed directly below user dropdown -->
+        <div class="doc-actions-switcher" style="margin-top:6px;">
+            <select id="docActionsSelect" class="user-select">
+                <option value="">Document actions…</option>
+            </select>
+        </div>
         </div>
         
 
@@ -1490,6 +1496,59 @@
             });
         }
 
+        // Populate dynamic document actions dropdown based on current matrix/config
+        function populateDocActionsDropdown() {
+            const select = document.getElementById('docActionsSelect');
+            if (!select) return;
+            // Clear existing
+            while (select.options.length > 1) select.remove(1);
+
+            // Determine availability from state-matrix-client applied state
+            const actions = [];
+            const push = (id, label, handler, visible) => { if (visible) actions.push({ id, label, handler }); };
+
+            // Buttons (match IDs used elsewhere)
+            const checkoutVisible = document.getElementById('checkoutBtn')?.style.display !== 'none';
+            const checkinVisible = document.getElementById('checkinBtn')?.style.display !== 'none';
+            const cancelVisible = document.getElementById('cancelBtn')?.style.display !== 'none';
+            const saveVisible = document.getElementById('saveProgressBtn')?.style.display !== 'none';
+            const overrideVisible = document.getElementById('overrideBtn')?.style.display !== 'none';
+            const sendVisible = document.getElementById('sendVendorBtn')?.style.display !== 'none';
+            const viewLatest = document.getElementById('viewOnlyBtn');
+            const viewLatestVisible = !!viewLatest && !viewLatest.disabled;
+            const openWebVisible = !!document.getElementById('shareToWebBtn');
+
+            push('viewOnlyBtn', 'View Latest', () => viewReadOnly(), viewLatestVisible);
+            push('shareToWebBtn', 'Open in Web', () => shareToWeb(), openWebVisible);
+            push('checkoutBtn', 'Check-out Document', () => checkoutDocument(), checkoutVisible);
+            push('checkinBtn', 'Save & Check-in', () => checkinDocument(), checkinVisible);
+            push('cancelBtn', 'Cancel Check-out', () => cancelCheckout(), cancelVisible);
+            push('saveProgressBtn', 'Save Progress', () => saveProgress(), saveVisible);
+            push('overrideBtn', 'Override Check-out', () => overrideCheckout(), overrideVisible);
+            push('sendVendorBtn', 'Send to Vendor', () => openVendorModal(), sendVisible);
+
+            // Populate select
+            actions.forEach(a => {
+                const opt = document.createElement('option');
+                opt.value = a.id;
+                opt.textContent = a.label;
+                select.appendChild(opt);
+            });
+
+            // Visibility: show only if at least one action
+            select.parentElement.style.display = actions.length ? 'block' : 'none';
+
+            // Bind change
+            select.onchange = (e) => {
+                const val = e.target.value;
+                if (!val) return;
+                const action = actions.find(x => x.id === val);
+                if (action) action.handler();
+                // reset back to placeholder
+                select.value = '';
+            };
+        }
+
         async function updateButtonStates() {
             console.log('🔄 Updating button states with multi-layer protection...');
             
@@ -1510,6 +1569,8 @@
             if (typeof window.updateUIFromStateMatrix === 'function') {
                 await window.updateUIFromStateMatrix('word', getCurrentUser, getCurrentUserRole, currentDocumentState);
             }
+                // Refresh dynamic document actions after state matrix applies
+                try { populateDocActionsDropdown(); } catch (e) { console.warn('populateDocActionsDropdown failed', e); }
             
             // Also refresh approvals UI so Approve/Reject reflect current actor
             try { await refreshUsersModal(); } catch (e) {}
