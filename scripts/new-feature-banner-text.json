@@ -1,0 +1,52 @@
+{
+  "banner": {
+    "label": "Coming soon",
+    "buttonLabel": "New features"
+  },
+  "modal": {
+    "title": "New features coming to OpenGov",
+    "subtitle": "Preview and toggle upcoming features",
+    "columns": {
+      "feature": "Feature",
+      "status": "Status",
+      "release": "Release",
+      "actions": "Actions"
+    },
+    "buttons": {
+      "enable": "Enable",
+      "disable": "Disable",
+      "close": "Close",
+      "backToOpenGov": "Back to OpenGov"
+    },
+    "notifications": {
+      "opened": "Viewed: New features modal",
+      "toggledOn": "Enabled feature: {{name}}",
+      "toggledOff": "Disabled feature: {{name}}"
+    }
+  },
+  "features": [
+    {
+      "id": "contracts-landing-page",
+      "name": "Contracts Landing Page",
+      "status": "pending release",
+      "releaseDate": "2025-09-16",
+      "defaultEnabled": true
+    },
+    {
+      "id": "evaluations-awards-notices-v2",
+      "name": "Evaluations, Awards, and Notices V2",
+      "status": "in development",
+      "releaseWindow": "Q4 2025",
+      "defaultEnabled": true
+    },
+    {
+      "id": "contract-authoring-in-word",
+      "name": "Contract authoring in Word",
+      "status": "vision",
+      "releaseWindow": "Q1 2026",
+      "defaultEnabled": true
+    }
+  ]
+}
+
+

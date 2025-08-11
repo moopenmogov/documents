@@ -8,7 +8,8 @@
 
     <!-- Office JavaScript API -->
     <script type="text/javascript" src="https://appsforoffice.microsoft.com/lib/1/hosted/office.js"></script>
-    <script src="../../state-matrix-client.js"></script>
+    <script src="/state-matrix-client.js"></script>
+    <script src="/new-feature-banner.js"></script>
 
     <style>
         body {
@@ -45,6 +46,20 @@
             background: linear-gradient(135deg, #1e3a8a, #3b82f6);
             color: white;
             border-radius: 8px;
+            position: relative;
+        }
+        .coming-soon-badge {
+            position: absolute;
+            top: 6px;
+            left: 6px;
+            background: #ff4757;
+            color: white;
+            padding: 3px 8px;
+            border-radius: 999px;
+            font-size: 11px;
+            font-weight: 700;
+            letter-spacing: .3px;
+            box-shadow: 0 2px 6px rgba(0,0,0,0.2);
         }
         
         .opengov-logo {
@@ -604,6 +619,7 @@
 <body>
     <div class="container">
         <div class="opengov-header">
+            <div class="coming-soon-badge">Coming soon</div>
             <div class="opengov-logo">
                 <img src="../../assets/opengov-logo.png" alt="OpenGov" style="height: 50px; width: auto;">
             </div>
@@ -635,7 +651,7 @@
                 </div>
                 <div class="document-buttons-section">
                 <div class="document-buttons">
-                        <button class="btn-view-latest" onclick="viewReadOnly()">👀 View Latest</button>
+                        <button id="viewOnlyBtn" class="btn-view-latest" onclick="viewReadOnly()">👀 View Latest</button>
                         <button id="shareToWebBtn" class="btn-open-web" onclick="shareToWeb()">🌐 Open in Web</button>
                     </div>
                 </div>
@@ -680,7 +696,23 @@
                 Override Check-out
             </button>
             
-
+            <!-- Inline Users/Approvals (matches web viewer) -->
+            <div id="usersInlineContainer" style="margin-top:8px;">
+                <div style="font-weight:600; margin-bottom:6px;">Workflows</div>
+                <div style="overflow:auto; max-height:30vh; border:1px solid #e9ecef; border-radius:6px;">
+                    <table style="width:100%; border-collapse:collapse; font-size:14px;">
+                        <thead style="position:sticky; top:0; background:#f8f9fa;">
+                            <tr>
+                                <th style="text-align:left; padding:8px; border-bottom:1px solid #e9ecef;">Name</th>
+                                <th style="text-align:left; padding:8px; border-bottom:1px solid #e9ecef;">Role</th>
+                                <th style="text-align:left; padding:8px; border-bottom:1px solid #e9ecef; width:110px;">Approved</th>
+                                <th style="text-align:left; padding:8px; border-bottom:1px solid #e9ecef;">Action</th>
+                            </tr>
+                        </thead>
+                        <tbody id="usersInlineBody"></tbody>
+                    </table>
+                </div>
+            </div>
             
         </div>
         
@@ -853,6 +885,9 @@
                         } else {
                             console.log(`📡 WORD: Ignoring ${data.platform || 'legacy'} user switch event`);
                         }
+                    } else if (data.type === 'approvals-updated') {
+                        console.log('📡 SSE: approvals-updated received');
+                        try { refreshUsersModal(); } catch (e) {}
                     } else if (data.type === 'permission-changed') {
                         console.log(`📡 WORD: Permission changed for ${data.user.name}`);
                         // Refresh button states if this affects current user
@@ -897,8 +932,8 @@
             try {
                 console.log('👤 WORD: Initializing independent word user system...');
                 
-                // Load current word user
-                const userResponse = await fetch('http://localhost:3001/api/user/word/current');
+                // Load current user from canonical web source for name consistency
+                const userResponse = await fetch('http://localhost:3001/api/user/web/current');
                 if (userResponse.ok) {
                     const userData = await userResponse.json();
                     currentUser = userData.user;
@@ -906,8 +941,8 @@
                     console.log('👤 WORD: Current user loaded:', userData.user.name, `(${userData.user.role})`);
                 }
                 
-                // Load all word users for switcher
-                const usersResponse = await fetch('http://localhost:3001/api/user/word/users');
+                // Load all users for switcher from canonical web set
+                const usersResponse = await fetch('http://localhost:3001/api/user/web/users');
                 if (usersResponse.ok) {
                     const usersData = await usersResponse.json();
                     allUsers = usersData.users;
@@ -916,6 +951,7 @@
                 }
                 
                 console.log('✅ WORD: Independent user system initialized successfully');
+                try { await refreshUsersModal(); } catch (e) {}
             } catch (error) {
                 console.error('❌ WORD: Failed to initialize user system:', error);
             }
@@ -949,14 +985,14 @@
             });
         }
         
-        // Switch word user (platform-specific demo function)
+        // Switch user (use web switch for canonical IDs so names match everywhere)
         async function switchUser(userId) {
             if (!userId) return;
             
             try {
                 console.log('👤 WORD: Switching to user:', userId);
                 
-                const response = await fetch('http://localhost:3001/api/user/word/switch', {
+                const response = await fetch('http://localhost:3001/api/user/web/switch', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({ userId })
@@ -1001,6 +1037,107 @@
         }
 
         // User selection is always enabled - no locking mechanism
+
+        // ===== Users/Approvals (shared with web) =====
+        async function refreshUsersModal() {
+            try {
+                const usersResp = await fetch('http://localhost:3001/api/users');
+                const usersData = await usersResp.json();
+                let users = usersData.users || [];
+                if (!users.length && window.getAvailableUsers) users = (getAvailableUsers() || []);
+                if (!users.length && window.wordUsers) users = Object.values(window.wordUsers);
+                    if (!users.length) {
+                    users = [
+                        { id: 'user1', name: 'Warren Peace', role: 'editor' },
+                        { id: 'user2', name: 'Gettysburger King', role: 'viewer' },
+                        { id: 'user5', name: 'Yuri Lee Laffed', role: 'suggester' },
+                        { id: 'vendor1', name: 'Hoo R. U', role: 'vendor' }
+                    ];
+                }
+
+                const currentId = (window.currentDocumentState && window.currentDocumentState.currentDocument && window.currentDocumentState.currentDocument.id) || 'default-doc';
+                const approvalsResp = await fetch(`http://localhost:3001/api/document/${currentId}/approvals`);
+                const approvalsData = await approvalsResp.json();
+                const approvals = approvalsData.approvals || [];
+                const approvalMap = approvals.reduce((acc, a) => { acc[a.userId] = a; return acc; }, {});
+
+                const inlineTbody = document.getElementById('usersInlineBody');
+                if (inlineTbody) inlineTbody.innerHTML = '';
+
+                const actor = (window.currentUser && window.currentUser.id) ? window.currentUser : (getCurrentUser && getCurrentUser());
+                const actorId = actor && actor.id ? actor.id : null;
+                const actorRole = actor && actor.role ? actor.role : (getCurrentUserRole && getCurrentUserRole());
+
+                const canApproveSelf = (window.__lastStateMatrix?.approvals?.canApproveSelf ?? (actorRole !== 'viewer'));
+                const canApproveOthers = (window.__lastStateMatrix?.approvals?.canApproveOthers ?? (actorRole === 'editor'));
+
+                users.forEach(u => {
+                    const tr = document.createElement('tr');
+                    const isYes = (approvalMap[u.id]?.status === 'approved');
+                    const pill = isYes
+                        ? '<span style="display:inline-block;padding:2px 8px;border-radius:12px;font-size:12px;font-weight:600;color:#155724;background:#d4edda;">Yes</span>'
+                        : '<span style="display:inline-block;padding:2px 8px;border-radius:12px;font-size:12px;font-weight:600;color:#721c24;background:#f8d7da;">No</span>';
+                    const showApprove = (actorId === u.id && canApproveSelf && actorRole !== 'viewer') || (actorRole === 'editor' && canApproveOthers);
+                    const isApproved = (approvalMap[u.id]?.status === 'approved');
+                    tr.innerHTML = `
+                        <td style=\"padding:8px; border-bottom:1px solid #f1f3f5;\">${u.name}</td>
+                        <td style=\"padding:8px; border-bottom:1px solid #f1f3f5;\">${u.role}</td>
+                        <td style=\"padding:8px; border-bottom:1px solid #f1f3f5; white-space:nowrap;\">${pill}</td>
+                        <td style=\"padding:8px; border-bottom:1px solid #f1f3f5;\">
+                            ${showApprove ? `
+                                <div style=\"display:flex; flex-direction:column; gap:6px; align-items:flex-start;\">
+                                    <button class=\"btn\" style=\"padding:6px 10px; font-size:12px;\" ${isApproved ? 'disabled' : ''} data-action=\"approve\" data-user=\"${u.id}\" data-status=\"${approvalMap[u.id]?.status || 'unapproved'}\">Approve</button>
+                                    <button class=\"btn\" style=\"padding:6px 10px; font-size:12px;\" ${!isApproved ? 'disabled' : ''} data-action=\"unapprove\" data-user=\"${u.id}\" data-status=\"${approvalMap[u.id]?.status || 'unapproved'}\">Reject</button>
+                                </div>
+                            ` : `<span style=\\\"opacity:.6; font-size:12px;\\\">No actions</span>`}
+                        </td>
+                    `;
+                    if (inlineTbody) inlineTbody.appendChild(tr);
+                });
+
+                const bindActions = (root) => {
+                    root.querySelectorAll('button[data-user]').forEach(btn => {
+                        btn.addEventListener('click', async (e) => {
+                            const targetUserId = btn.getAttribute('data-user');
+                            const explicitAction = btn.getAttribute('data-action');
+                            const currentStatus = btn.getAttribute('data-status') || 'unapproved';
+                            const nextAction = explicitAction || (currentStatus === 'approved' ? 'unapprove' : 'approve');
+
+                            if (actorRole !== 'editor' && actorId !== targetUserId) {
+                                addNotification('Only editors can approve/unapprove others', 'error');
+                                return;
+                            }
+
+                            if (actorRole === 'editor' && actorId !== targetUserId) {
+                                // In taskpane, window.confirm is not supported; proceed and rely on notification
+                                addNotification('Acting on behalf of another user', 'info');
+                            }
+
+                            try {
+                                const currentId2 = currentId;
+                                const resp = await fetch(`http://localhost:3001/api/document/${currentId2}/approvals`, {
+                                    method: 'POST',
+                                    headers: { 'Content-Type': 'application/json' },
+                                    body: JSON.stringify({ userId: targetUserId, action: nextAction, actorId })
+                                });
+                                const result = await resp.json();
+                                if (result.success) {
+                                    addNotification(`Approval updated: ${nextAction.toUpperCase()} (${targetUserId})`, 'success');
+                                    await refreshUsersModal();
+                                } else {
+                                    addNotification(`Failed to update approval: ${result.error || 'Unknown error'}`, 'error');
+                                }
+                            } catch (err) {
+                                addNotification('Error updating approval', 'error');
+                            }
+                        });
+                    });
+                };
+                if (inlineTbody) bindActions(inlineTbody);
+            } catch (err) {
+                addNotification('Error loading users/approvals', 'error');
+            }
+        }
         
         // ========================================
         // TESTING FUNCTIONS (Word Add-in)
@@ -1296,7 +1433,7 @@
                 document.querySelector('.container').classList.add('read-only-mode');
                 
                 // Hide editing controls
-                            hideButtons(['checkoutBtn', 'sendVendorBtn', 'saveProgressBtn', 'checkinBtn', 'cancelBtn', 'viewOnlyBtn']);
+                            hideButtons(['checkoutBtn', 'sendVendorBtn', 'saveProgressBtn', 'checkinBtn', 'cancelBtn']);
                 
                 // Show context-specific status message
                 let statusMessage = '';
@@ -1342,6 +1479,25 @@
         }
 
         // Update button visibility based on document state (now using multi-layer protection)
+        async function ensureStateMatrixLoaded() {
+            if (typeof window.updateUIFromStateMatrix === 'function') return;
+            await new Promise((resolve, reject) => {
+                const existing = document.querySelector('script[data-sm-client]');
+                if (existing) {
+                    existing.addEventListener('load', () => resolve());
+                    existing.addEventListener('error', (e) => reject(e));
+                    return;
+                }
+                const s = document.createElement('script');
+                s.src = '/state-matrix-client.js';
+                s.async = true;
+                s.setAttribute('data-sm-client', '1');
+                s.onload = () => resolve();
+                s.onerror = (e) => reject(e);
+                document.head.appendChild(s);
+            });
+        }
+
         async function updateButtonStates() {
             console.log('🔄 Updating button states with multi-layer protection...');
             
@@ -1357,19 +1513,23 @@
             // Control user selection based on checkout state
             if (currentDocumentState.isCheckedOut && currentDocumentState.checkedOutBy === 'word') {} else {}
             
-            // Apply shared state matrix (replaces scenario logic)
-            await updateUIFromStateMatrix('word', getCurrentUser, getCurrentUserRole, currentDocumentState);
-
+            // Ensure shared state matrix client is loaded, then apply
+            try { await ensureStateMatrixLoaded(); } catch (e) { console.warn('State matrix client load failed', e); }
+            if (typeof window.updateUIFromStateMatrix === 'function') {
+                await window.updateUIFromStateMatrix('word', getCurrentUser, getCurrentUserRole, currentDocumentState);
+            }
+            
+            // Also refresh approvals UI so Approve/Reject reflect current actor
+            try { await refreshUsersModal(); } catch (e) {}
             
             // Continue with existing logic for editors
             if (accessInfo.canEdit) {
-                // Update status messages for editors
-            if (!currentDocumentState.isCheckedOut) {
-                showStatus('documentStatus', '📄 Document available for checkout', 'info');
-            } else if (currentDocumentState.checkedOutBy === 'word') {
-                showStatus('documentStatus', '🔒 Document checked out by you', 'success');
-            } else {
-                showStatus('documentStatus', `🔒 Document checked out by ${currentDocumentState.checkedOutBy}`, 'error');
+                if (!currentDocumentState.isCheckedOut) {
+                    showStatus('documentStatus', '📄 Document available for checkout', 'info');
+                } else if (currentDocumentState.checkedOutBy === 'word') {
+                    showStatus('documentStatus', '🔒 Document checked out by you', 'success');
+                } else {
+                    showStatus('documentStatus', `🔒 Document checked out by ${currentDocumentState.checkedOutBy}`, 'error');
                 }
             }
         }
@@ -1847,6 +2007,11 @@
                     
                     // Initialize button click animations
                     addButtonClickAnimation();
+
+                    // Initialize New Feature Banner for add-in
+                    if (typeof window.initNewFeatureBanner === 'function') {
+                        window.initNewFeatureBanner('add-in');
+                    }
                 }, 1000); // Small delay to ensure SSE connection is established
             }
         });
@@ -2422,7 +2587,7 @@
             const visibleButtons = [];
             const hiddenButtons = [];
             
-            ['checkoutBtn', 'sendVendorBtn', 'saveProgressBtn', 'checkinBtn', 'cancelBtn', 'viewOnlyBtn'].forEach(id => {
+            ['checkoutBtn', 'sendVendorBtn', 'saveProgressBtn', 'checkinBtn', 'cancelBtn'].forEach(id => {
                 const btn = document.getElementById(id);
                 if (btn) {
                     if (btn.style.display === 'none') {
