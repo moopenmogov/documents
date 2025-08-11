@@ -1157,7 +1157,9 @@
         
         function connectSSE() {
             try {
-                eventSource = new EventSource('http://localhost:3001/api/events');
+                const clientId = 'web-' + Date.now() + '-' + Math.random().toString(36).slice(2);
+                window.__clientId = clientId;
+                eventSource = new EventSource(`http://localhost:3001/api/events?platform=web&clientId=${clientId}`);
                 
                 eventSource.onopen = function(event) {
                     console.log('SSE connection opened');
@@ -1221,16 +1223,6 @@
                                     console.log('🔄 SSE: Reinitializing SuperDoc for new web user role:', currentUser.role);
                                     loadSuperdoc(currentDocumentState.currentDocument);
                                 }
-                            }
-                        } else if (data.platform === 'word') {
-                            console.log('WEB: Processing Word user switch - updating SuperDoc');
-                            // Update SuperDoc mode based on Word user role
-                            if (currentDocumentId && currentSuperdoc) {
-                                const userRole = data.currentUser.role;
-                                const documentMode = getSuperdocMode(userRole);
-                                console.log('WEB: Setting SuperDoc mode:', documentMode, 'for Word role:', userRole);
-                                updateSuperdocMode(documentMode);
-                                updateButtonVisibilityFromMatrix();
                             }
                         } else {
                             console.log('WEB: Ignoring unknown user switch event');

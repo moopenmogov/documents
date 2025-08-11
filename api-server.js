@@ -100,8 +100,10 @@ app.get('/api/events', (req, res) => {
         'Access-Control-Allow-Headers': 'Cache-Control'
     });
     
-    // Store connection for broadcasting
-    sseConnections.push(res);
+    // Capture client metadata for scoped broadcasts
+    const platform = (req.query.platform || 'unknown').toString();
+    const clientId = (req.query.clientId || ('c-' + Math.random().toString(36).slice(2))).toString();
+    sseConnections.push({ res, platform, clientId });
     
     // Send initial connection message
     res.write('data: {"type":"connected","message":"SSE connected successfully","timestamp":"' + new Date().toISOString() + '"}\n\n');
@@ -109,10 +111,7 @@ app.get('/api/events', (req, res) => {
     // Handle client disconnect
     req.on('close', () => {
         console.log('📡 SSE connection closed');
-        const index = sseConnections.indexOf(res);
-        if (index !== -1) {
-            sseConnections.splice(index, 1);
-        }
+        sseConnections = sseConnections.filter(c => c.res !== res);
     });
 });
 
@@ -121,9 +120,11 @@ function broadcastSSE(event) {
     const eventData = JSON.stringify(event);
     console.log('📡 Broadcasting SSE event:', event.type);
     
-    sseConnections.forEach((res, index) => {
+    sseConnections.forEach((conn, index) => {
         try {
-            res.write(`data: ${eventData}\n\n`);
+            // If event targets a specific platform, only send to those clients
+            if (event.platform && conn.platform && event.platform !== conn.platform) return;
+            conn.res.write(`data: ${eventData}\n\n`);
         } catch (error) {
             console.log('📡 Removing dead SSE connection');
             sseConnections.splice(index, 1);
