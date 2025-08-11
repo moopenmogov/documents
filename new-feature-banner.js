@@ -46,6 +46,7 @@
       .nfb-btn { background: #ff4d94; color: #fff; border: none; border-radius: 8px; padding: 8px 12px; font-weight: 600; cursor: pointer; }
       .nfb-btn:hover { background: #ff66a3; }
       .nfb-btn[disabled] { opacity: .55; cursor: default; }
+      .nfb-btn-inactive { opacity: .55; }
       .nfb-btn-active { background: #ff2d80 !important; }
       /* Use extreme z-index to appear above any stacking contexts */
       .nfb-modal-backdrop { position: fixed; inset: 0; background: rgba(0,0,0,0.35); display: none; z-index: 2147483646; }
@@ -141,14 +142,15 @@
       btnDisable.textContent = platform === 'add-in' ? 'Off' : strings.modal.buttons.disable;
 
       function updateActionButtons() {
-        const enabled = featureState.get(f.id);
-        // Visual state
-        btnEnable.classList.toggle('nfb-btn-active', enabled === true);
-        btnDisable.classList.toggle('nfb-btn-active', enabled === false);
-        // Accessibility
-        btnEnable.setAttribute('aria-pressed', String(enabled === true));
-        btnDisable.setAttribute('aria-pressed', String(enabled === false));
-        // Labels for compact mode remain On/Off; no additional changes needed
+        const enabled = !!featureState.get(f.id);
+        // Explicitly set classes so only one is active at a time
+        btnEnable.classList.toggle('nfb-btn-active', enabled);
+        btnEnable.classList.toggle('nfb-btn-inactive', !enabled);
+        btnDisable.classList.toggle('nfb-btn-active', !enabled);
+        btnDisable.classList.toggle('nfb-btn-inactive', enabled);
+        // Accessibility pressed state
+        btnEnable.setAttribute('aria-pressed', String(enabled));
+        btnDisable.setAttribute('aria-pressed', String(!enabled));
       }
 
       btnEnable.addEventListener('click', (e) => {
