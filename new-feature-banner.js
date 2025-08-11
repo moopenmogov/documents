@@ -212,6 +212,18 @@
     }
     backdrop.addEventListener('click', hideModal);
 
+    // Defensive: if other code toggles styles after we open, force them back
+    const reinforce = () => {
+      if (!window.__nfbOpen) return;
+      const md = getComputedStyle(modal).display;
+      const bd = getComputedStyle(backdrop).display;
+      if (md === 'none') modal.style.display = 'block';
+      if (bd === 'none') backdrop.style.display = 'block';
+    };
+    const mo = new MutationObserver(reinforce);
+    mo.observe(modal, { attributes: true, attributeFilter: ['style','class'] });
+    mo.observe(backdrop, { attributes: true, attributeFilter: ['style','class'] });
+
     return { showModal, hideModal };
   }
 
@@ -252,6 +264,20 @@
           log('doc-click-suppressed');
         }
       }, true);
+
+      // Capture-phase opener so no other listener can swallow the event before us
+      const captureOpen = (evt) => {
+        const btnEl = document.getElementById('newFeaturesBtn');
+        if (!btnEl) return;
+        if (evt.target === btnEl || btnEl.contains(evt.target)) {
+          try { evt.preventDefault(); evt.stopPropagation(); evt.stopImmediatePropagation(); } catch (_) {}
+          setTimeout(() => showModal(), 0);
+          log('capture-open');
+        }
+      };
+      document.addEventListener('pointerdown', captureOpen, true);
+      document.addEventListener('click', captureOpen, true);
+      log('capture-open-installed');
       btn.addEventListener('click', (e) => {
         // Prevent immediate close from any bubbling listeners; defer show to next tick
         try { e.preventDefault(); e.stopPropagation(); e.stopImmediatePropagation(); } catch (_) {}
