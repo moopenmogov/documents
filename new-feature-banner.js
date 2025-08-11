@@ -142,21 +142,24 @@
 
       function updateActionButtons() {
         const enabled = featureState.get(f.id);
-        btnEnable.disabled = enabled === true;
-        btnDisable.disabled = enabled === false;
+        // Visual state
         btnEnable.classList.toggle('nfb-btn-active', enabled === true);
         btnDisable.classList.toggle('nfb-btn-active', enabled === false);
+        // Accessibility
         btnEnable.setAttribute('aria-pressed', String(enabled === true));
         btnDisable.setAttribute('aria-pressed', String(enabled === false));
+        // Labels for compact mode remain On/Off; no additional changes needed
       }
 
-      btnEnable.addEventListener('click', () => {
+      btnEnable.addEventListener('click', (e) => {
+        e.preventDefault(); e.stopPropagation();
         featureState.set(f.id, true);
         updateActionButtons();
         const msg = (strings.modal.notifications.toggledOn || 'Enabled: {{name}}').replace('{{name}}', f.name);
         notify(msg);
       });
-      btnDisable.addEventListener('click', () => {
+      btnDisable.addEventListener('click', (e) => {
+        e.preventDefault(); e.stopPropagation();
         featureState.set(f.id, false);
         updateActionButtons();
         const msg = (strings.modal.notifications.toggledOff || 'Disabled: {{name}}').replace('{{name}}', f.name);
