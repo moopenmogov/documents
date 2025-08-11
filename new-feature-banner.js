@@ -45,8 +45,9 @@
     style.textContent = `
       .nfb-btn { background: #ff4d94; color: #fff; border: none; border-radius: 8px; padding: 8px 12px; font-weight: 600; cursor: pointer; }
       .nfb-btn:hover { background: #ff66a3; }
-      .nfb-modal-backdrop { position: fixed; inset: 0; background: rgba(0,0,0,0.35); display: none; z-index: 9998; }
-      .nfb-modal { position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%); background: #fff; border-radius: 10px; width: min(700px, 92vw); max-height: 80vh; overflow: auto; padding: 16px; box-shadow: 0 8px 24px rgba(0,0,0,0.25); display: none; z-index: 9999; }
+      /* Use very high z-index to appear above SuperDoc and taskpane overlays */
+      .nfb-modal-backdrop { position: fixed; inset: 0; background: rgba(0,0,0,0.35); display: none; z-index: 1000000; }
+      .nfb-modal { position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%); background: #fff; border-radius: 10px; width: min(700px, 92vw); max-height: 80vh; overflow: auto; padding: 16px; box-shadow: 0 8px 24px rgba(0,0,0,0.25); display: none; z-index: 1000001; }
       .nfb-modal-title { font-size: 18px; font-weight: 700; margin: 0 0 6px 0; }
       .nfb-modal-sub { font-size: 12px; color: #6c757d; margin: 0 0 12px 0; }
       .nfb-table { width: 100%; border-collapse: collapse; }
@@ -217,8 +218,12 @@
       btn.style.top = '8px';
       btn.style.right = '8px';
 
-      const { showModal } = renderModal(strings);
-      btn.addEventListener('click', () => showModal());
+    const { showModal } = renderModal(strings);
+      btn.addEventListener('click', (e) => {
+        // Prevent immediate close from any bubbling listeners; defer show to next tick
+        try { e.preventDefault(); e.stopPropagation(); } catch (_) {}
+        setTimeout(() => showModal(), 0);
+      });
 
       // Insert button in header if possible
       if (header && header.appendChild) {
