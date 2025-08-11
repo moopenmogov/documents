@@ -8,8 +8,8 @@
 
     <!-- Office JavaScript API -->
     <script type="text/javascript" src="https://appsforoffice.microsoft.com/lib/1/hosted/office.js"></script>
-    <script src="../../state-matrix-client.js"></script>
-    <script src="../../new-feature-banner.js"></script>
+    <script src="/state-matrix-client.js"></script>
+    <script src="/new-feature-banner.js"></script>
 
     <style>
         body {
@@ -43,9 +43,28 @@
             text-align: center;
             margin-bottom: 15px;
             padding: 12px;
-            background: linear-gradient(135deg, #1e3a8a, #3b82f6);
+            background: linear-gradient(135deg, #ff6fa5, #ffc1d9);
             color: white;
             border-radius: 8px;
+            position: relative;
+        }
+        /* Parity containers with web */
+        .grid-card { background: #ffffff; border: 1px solid #e9ecef; border-radius: 8px; padding: 10px; margin: 10px 0; }
+        .grid-title { font-weight: 600; margin-bottom: 6px; color: #495057; font-size: 12px; }
+        .grid-actions { display: flex; flex-wrap: wrap; gap: 6px; }
+        .grid-notifications { display: flex; flex-direction: column; gap: 6px; }
+        .coming-soon-badge {
+            position: absolute;
+            top: 6px;
+            left: 6px;
+            background: #ff6fa5;
+            color: white;
+            padding: 3px 8px;
+            border-radius: 999px;
+            font-size: 11px;
+            font-weight: 700;
+            letter-spacing: .3px;
+            box-shadow: 0 2px 6px rgba(0,0,0,0.2);
         }
         
         .opengov-logo {
@@ -298,7 +317,7 @@
                 
         /* New Standardized Banners */
         .checkout-status {
-            background: #17a2b8;
+            background: transparent; /* no teal flash */
             color: white;
             padding: 8px 16px;
             text-align: center;
@@ -598,165 +617,14 @@
         
         /* Checked out state - nice red color - high specificity to override duplicates */
         .checkout-status.checked-out {
-            background: #dc3545 !important;
-        }
-
-        /* New Feature Banner */
-        .new-feature-banner {
-            background: linear-gradient(45deg, #ffc107, #fd7e14);
-            color: #212529;
-            margin: 10px 0;
-            border-radius: 8px;
-            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
-        }
-
-        .banner-content {
-            display: flex;
-            align-items: center;
-            justify-content: space-between;
-            padding: 12px 15px;
-        }
-
-        .banner-text {
-            display: flex;
-            flex-direction: column;
-            gap: 2px;
-        }
-
-        .banner-title {
-            font-weight: 600;
-            font-size: 13px;
-        }
-
-        .banner-description {
-            font-size: 11px;
-            opacity: 0.8;
-        }
-
-        .banner-actions {
-            display: flex;
-            gap: 8px;
-            align-items: center;
-        }
-
-        .btn-banner {
-            padding: 5px 12px;
-            border: none;
-            border-radius: 4px;
-            font-size: 11px;
-            font-weight: 500;
-            cursor: pointer;
-            transition: all 0.2s ease;
-            display: inline-block;
-            white-space: nowrap;
-        }
-
-        .btn-enable {
-            background: #28a745;
-            color: white;
-        }
-
-        .btn-enable:hover {
-            background: #218838;
-        }
-
-        .btn-disable {
-            background: #6c757d;
-            color: white;
-        }
-
-        .btn-disable:hover {
-            background: #5a6268;
-        }
-
-        /* Approvals Section */
-        .approvals-section {
-            margin: 15px 0;
-            padding: 12px;
-            background: #f8f9fa;
-            border-radius: 6px;
-            border: 1px solid #e9ecef;
-        }
-
-        .section-header {
-            display: flex;
-            align-items: center;
-            justify-content: space-between;
-            margin-bottom: 8px;
-        }
-
-        .section-header h3 {
-            margin: 0;
-            font-size: 14px;
-            color: #495057;
-            font-weight: 600;
-        }
-
-        .approvals-list {
-            display: flex;
-            flex-direction: column;
-            gap: 6px;
-        }
-
-        .approval-item {
-            display: flex;
-            align-items: center;
-            justify-content: space-between;
-            padding: 8px 10px;
-            background: white;
-            border-radius: 4px;
-            border: 1px solid #dee2e6;
-        }
-
-        .approval-user {
-            font-size: 12px;
-            font-weight: 500;
-            color: #495057;
-        }
-
-        .approval-actions {
-            display: flex;
-            gap: 4px;
-        }
-
-        .btn-approve, .btn-reject {
-            padding: 3px 8px;
-            border: none;
-            border-radius: 3px;
-            font-size: 10px;
-            cursor: pointer;
-            transition: all 0.2s ease;
-        }
-
-        .btn-approve {
-            background: #28a745;
-            color: white;
-        }
-
-        .btn-approve:disabled {
-            background: #94d3a2;
-            cursor: not-allowed;
-        }
-
-        .btn-reject {
-            background: #dc3545;
-            color: white;
-        }
-
-        .btn-reject:disabled {
-            background: #f1aeb5;
-            cursor: not-allowed;
-        }
-
-        /* Fix default checkout status background to avoid teal */
-        .checkout-status {
-            background: transparent !important;
+            background: #dc3545 !important; /* unified red */
         }
     </style>
 </head>
 <body>
     <div class="container">
         <div class="opengov-header">
+            <div class="coming-soon-badge">Coming soon</div>
             <div class="opengov-logo">
                 <img src="../../assets/opengov-logo.png" alt="OpenGov" style="height: 50px; width: auto;">
             </div>
@@ -777,42 +645,22 @@
                     <option value="">Loading users...</option>
                 </select>
             </div>
-            
-            <!-- Document Actions Dropdown -->
-            <div class="user-switcher" style="margin-top: 8px;">
-                <select id="docActionsSelect" class="user-select" onchange="executeDocumentAction(this.value)">
-                    <option value="">Document actions...</option>
-                </select>
-            </div>
+        <!-- Dynamic Document Actions dropdown placed directly below user dropdown -->
+        <div class="doc-actions-switcher" style="margin-top:6px;">
+            <select id="docActionsSelect" class="user-select">
+                <option value="">Document actions…</option>
+            </select>
+        </div>
         </div>
         
 
         
-        <!-- New Features Banner -->
-        <div id="new-feature-banner" class="banner new-feature-banner" style="display: none;">
-            <div class="banner-content">
-                <div class="banner-text">
-                    <span class="banner-title">🎉 New Features Available!</span>
-                    <span class="banner-description">Enhanced collaboration tools and improved workflow</span>
-                </div>
-                <div class="banner-actions">
-                    <button id="btnEnable" class="btn-banner btn-enable">Enable</button>
-                    <button id="btnDisable" class="btn-banner btn-disable">Disable</button>
-                </div>
-            </div>
-        </div>
-
         <div id="addin-controls-area">
             <div class="document-info">
                 <div class="document-title-section">
                 <p class="document-title" id="document-title">No document loaded</p>
                 </div>
-                <div class="document-buttons-section">
-                <div class="document-buttons">
-                        <button class="btn-view-latest" onclick="viewReadOnly()">👀 View Latest</button>
-                        <button id="shareToWebBtn" class="btn-open-web" onclick="shareToWeb()">🌐 Open in Web</button>
-                    </div>
-                </div>
+                <!-- Moved action buttons into Work on Document card for unified container -->
             </div>
         
             <!-- Checkout Status -->
@@ -829,54 +677,40 @@
             <div id="checkoutBanner" class="checkout-banner" style="display: none;">
             </div>
             
-                        <!-- Individual buttons hidden - now using dropdown -->
-            <div class="sync-section" style="display: none;">
-            <button id="checkoutBtn" class="button button-primary" onclick="checkoutDocument()" style="display: none;">
-                🔒 Check-out Document
-            </button>            
-            <button id="sendVendorBtn" class="button button-vendor" onclick="openVendorModal()" style="display: none;">
-                📤 Send to Vendor
-            </button>
-            
-            <button id="saveProgressBtn" class="button button-secondary" onclick="saveProgress()" style="display: none;">
-💾 Save Progress
-            </button>
-            
-            <button id="checkinBtn" class="button button-primary" onclick="checkinDocument()" style="display: none;">
-                ✅ Save & Check-in
-            </button>
-    
-            <button id="cancelBtn" class="button button-secondary" onclick="cancelCheckout()" style="display: none;">
-                ❌ Cancel Check-out
-            </button>
-        
-            <button id="overrideBtn" class="button button-secondary" onclick="overrideCheckout()" style="display: none;">
-                Override Check-out
-            </button>
-            </div>
-        
-        <!-- Approvals Section -->
-        <div class="approvals-section">
-            <div class="section-header">
-                <h3>✅ Approvals</h3>
-            </div>
-            <div id="approvalsList" class="approvals-list">
-                <!-- Approvals will be loaded here -->
-            </div>
-        </div>
-
-        <!-- Transparent Notification Window -->
-        <div class="notification-window">
-            <div class="notification-window-header">
-                🔔 Notifications
-            </div>
-            <div class="notification-window-body" id="notificationWindowBody">
-                <div class="no-notifications">
-                    No notifications yet
+            <!-- Workflows container -->
+            <div class="grid-card" id="workflowsCard">
+                <div class="grid-title" id="workflowsTitle">Workflows (0/0 approved)</div>
+                <div id="usersInlineContainer">
+                    <div style="overflow:auto; max-height:30vh; border:1px solid #e9ecef; border-radius:6px;">
+                        <table style="width:100%; border-collapse:collapse; font-size:12px;">
+                            <thead style="position:sticky; top:0; background:#f8f9fa;">
+                                <tr>
+                                    <th style="text-align:left; padding:6px; border-bottom:1px solid #e9ecef;">Name</th>
+                                    <th style="text-align:left; padding:6px; border-bottom:1px solid #e9ecef;">Role</th>
+                                    <th style="text-align:left; padding:6px; border-bottom:1px solid #e9ecef; width:80px;">Approved</th>
+                                    <th style="text-align:left; padding:6px; border-bottom:1px solid #e9ecef;">Action</th>
+                                </tr>
+                            </thead>
+                            <tbody id="usersInlineBody"></tbody>
+                        </table>
+                    </div>
                 </div>
             </div>
+
+            <!-- Buttons container removed; actions are provided via the Document actions dropdown -->
+
+            <!-- Notifications container -->
+            <div class="grid-card" id="notificationsCard">
+                <div class="grid-title">Status & Notifications</div>
+                <div class="grid-notifications">
+                    <div class="notification-window-body" id="notificationWindowBody">
+                        <div class="no-notifications">No notifications yet</div>
         </div>
-        
+                    <!-- alias id for parity with web if needed by shared code -->
+                    <div id="notificationWindowBody_grid" style="display:none;"></div>
+                </div>
+            </div>
+
         </div> <!-- End addin-controls-area -->
     </div>
     
@@ -996,10 +830,6 @@
                     
                     if (data.type === 'connected') {
                         showStatus('sseStatus', `📡 ${data.message}`, 'success');
-                    } else if (data.type === 'approvals-updated') {
-                        showStatus('sseStatus', `📡 ${data.message}`, 'info');
-                        // Refresh approvals section when approvals change
-                        setTimeout(() => loadApprovalsSection(), 100);
                     } else if (data.type === 'document-checked-out') {
                         showStatus('sseStatus', `📡 ${data.message}`, 'info');
                         fetchDocumentStatus(); // Refresh UI when checkout state changes
@@ -1019,8 +849,9 @@
                         fetchDocumentStatus(); // Refresh UI when checkout state changes
                     } else if (data.type === 'document-uploaded') {
                         showStatus('sseStatus', `📡 ${data.message}`, 'info');
-                        // Only update status to avoid racing; startup auto-load will handle initial load
-                        fetchDocumentStatus();
+                        fetchDocumentStatus(); // Refresh UI when new document is available
+                        // Auto-load the uploaded document
+                        loadDocumentContent();
                     } else if (data.type === 'user-switched') {
                         console.log(`📡 WORD SSE: User switched event received:`, data);
                         
@@ -1033,10 +864,13 @@
                             updateCurrentUserDisplay();
                             populateUserSwitcher();
                             updateButtonStates();
-                            }
+                        }
                         } else {
                             console.log(`📡 WORD: Ignoring ${data.platform || 'legacy'} user switch event`);
                         }
+                    } else if (data.type === 'approvals-updated') {
+                        console.log('📡 SSE: approvals-updated received');
+                        try { refreshUsersModal(); } catch (e) {}
                     } else if (data.type === 'permission-changed') {
                         console.log(`📡 WORD: Permission changed for ${data.user.name}`);
                         // Refresh button states if this affects current user
@@ -1076,13 +910,25 @@
         let currentUser = null;
         let allUsers = [];
         
+        // Simple fetch with timeout helper to avoid hanging UI
+        async function fetchWithTimeout(url, options = {}, timeoutMs = 5000) {
+            const controller = new AbortController();
+            const id = setTimeout(() => controller.abort(), timeoutMs);
+            try {
+                const response = await fetch(url, { ...options, signal: controller.signal });
+                return response;
+            } finally {
+                clearTimeout(id);
+            }
+        }
+
         // Initialize word-specific user system  
         async function initializeUserSystem() {
             try {
                 console.log('👤 WORD: Initializing independent word user system...');
                 
-                // Load current word user
-                const userResponse = await fetch('http://localhost:3001/api/user/word/current');
+                // Load current Word user
+                const userResponse = await fetchWithTimeout('http://localhost:3001/api/user/word/current');
                 if (userResponse.ok) {
                     const userData = await userResponse.json();
                     currentUser = userData.user;
@@ -1090,18 +936,26 @@
                     console.log('👤 WORD: Current user loaded:', userData.user.name, `(${userData.user.role})`);
                 }
                 
-                // Load all word users for switcher
-                const usersResponse = await fetch('http://localhost:3001/api/user/word/users');
+                // Load all Word users for switcher
+                const usersResponse = await fetchWithTimeout('http://localhost:3001/api/user/word/users');
                 if (usersResponse.ok) {
                     const usersData = await usersResponse.json();
                     allUsers = usersData.users;
+                } else {
+                    allUsers = [];
+                }
                     populateUserSwitcher();
-                    console.log('👤 WORD: Available users loaded:', usersData.users.map(u => u.name));
+                if (Array.isArray(allUsers) && allUsers.length) {
+                    console.log('👤 WORD: Available users loaded:', allUsers.map(u => u.name));
+                } else {
+                    console.warn('👤 WORD: No users available');
                 }
                 
                 console.log('✅ WORD: Independent user system initialized successfully');
+                try { await refreshUsersModal(); } catch (e) {}
             } catch (error) {
                 console.error('❌ WORD: Failed to initialize user system:', error);
+                try { populateUserSwitcher(); } catch (e) {}
             }
         }
         
@@ -1120,9 +974,19 @@
         // Populate user switcher dropdown
         function populateUserSwitcher() {
             const switcher = document.getElementById('userSwitcher');
-            if (!switcher || !allUsers.length) return;
+            if (!switcher) return;
             
             switcher.innerHTML = '';
+
+            if (!Array.isArray(allUsers) || allUsers.length === 0) {
+                const option = document.createElement('option');
+                option.value = '';
+                option.textContent = 'No users found';
+                option.disabled = true;
+                option.selected = true;
+                switcher.appendChild(option);
+                return;
+            }
             
             allUsers.forEach(user => {
                 const option = document.createElement('option');
@@ -1133,7 +997,7 @@
             });
         }
         
-        // Switch word user (platform-specific demo function)
+        // Switch Word user
         async function switchUser(userId) {
             if (!userId) return;
             
@@ -1185,6 +1049,112 @@
         }
 
         // User selection is always enabled - no locking mechanism
+
+        // ===== Users/Approvals (shared with web) =====
+        async function refreshUsersModal() {
+            try {
+                const usersResp = await fetch('http://localhost:3001/api/users');
+                const usersData = await usersResp.json();
+                let users = usersData.users || [];
+                if (!users.length && window.getAvailableUsers) users = (getAvailableUsers() || []);
+                if (!users.length && window.wordUsers) users = Object.values(window.wordUsers);
+                    if (!users.length) {
+                    users = [
+                        { id: 'user1', name: 'Warren Peace', role: 'editor' },
+                        { id: 'user2', name: 'Gettysburger King', role: 'viewer' },
+                        { id: 'user5', name: 'Yuri Lee Laffed', role: 'suggester' },
+                        { id: 'vendor1', name: 'Hoo R. U', role: 'vendor' }
+                    ];
+                }
+
+                const currentId = (window.currentDocumentState && window.currentDocumentState.currentDocument && window.currentDocumentState.currentDocument.id) || 'default-doc';
+                const approvalsResp = await fetch(`http://localhost:3001/api/document/${currentId}/approvals`);
+                const approvalsData = await approvalsResp.json();
+                const approvals = approvalsData.approvals || [];
+                const approvalMap = approvals.reduce((acc, a) => { acc[a.userId] = a; return acc; }, {});
+
+                const inlineTbody = document.getElementById('usersInlineBody');
+                if (inlineTbody) inlineTbody.innerHTML = '';
+
+                const actor = (window.currentUser && window.currentUser.id) ? window.currentUser : (getCurrentUser && getCurrentUser());
+                const actorId = actor && actor.id ? actor.id : null;
+                const actorRole = actor && actor.role ? actor.role : (getCurrentUserRole && getCurrentUserRole());
+
+                const canApproveSelf = (window.__lastStateMatrix?.approvals?.canApproveSelf ?? (actorRole !== 'viewer'));
+                const canApproveOthers = (window.__lastStateMatrix?.approvals?.canApproveOthers ?? (actorRole === 'editor'));
+
+                users.forEach(u => {
+                    const tr = document.createElement('tr');
+                    const isYes = (approvalMap[u.id]?.status === 'approved');
+                    const pill = isYes
+                        ? '<span style="display:inline-block;padding:2px 8px;border-radius:12px;font-size:12px;font-weight:600;color:#155724;background:#d4edda;">Yes</span>'
+                        : '<span style="display:inline-block;padding:2px 8px;border-radius:12px;font-size:12px;font-weight:600;color:#721c24;background:#f8d7da;">No</span>';
+                    const showApprove = (actorId === u.id && canApproveSelf && actorRole !== 'viewer') || (actorRole === 'editor' && canApproveOthers);
+                    const isApproved = (approvalMap[u.id]?.status === 'approved');
+                    tr.innerHTML = `
+                        <td style=\"padding:8px; border-bottom:1px solid #f1f3f5;\">${u.name}</td>
+                        <td style=\"padding:8px; border-bottom:1px solid #f1f3f5;\">${u.role}</td>
+                        <td style=\"padding:8px; border-bottom:1px solid #f1f3f5; white-space:nowrap;\">${pill}</td>
+                        <td style=\"padding:8px; border-bottom:1px solid #f1f3f5;\">
+                            ${showApprove ? `
+                                <div style=\"display:flex; flex-direction:column; gap:6px; align-items:flex-start;\">
+                                    <button class=\"btn\" style=\"padding:6px 10px; font-size:12px;\" ${isApproved ? 'disabled' : ''} data-action=\"approve\" data-user=\"${u.id}\" data-status=\"${approvalMap[u.id]?.status || 'unapproved'}\">Approve</button>
+                                    <button class=\"btn\" style=\"padding:6px 10px; font-size:12px;\" ${!isApproved ? 'disabled' : ''} data-action=\"unapprove\" data-user=\"${u.id}\" data-status=\"${approvalMap[u.id]?.status || 'unapproved'}\">Reject</button>
+                                </div>
+                            ` : `<span style=\\\"opacity:.6; font-size:12px;\\\">No actions</span>`}
+                        </td>
+                    `;
+                    if (inlineTbody) inlineTbody.appendChild(tr);
+                });
+
+                const approvedCount = approvals.filter(a => a.status === 'approved').length;
+                const totalCount = users.length;
+                const wfTitle = document.getElementById('workflowsTitle');
+                if (wfTitle) wfTitle.textContent = `Workflows (${approvedCount}/${totalCount} approved)`;
+
+                const bindActions = (root) => {
+                    root.querySelectorAll('button[data-user]').forEach(btn => {
+                        btn.addEventListener('click', async (e) => {
+                            const targetUserId = btn.getAttribute('data-user');
+                            const explicitAction = btn.getAttribute('data-action');
+                            const currentStatus = btn.getAttribute('data-status') || 'unapproved';
+                            const nextAction = explicitAction || (currentStatus === 'approved' ? 'unapprove' : 'approve');
+
+                            if (actorRole !== 'editor' && actorId !== targetUserId) {
+                                addNotification('Only editors can approve/unapprove others', 'error');
+                                return;
+                            }
+
+                            if (actorRole === 'editor' && actorId !== targetUserId) {
+                                // In taskpane, window.confirm is not supported; proceed and rely on notification
+                                addNotification('Acting on behalf of another user', 'info');
+                            }
+
+                            try {
+                                const currentId2 = currentId;
+                                const resp = await fetch(`http://localhost:3001/api/document/${currentId2}/approvals`, {
+                                    method: 'POST',
+                                    headers: { 'Content-Type': 'application/json' },
+                                    body: JSON.stringify({ userId: targetUserId, action: nextAction, actorId })
+                                });
+                                const result = await resp.json();
+                                if (result.success) {
+                                    addNotification(`Approval updated: ${nextAction.toUpperCase()} (${targetUserId})`, 'success');
+                                    await refreshUsersModal();
+                                } else {
+                                    addNotification(`Failed to update approval: ${result.error || 'Unknown error'}`, 'error');
+                                }
+                            } catch (err) {
+                                addNotification('Error updating approval', 'error');
+                            }
+                        });
+                    });
+                };
+                if (inlineTbody) bindActions(inlineTbody);
+            } catch (err) {
+                addNotification('Error loading users/approvals', 'error');
+            }
+        }
         
         // ========================================
         // TESTING FUNCTIONS (Word Add-in)
@@ -1480,7 +1450,7 @@
                 document.querySelector('.container').classList.add('read-only-mode');
                 
                 // Hide editing controls
-                            hideButtons(['checkoutBtn', 'sendVendorBtn', 'saveProgressBtn', 'checkinBtn', 'cancelBtn', 'viewOnlyBtn']);
+                            hideButtons(['checkoutBtn', 'sendVendorBtn', 'saveProgressBtn', 'checkinBtn', 'cancelBtn']);
                 
                 // Show context-specific status message
                 let statusMessage = '';
@@ -1526,14 +1496,83 @@
         }
 
         // Update button visibility based on document state (now using multi-layer protection)
+        async function ensureStateMatrixLoaded() {
+            if (typeof window.updateUIFromStateMatrix === 'function') return;
+            await new Promise((resolve, reject) => {
+                const existing = document.querySelector('script[data-sm-client]');
+                if (existing) {
+                    existing.addEventListener('load', () => resolve());
+                    existing.addEventListener('error', (e) => reject(e));
+                return;
+                }
+                const s = document.createElement('script');
+                s.src = '/state-matrix-client.js';
+                s.async = true;
+                s.setAttribute('data-sm-client', '1');
+                s.onload = () => resolve();
+                s.onerror = (e) => reject(e);
+                document.head.appendChild(s);
+            });
+        }
+
+        // Populate dynamic document actions dropdown based on current matrix/config
+        function populateDocActionsDropdown() {
+            const select = document.getElementById('docActionsSelect');
+            if (!select) return;
+            // Clear existing
+            while (select.options.length > 1) select.remove(1);
+
+            // Determine availability from state-matrix-client applied state
+            const actions = [];
+            const push = (id, label, handler, visible) => { if (visible) actions.push({ id, label, handler }); };
+
+            // Buttons (match IDs used elsewhere)
+            const checkoutVisible = document.getElementById('checkoutBtn')?.style.display !== 'none';
+            const checkinVisible = document.getElementById('checkinBtn')?.style.display !== 'none';
+            const cancelVisible = document.getElementById('cancelBtn')?.style.display !== 'none';
+            const saveVisible = document.getElementById('saveProgressBtn')?.style.display !== 'none';
+            const overrideVisible = document.getElementById('overrideBtn')?.style.display !== 'none';
+            const sendVisible = document.getElementById('sendVendorBtn')?.style.display !== 'none';
+            const viewLatest = document.getElementById('viewOnlyBtn');
+            const viewLatestVisible = !!viewLatest && !viewLatest.disabled;
+            const openWebVisible = !!document.getElementById('shareToWebBtn');
+
+            push('viewOnlyBtn', 'View Latest', () => viewReadOnly(), viewLatestVisible);
+            push('shareToWebBtn', 'Open in Web', () => shareToWeb(), openWebVisible);
+            push('checkoutBtn', 'Check-out Document', () => checkoutDocument(), checkoutVisible);
+            push('checkinBtn', 'Save & Check-in', () => checkinDocument(), checkinVisible);
+            push('cancelBtn', 'Cancel Check-out', () => cancelCheckout(), cancelVisible);
+            push('saveProgressBtn', 'Save Progress', () => saveProgress(), saveVisible);
+            push('overrideBtn', 'Override Check-out', () => overrideCheckout(), overrideVisible);
+            push('sendVendorBtn', 'Send to Vendor', () => openVendorModal(), sendVisible);
+
+            // Populate select
+            actions.forEach(a => {
+                const opt = document.createElement('option');
+                opt.value = a.id;
+                opt.textContent = a.label;
+                select.appendChild(opt);
+            });
+
+            // Visibility: show only if at least one action
+            select.parentElement.style.display = actions.length ? 'block' : 'none';
+
+            // Bind change
+            select.onchange = (e) => {
+                const val = e.target.value;
+                if (!val) return;
+                const action = actions.find(x => x.id === val);
+                if (action) action.handler();
+                // reset back to placeholder
+                select.value = '';
+            };
+        }
+
         async function updateButtonStates() {
             console.log('🔄 Updating button states with multi-layer protection...');
             
             // Get comprehensive access information
             const accessInfo = await determineDocumentAccess();
-            
-            // Update document actions dropdown when button states change
-            setTimeout(() => populateDocumentActions(), 100);
             
             // Apply visual feedback based on access level
             await updateUIForAccessLevel(accessInfo);
@@ -1544,13 +1583,19 @@
             // Control user selection based on checkout state
             if (currentDocumentState.isCheckedOut && currentDocumentState.checkedOutBy === 'word') {} else {}
             
-            // Apply shared state matrix (replaces scenario logic)
-            await updateUIFromStateMatrix('word', getCurrentUser, getCurrentUserRole, currentDocumentState);
-
+            // Ensure shared state matrix client is loaded, then apply
+            try { await ensureStateMatrixLoaded(); } catch (e) { console.warn('State matrix client load failed', e); }
+            if (typeof window.updateUIFromStateMatrix === 'function') {
+                await window.updateUIFromStateMatrix('word', getCurrentUser, getCurrentUserRole, currentDocumentState);
+            }
+                // Refresh dynamic document actions after state matrix applies (matrix-driven)
+                try { if (window.__lastStateMatrix) refreshActionsDropdownFromMatrix('docActionsSelect', window.__lastStateMatrix); } catch (e) { console.warn('refreshActionsDropdownFromMatrix failed', e); }
+            
+            // Also refresh approvals UI so Approve/Reject reflect current actor
+            try { await refreshUsersModal(); } catch (e) {}
             
             // Continue with existing logic for editors
             if (accessInfo.canEdit) {
-                // Update status messages for editors
             if (!currentDocumentState.isCheckedOut) {
                 showStatus('documentStatus', '📄 Document available for checkout', 'info');
             } else if (currentDocumentState.checkedOutBy === 'word') {
@@ -1619,83 +1664,67 @@
             }
         }
         
-        // Helpers for binary fetch -> base64 and Word insertion
-        function arrayBufferToBase64(buffer) {
-            const bytes = new Uint8Array(buffer);
-            const chunkSize = 0x8000;
-            let binary = '';
-            for (let i = 0; i < bytes.length; i += chunkSize) {
-                const chunk = bytes.subarray(i, i + chunkSize);
-                binary += String.fromCharCode.apply(null, chunk);
-            }
-            return btoa(binary);
-        }
-
-        async function getCurrentOrDefaultDocument() {
-            let current = null;
-            try { current = await fetch('http://localhost:3001/api/current-document').then(r => r.json()); } catch (_) {}
-            if (!current || !current.id) {
-                try { current = await fetch('http://localhost:3001/api/default-document').then(r => r.ok ? r.json() : null); } catch (_) {}
-            }
-            return current;
-        }
-
-        async function insertBase64IntoWord(base64, filename) {
-            await Word.run(async (context) => {
-                const canUseDocumentInsert = typeof context.document.insertFileFromBase64 === 'function';
-                if (canUseDocumentInsert) {
-                    try {
-                        context.document.insertFileFromBase64(base64, Word.InsertLocation.replace, {
-                            importTheme: true,
-                            importStyles: true,
-                            importParagraphSpacing: true,
-                            importPageColor: true,
-                            importChangeTrackingMode: true,
-                            importCustomProperties: true,
-                            importCustomXmlParts: true,
-                            importDifferentOddEvenPages: true
-                        });
-                        await context.sync();
-                        return;
-                    } catch (e) {
-                        console.warn('document.insertFileFromBase64 failed; falling back to body.insertFileFromBase64', e);
-                    }
-                }
-                // Fallback: clear body and insert at start
-                context.document.body.clear();
-                context.document.body.insertFileFromBase64(base64, Word.InsertLocation.start);
-                await context.sync();
-            });
-        }
-
-        async function openBase64AsNewDocument(base64) {
-            // Opens the provided DOCX base64 as a brand-new Word document
-            await Word.run(async (ctx) => {
-                try {
-                    const newDoc = ctx.application.createDocument(base64);
-                    newDoc.open();
-                    await ctx.sync();
-                } catch (e) {
-                    console.warn('createDocument(base64).open failed', e);
-                    throw e;
-                }
-            });
-        }
-
-        // Load document content from web using binary fetch -> base64
+        // Load document content from web (robust with default fallback)
         async function loadDocumentContent() {
             try {
                 showStatus('documentStatus', '📥 Loading document content...', 'info');
-                const current = await getCurrentOrDefaultDocument();
-                if (!current || !current.id) { showStatus('documentStatus', 'ℹ️ No document available', 'info'); return; }
-                const url = `http://localhost:3001/api/document/${encodeURIComponent(current.id)}`;
-                const response = await fetch(url);
-                if (!response.ok) { showStatus('documentStatus', '❌ Failed to fetch document', 'error'); return; }
-                const buffer = await response.arrayBuffer();
-                const base64 = arrayBufferToBase64(buffer);
-                console.log('Loading document content:', current.filename || 'document.docx');
-                await insertBase64IntoWord(base64, current.filename);
-                showStatus('documentStatus', `✅ ${(current.filename || 'document') } loaded successfully`, 'success');
+                let response = await fetch('http://localhost:3001/api/get-updated-docx');
+                if (!response.ok) {
+                    // Try to set default document, then retry once
+                    try {
+                        const def = await fetch('http://localhost:3001/api/default-document');
+                        if (def.ok) {
+                            await def.json();
+                            response = await fetch('http://localhost:3001/api/get-updated-docx');
+                        }
+                    } catch (_) {}
+                if (!response.ok) {
+                    console.log('No document content available');
+                        showStatus('documentStatus', 'ℹ️ No document available', 'info');
+                    return;
+                    }
+                }
+                
+                const result = await response.json();
+                console.log('Loading document content:', result.filename);
+                
+                if (result.docx) {
+                    // Try primary strategy: clear then insert at start
+                    try {
+                    await Word.run(async (context) => {
+                        context.document.body.clear();
+                            await context.sync();
+                        context.document.body.insertFileFromBase64(result.docx, Word.InsertLocation.start);
+                        await context.sync();
+                    });
+                    showStatus('documentStatus', `✅ ${result.filename} loaded successfully`, 'success');
+                    } catch (primaryErr) {
+                        console.warn('Primary insert failed, retrying with replace:', primaryErr);
+                        // Fallback 1: replace
+                        try {
+                            await Word.run(async (context) => {
+                                context.document.body.insertFileFromBase64(result.docx, Word.InsertLocation.replace);
+                                await context.sync();
+                            });
+                            showStatus('documentStatus', `✅ ${result.filename} loaded (replace)`, 'success');
+                        } catch (replaceErr) {
+                            console.warn('Replace failed, opening as new document:', replaceErr);
+                            // Fallback 2: open as a new document
+                            try {
+                                await Word.run(async (context) => {
+                                    const newDoc = context.application.createDocument(result.docx);
+                                    newDoc.open();
+                                    await context.sync();
+                                });
+                                showStatus('documentStatus', `✅ Opened ${result.filename} in a new window`, 'success');
+                            } catch (openErr) {
+                                console.error('All insert strategies failed:', openErr);
+                                showStatus('documentStatus', `❌ Failed to load document: ${openErr && openErr.message || 'Unknown error'}`, 'error');
+                                return;
+                            }
+                        }
+                    }
+                }
             } catch (error) {
                 console.error('Failed to load document content:', error);
                 showStatus('documentStatus', '⚠️ Checked out but content loading failed', 'warning');
@@ -1711,7 +1740,12 @@
                     const doc = await response.json();
                     console.log('🏠 WORD: Loading default document:', doc.filename);
                     document.getElementById('document-title').textContent = doc.filename;
-                    // Do not attempt in-pane insert here
+                    await loadDocumentContent();
+                    // After initial load, set checkout banner to available
+                    currentDocumentState.currentDocument = { id: doc.id, filename: doc.filename };
+                    currentDocumentState.isCheckedOut = false;
+                    currentDocumentState.checkedOutBy = null;
+                    updateCheckoutBanner();
                 } else {
                     console.log('ℹ️ WORD: No default document available, starting empty');
                 }
@@ -1749,14 +1783,11 @@
             }
         }
         
-        // Check-in document (save and unlock)
+        // Check-in document (save and unlock on server)
         async function checkinDocument() {
             try {
                 showStatus('documentStatus', '✅ Checking in document...', 'info');
-                
-                // Temporarily unlock to allow reading content
-                await unlockDocument();
-                
+                // Read content without altering local protection
                 // Get document content from Word
                 const docx = await getDocumentAsBase64();
                 
@@ -1772,18 +1803,17 @@
                 
                 if (response.ok) {
                     showStatus('documentStatus', '✅ Document checked in successfully', 'success');
-                    
-                    // Re-enable user selection after successful checkinawait fetchDocumentStatus(); // Refresh UI (includes re-locking if needed)
+                    // Refresh UI and banner state
+                    await fetchDocumentStatus();
+                    await updateButtonStates();
                 } else {
                     const error = await response.json();
                     showStatus('documentStatus', `❌ ${error.error}`, 'error');
-                    // Re-lock on error
                     await updateButtonStates();
                 }
             } catch (error) {
                 console.error('Checkin error:', error);
                 showStatus('documentStatus', '❌ Check-in failed: ' + error.message, 'error');
-                // Re-lock on error
                 await updateButtonStates();
             }
         }
@@ -1832,75 +1862,56 @@
             }
         }
         
-        // Open latest using Word protocol (no download, launches Word)
-        async function openLatestExternal() {
+        // View read-only (open latest in Word/external handler via URL)
+        async function viewReadOnly() {
             try {
                 showStatus('documentStatus', '👀 Loading latest version...', 'info');
-                // Get current or default doc
+
+                // Ensure there is a current document; fall back to default
                 let current = await fetch('http://localhost:3001/api/current-document').then(r => r.json()).catch(() => ({}));
-                if (!current || !current.id) {
-                    try { current = await fetch('http://localhost:3001/api/default-document').then(r => r.ok ? r.json() : null); } catch (_) {}
+                if (!current || !current.id || !current.filename) {
+                    try {
+                        current = await fetch('http://localhost:3001/api/default-document').then(r => r.ok ? r.json() : null);
+                    } catch (_) { /* ignore */ }
                 }
+
                 if (!current || !current.id) {
                     showStatus('documentStatus', 'ℹ️ No document available', 'info');
                     return;
                 }
+
+                // Prefer Word protocol to open directly in host Word instead of downloading
                 const docUrl = `http://localhost:3001/api/document/${encodeURIComponent(current.id)}`;
                 const wordUrl = `ms-word:ofe|u|${encodeURI(docUrl)}`;
-                // Use protocol directly; no http fallback to avoid downloads
-                window.location.assign(wordUrl);
+
+                let opened = false;
+                try {
+                    // Attempt to open in-place via protocol
+                    window.location.assign(wordUrl);
+                    opened = true;
+                } catch (_) {}
+                if (!opened) {
+                    try {
+                        // Fallback to opening in new window (may still trigger Word via protocol handler)
+                        const a = document.createElement('a');
+                        a.href = wordUrl;
+                        a.target = '_blank';
+                        a.rel = 'noopener';
+                        document.body.appendChild(a);
+                        a.click();
+                        document.body.removeChild(a);
+                        opened = true;
+                    } catch (_) {}
+                }
+                if (!opened) {
+                    // Final fallback: open the streaming URL (may download if handler is not registered)
+                    window.open(docUrl, '_blank');
+                }
+
                 showStatus('documentStatus', `✅ Opened latest: ${current.filename}`, 'success');
             } catch (error) {
-                console.error('Open latest error:', error);
+                console.error('View read-only error:', error);
                 showStatus('documentStatus', '❌ Failed to open latest: ' + (error?.message || 'Unknown error'), 'error');
-            }
-        }
-
-        // View read-only prefers Word protocol (no download); falls back to base64 new-doc open
-        async function viewReadOnly() {
-            try {
-                await openLatestExternal();
-            } catch (e) {
-                console.warn('Word protocol open failed, falling back to createDocument(base64)', e);
-                try {
-                    showStatus('documentStatus', '👀 Loading latest version...', 'info');
-                    const current = await getCurrentOrDefaultDocument();
-                    if (!current || !current.id) { showStatus('documentStatus', 'ℹ️ No document available', 'info'); return; }
-                    const url = `http://localhost:3001/api/document/${encodeURIComponent(current.id)}`;
-                    const resp = await fetch(url);
-                    if (!resp.ok) { showStatus('documentStatus', '❌ Failed to fetch document', 'error'); return; }
-                    const buf = await resp.arrayBuffer();
-                    const b64 = arrayBufferToBase64(buf);
-                    await openBase64AsNewDocument(b64);
-                    showStatus('documentStatus', `✅ ${(current.filename || 'document')} opened in Word`, 'success');
-                } catch (err) {
-                    console.error('View Latest fallback failed', err);
-                    showStatus('documentStatus', '❌ Failed to open latest in Word', 'error');
-                }
-            }
-        }
-
-        // Single-flight loader that loads latest into current document (no new window)
-        let __newDocLoadInFlight = false;
-        async function autoLoadLatestInNewDoc() {
-            if (__newDocLoadInFlight) return;
-            __newDocLoadInFlight = true;
-            try {
-                showStatus('documentStatus', '👀 Loading latest version...', 'info');
-                const current = await getCurrentOrDefaultDocument();
-                if (!current || !current.id) { showStatus('documentStatus', 'ℹ️ No document available', 'info'); return; }
-                const url = `http://localhost:3001/api/document/${encodeURIComponent(current.id)}`;
-                const resp = await fetch(url);
-                if (!resp.ok) { showStatus('documentStatus', '❌ Failed to fetch document', 'error'); return; }
-                const buf = await resp.arrayBuffer();
-                const b64 = arrayBufferToBase64(buf);
-                await insertBase64IntoWord(b64, current.filename);
-                showStatus('documentStatus', `✅ ${(current.filename || 'document')} loaded`, 'success');
-            } catch (e) {
-                console.error('Auto-load latest failed', e);
-                showStatus('documentStatus', '❌ Failed to load latest into Word', 'error');
-            } finally {
-                __newDocLoadInFlight = false;
             }
         }
         
@@ -2128,199 +2139,6 @@
             }
         }
         
-        // Populate document actions dropdown based on state matrix
-        function populateDocumentActions() {
-            const actionsSelect = document.getElementById('docActionsSelect');
-            if (!actionsSelect) return;
-            
-            // Clear existing options except placeholder
-            actionsSelect.innerHTML = '<option value="">Document actions...</option>';
-            
-            // Get available buttons from state matrix
-            const matrix = window.__lastStateMatrix || {};
-            const buttons = matrix.buttons || {};
-            const currentUser = window.getCurrentUser ? window.getCurrentUser() : null;
-            const userRole = currentUser ? currentUser.role : 'viewer';
-            
-            // Define all possible actions with their conditions
-            const possibleActions = [
-                { id: 'viewLatest', label: '👀 View Latest', icon: '👀', always: true },
-                { id: 'openWeb', label: '🌐 Open in Web', icon: '🌐', always: true },
-                { id: 'checkout', label: '🔒 Check-out Document', icon: '🔒', condition: buttons.checkout?.visible },
-                { id: 'checkin', label: '✅ Save & Check-in', icon: '✅', condition: buttons.checkin?.visible },
-                { id: 'saveProgress', label: '💾 Save Progress', icon: '💾', condition: buttons.saveProgress?.visible },
-                { id: 'cancel', label: '❌ Cancel Check-out', icon: '❌', condition: buttons.cancel?.visible },
-                { id: 'override', label: '🔄 Override Check-out', icon: '🔄', condition: buttons.override?.visible },
-                { id: 'sendVendor', label: '📤 Send to Vendor', icon: '📤', condition: buttons.sendVendor?.visible }
-            ];
-            
-            // Add available actions to dropdown
-            possibleActions.forEach(action => {
-                if (action.always || action.condition) {
-                    const option = document.createElement('option');
-                    option.value = action.id;
-                    option.textContent = action.label;
-                    actionsSelect.appendChild(option);
-                }
-            });
-            
-            console.log('📋 Document actions populated:', possibleActions.filter(a => a.always || a.condition).map(a => a.label));
-        }
-        
-        // Execute selected document action
-        function executeDocumentAction(actionId) {
-            if (!actionId) return;
-            
-            console.log('🎯 Executing document action:', actionId);
-            
-            // Reset dropdown to placeholder
-            const actionsSelect = document.getElementById('docActionsSelect');
-            if (actionsSelect) actionsSelect.value = '';
-            
-            // Execute the appropriate function
-            switch (actionId) {
-                case 'viewLatest':
-                    viewReadOnly();
-                    break;
-                case 'openWeb':
-                    shareToWeb();
-                    break;
-                case 'checkout':
-                    checkoutDocument();
-                    break;
-                case 'checkin':
-                    checkinDocument();
-                    break;
-                case 'saveProgress':
-                    saveProgress();
-                    break;
-                case 'cancel':
-                    cancelCheckout();
-                    break;
-                case 'override':
-                    overrideCheckout();
-                    break;
-                case 'sendVendor':
-                    openVendorModal();
-                    break;
-                default:
-                    console.log('❌ Unknown document action:', actionId);
-            }
-        }
-        
-        // Load approvals from state machine and API
-        async function loadApprovalsSection() {
-            const approvalsList = document.getElementById('approvalsList');
-            if (!approvalsList) return;
-            
-            try {
-                // Get current user and document ID
-                const currentUser = window.getCurrentUser ? window.getCurrentUser() : null;
-                if (!currentUser) {
-                    approvalsList.innerHTML = '<div style="color: #6c757d; font-size: 12px;">User not loaded</div>';
-                    return;
-                }
-                
-                const documentId = currentDocumentState?.currentDocument?.id || 'default-doc';
-                
-                // Fetch approval matrix for current user
-                const response = await fetch(`http://localhost:3001/api/approval-matrix?actorPlatform=word&actorId=${currentUser.id}&documentId=${documentId}`);
-                const data = await response.json();
-                
-                if (!data.success) {
-                    approvalsList.innerHTML = '<div style="color: #dc3545; font-size: 12px;">Failed to load approvals</div>';
-                    return;
-                }
-                
-                // Get users and matrix
-                const users = data.users || [];
-                const matrix = data.matrix || {};
-                
-                // Clear and populate
-                approvalsList.innerHTML = '';
-                
-                if (!users.length) {
-                    approvalsList.innerHTML = '<div style="color: #6c757d; font-size: 12px;">No users available</div>';
-                    return;
-                }
-                
-                users.forEach(user => {
-                    const userMatrix = matrix[user.id] || {};
-                    const approvalItem = document.createElement('div');
-                    approvalItem.className = 'approval-item';
-                    
-                    const status = userMatrix.status || 'unapproved';
-                    const statusColor = status === 'approved' ? '#28a745' : '#dc3545';
-                    const statusText = status === 'approved' ? 'Approved' : 'Pending';
-                    
-                    const showButtons = userMatrix.showButtons;
-                    const approveEnabled = userMatrix.approveEnabled;
-                    const rejectEnabled = userMatrix.rejectEnabled;
-                    
-                    approvalItem.innerHTML = `
-                        <div class="approval-user">${user.name} (${user.role})</div>
-                        <div class="approval-actions">
-                            <span style="color: ${statusColor}; font-size: 11px; font-weight: 500;">${statusText}</span>
-                            ${showButtons ? `
-                                <button class="btn-approve" ${!approveEnabled ? 'disabled' : ''} 
-                                        onclick="handleApprovalAction('${user.id}', 'approve')">✓</button>
-                                <button class="btn-reject" ${!rejectEnabled ? 'disabled' : ''} 
-                                        onclick="handleApprovalAction('${user.id}', 'unapprove')">✗</button>
-                            ` : '<span style="color: #6c757d; font-size: 10px;">No actions</span>'}
-                        </div>
-                    `;
-                    
-                    approvalsList.appendChild(approvalItem);
-                });
-                
-                console.log('✅ Approvals loaded from API:', users.length, 'users');
-                
-            } catch (error) {
-                console.error('❌ Failed to load approvals:', error);
-                approvalsList.innerHTML = '<div style="color: #dc3545; font-size: 12px;">Error loading approvals</div>';
-            }
-        }
-        
-        // Handle approval actions (approve/reject)
-        async function handleApprovalAction(userId, action) {
-            try {
-                const currentUser = window.getCurrentUser ? window.getCurrentUser() : null;
-                if (!currentUser) {
-                    console.error('❌ No current user for approval action');
-                    return;
-                }
-                
-                const documentId = currentDocumentState?.currentDocument?.id || 'default-doc';
-                
-                console.log('🎯 Approval action:', { userId, action, actorId: currentUser.id, documentId });
-                
-                const response = await fetch(`http://localhost:3001/api/document/${documentId}/approvals`, {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({
-                        userId: userId,
-                        action: action,
-                        actorId: currentUser.id
-                    })
-                });
-                
-                const result = await response.json();
-                
-                if (result.success) {
-                    console.log('✅ Approval action successful');
-                    // Refresh approvals section
-                    await loadApprovalsSection();
-                } else {
-                    console.error('❌ Approval action failed:', result.error);
-                    window.addNotification && window.addNotification(`❌ ${result.error}`);
-                }
-                
-            } catch (error) {
-                console.error('❌ Approval action error:', error);
-                window.addNotification && window.addNotification('❌ Failed to update approval');
-            }
-        }
-        
         // Connect to SSE when Office is ready
         Office.onReady((info) => {
             if (info.host === Office.HostType.Word) {
@@ -2337,29 +2155,13 @@
                     // Skip lock protection setup due to crashes
                     fetchDocumentStatus();
                     
-                    // Refresh approvals when users are loaded
-                    setTimeout(() => loadApprovalsSection(), 2000);
-                    
-                    // Also refresh when state matrix updates (user switches)
-                    setTimeout(() => loadApprovalsSection(), 4000);
-                    // NOTE: Disabled auto-open to avoid unexpected new documents on add-in load
-                    
                     // Initialize button click animations
                     addButtonClickAnimation();
-                    
-                    // Initialize new feature banner
+
+                    // Initialize New Feature Banner for add-in
                     if (typeof window.initNewFeatureBanner === 'function') {
-                        window.initNewFeatureBanner('word');
+                        window.initNewFeatureBanner('add-in');
                     }
-                    
-                    // Initialize approvals section
-                    loadApprovalsSection();
-                    
-                    // Initialize document actions dropdown
-                    populateDocumentActions();
-                    
-                    // Refresh dropdown when state changes
-                    setTimeout(() => populateDocumentActions(), 3000);
                 }, 1000); // Small delay to ensure SSE connection is established
             }
         });
@@ -2408,18 +2210,28 @@
         }
         
         async function sendToVendor(event) {
-            event.preventDefault();
-            
+            if (event && event.preventDefault) event.preventDefault();
+
             const vendor = document.getElementById('vendorCompany').value;
             const name = document.getElementById('vendorName').value;
             const email = document.getElementById('vendorEmail').value;
             const notes = document.getElementById('vendorNotes').value;
-            
+
             console.log(`📤 WORD: Sending document to vendor: ${vendor} (${name} - ${email})`);
             if (notes) {
                 console.log(`📝 WORD: Notes: ${notes}`);
             }
-            
+
+            // Immediate UX: close modal and show confirmation, then fire API in background
+            try {
+                closeVendorModal();
+                addNotification('Vendor has been invited to redline', 'success');
+                setTimeout(() => openVendorConfirmationModal(), 0);
+            } catch (e) {
+                console.warn('WORD: Could not show immediate confirmation UI:', e);
+            }
+
+            // Fire-and-forget API call (non-blocking UI)
             try {
                 const response = await fetch('http://localhost:3001/api/vendor/send', {
                     method: 'POST',
@@ -2432,17 +2244,10 @@
                         source: 'word'
                     })
                 });
-                
-                const result = await response.json();
-                
-                if (result.success) {
-                    addNotification('Vendor has been invited to redline', 'success');
-                    closeVendorModal();
-                    // Show confirmation modal
-                    openVendorConfirmationModal();
-                    updateButtonStates();
-                } else {
-                    addNotification(`Failed to send to vendor: ${result.error}`, 'error');
+
+                const result = await response.json().catch(() => ({ success: false, error: 'Invalid JSON' }));
+                if (!result.success) {
+                    addNotification(`Failed to send to vendor: ${result.error || 'Unknown error'}`, 'error');
                 }
             } catch (error) {
                 console.error('WORD: Error sending to vendor:', error);
@@ -2932,7 +2737,7 @@
             const visibleButtons = [];
             const hiddenButtons = [];
             
-            ['checkoutBtn', 'sendVendorBtn', 'saveProgressBtn', 'checkinBtn', 'cancelBtn', 'viewOnlyBtn'].forEach(id => {
+            ['checkoutBtn', 'sendVendorBtn', 'saveProgressBtn', 'checkinBtn', 'cancelBtn'].forEach(id => {
                 const btn = document.getElementById(id);
                 if (btn) {
                     if (btn.style.display === 'none') {
@@ -3006,10 +2811,7 @@
             banner.style.display = 'block';
                 console.log(`🚨 WORD: Banner updated: ${bannerText}`);
             } else {
-                // Don't hide the new-feature-banner, only hide checkout banner
-                if (banner.id !== 'new-feature-banner') {
-                    banner.style.display = 'none';
-                }
+                banner.style.display = 'none';
                 console.log(`🚨 WORD: Banner hidden`);
             }
         }

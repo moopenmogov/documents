@@ -5,7 +5,7 @@ echo OpenGov Document Collaboration Tool - Startup Wizard
 echo =====================================================
 echo.
 
-REM Step 0: Welcome modal (Yes to continue, No to cancel)
+REM Step 0: Welcome
 echo Showing welcome message...
 powershell -NoProfile -ExecutionPolicy Bypass -File "%~dp0scripts\welcome-modal.ps1"
 if errorlevel 100 (
@@ -13,6 +13,12 @@ if errorlevel 100 (
   pause
   exit /b 0
 )
+echo.
+echo Welcome to the OpenGov Document Collaboration Tool!
+echo  - This script will start the API, Web Viewer, and Word Add-in
+echo  - API:       http://localhost:3001
+echo  - Web Viewer http://localhost:3002/viewer.html
+echo  - Dev Server https://localhost:3000 (Word Add-in)
 echo.
 
 echo Step 1/6: Closing Word if it's open...

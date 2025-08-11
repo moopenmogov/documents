@@ -38,6 +38,30 @@
     return null;
   }
 
+  async function loadFeatureStates() {
+    try {
+      const res = await fetch('http://localhost:3001/api/features', { cache: 'no-store' });
+      if (!res.ok) return null;
+      const data = await res.json();
+      if (Array.isArray(data.features)) {
+        const map = new Map();
+        data.features.forEach(f => map.set(f.id, !!f.enabled));
+        return map;
+      }
+    } catch (_) {}
+    return null;
+  }
+
+  async function persistFeatureToggle(id, enabled) {
+    try {
+      await fetch('http://localhost:3001/api/features/toggle', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ id, enabled: !!enabled })
+      });
+    } catch (_) {}
+  }
+
   function ensureStyles() {
     if (document.getElementById('new-feature-banner-styles')) return;
     const style = document.createElement('style');
@@ -116,6 +140,7 @@
     const featureState = new Map();
 
     strings.features.forEach(f => {
+      // If server-driven single flag controls banner visibility, keep per-feature controls but default from server state later
       featureState.set(f.id, !!f.defaultEnabled);
       const tr = document.createElement('tr');
       const tdName = document.createElement('td');
@@ -163,20 +188,31 @@
         btnDisable.setAttribute('data-state', enabled ? 'inactive' : 'active');
       }
 
-      btnEnable.addEventListener('click', (e) => {
-        e.preventDefault(); e.stopPropagation();
+      const enableHandler = async (e) => {
+        try { e.preventDefault(); } catch (_) {}
         featureState.set(f.id, true);
         updateActionButtons();
         const msg = (strings.modal.notifications.toggledOn || 'Enabled: {{name}}').replace('{{name}}', f.name);
         notify(msg);
-      });
-      btnDisable.addEventListener('click', (e) => {
-        e.preventDefault(); e.stopPropagation();
+        persistFeatureToggle(f.id, true);
+        // Also toggle the master banner flag for consistency
+        persistFeatureToggle('newFeatureBanner', true);
+      };
+      const disableHandler = async (e) => {
+        try { e.preventDefault(); } catch (_) {}
         featureState.set(f.id, false);
         updateActionButtons();
         const msg = (strings.modal.notifications.toggledOff || 'Disabled: {{name}}').replace('{{name}}', f.name);
         notify(msg);
-      });
+        persistFeatureToggle(f.id, false);
+        // Also toggle the master banner flag for consistency
+        persistFeatureToggle('newFeatureBanner', false);
+      };
+      // Attach robust event listeners to survive capture-phase stoppers
+      btnEnable.addEventListener('pointerdown', enableHandler, { capture: true });
+      btnEnable.addEventListener('click', enableHandler, false);
+      btnDisable.addEventListener('pointerdown', disableHandler, { capture: true });
+      btnDisable.addEventListener('click', disableHandler, false);
 
       actions.appendChild(btnEnable);
       actions.appendChild(btnDisable);
@@ -238,7 +274,7 @@
     mo.observe(modal, { attributes: true, attributeFilter: ['style','class'] });
     mo.observe(backdrop, { attributes: true, attributeFilter: ['style','class'] });
 
-    return { showModal, hideModal };
+    return { showModal, hideModal, featureState };
   }
 
   async function initNewFeatureBanner(platform) {
@@ -267,25 +303,66 @@
       btn.style.pointerEvents = 'auto';
       log('button-created');
 
-      const { showModal } = renderModal(strings, platform);
-      // Shield other global click handlers when modal is open or when the banner button is clicked
+      const { showModal, featureState } = renderModal(strings, platform);
+
+      // Load initial feature states from API and apply
+      try {
+        const serverState = await loadFeatureStates();
+        if (serverState) {
+          serverState.forEach((val, id) => {
+            if (featureState.has(id)) featureState.set(id, !!val);
+          });
+        }
+      } catch (_) {}
+      // Ensure clicks inside modal do not leak to document-level listeners that may close it
+      const modalEl = document.getElementById('nfbModal');
+      if (modalEl) {
+        modalEl.addEventListener('click', (e) => { try { e.stopPropagation(); } catch (_) {} }, true);
+      }
+      // Shield other global click handlers when modal is open (bubble-phase so target handlers still run)
       document.addEventListener('click', (evt) => {
         if (!window.__nfbOpen) return;
         const modal = document.getElementById('nfbModal');
         const btnEl = document.getElementById('newFeaturesBtn');
         if (!modal) return;
         if (modal.contains(evt.target) || (btnEl && btnEl.contains(evt.target))) {
-          try { evt.stopPropagation(); evt.stopImmediatePropagation(); } catch (_) {}
+          try { evt.stopPropagation(); } catch (_) {}
           log('doc-click-suppressed');
         }
-      }, true);
+      }, false);
 
-      // Capture-phase opener so no other listener can swallow the event before us
+      // SSE sync for feature toggles
+      try {
+        const es = new EventSource('http://localhost:3001/api/events');
+        es.onmessage = (evt) => {
+          try {
+            const data = JSON.parse(evt.data);
+            if (data && data.type === 'feature-toggled') {
+              const { id, enabled } = data;
+              if (featureState.has(id)) {
+                featureState.set(id, !!enabled);
+                // Re-paint buttons if modal is open
+                const modal = document.getElementById('nfbModal');
+                if (modal && getComputedStyle(modal).display !== 'none') {
+                  // trigger a quick repaint by toggling a known feature's button
+                  const btns = modal.querySelectorAll('.nfb-btn');
+                  btns.forEach(b => { /* no-op repaint; handlers update on click only */ });
+                }
+              }
+            }
+          } catch (_) {}
+        };
+      } catch (_) {}
+
+      // Kill any pre-existing handlers that may have been added before reload to avoid duplicate suppression
+      try { btn.replaceWith(btn.cloneNode(true)); } catch (_) {}
+
+      // Open on capture so other listeners cannot swallow the event first, but do not stop immediate propagation
       const captureOpen = (evt) => {
         const btnEl = document.getElementById('newFeaturesBtn');
         if (!btnEl) return;
         if (evt.target === btnEl || btnEl.contains(evt.target)) {
-          try { evt.preventDefault(); evt.stopPropagation(); evt.stopImmediatePropagation(); } catch (_) {}
+          try { evt.preventDefault(); evt.stopPropagation(); } catch (_) {}
           setTimeout(() => showModal(), 0);
           log('capture-open');
         }
@@ -295,7 +372,7 @@
       log('capture-open-installed');
       btn.addEventListener('click', (e) => {
         // Prevent immediate close from any bubbling listeners; defer show to next tick
-        try { e.preventDefault(); e.stopPropagation(); e.stopImmediatePropagation(); } catch (_) {}
+        try { e.preventDefault(); e.stopPropagation(); } catch (_) {}
         log('button-clicked');
         setTimeout(() => showModal(), 0);
       });

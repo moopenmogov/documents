@@ -83,6 +83,12 @@ let documentApprovals = {};
 // Store SSE connections
 let sseConnections = [];
 
+// Feature flags (shared across platforms)
+// Minimal example: ids should match those in new-feature-banner text JSON
+let featureFlags = {
+    'newFeatureBanner': { id: 'newFeatureBanner', enabled: false }
+};
+
 // Health check
 app.get('/api/health', (req, res) => {
     res.json({ status: 'ok', timestamp: new Date().toISOString() });
@@ -160,6 +166,7 @@ app.get('/api/status', (req, res) => {
             webUser: currentWebUser,
             wordUser: currentWordUser
         },
+        features: Object.values(featureFlags),
         platformUsers: {
             web: currentWebUser,
             word: currentWordUser
@@ -541,20 +548,35 @@ app.get('/api/current-document', (req, res) => {
 app.get('/api/default-document', (req, res) => {
     const defaultFile = 'CONTRACT FOR CONTRACTS.docx';
     const defaultPath = path.join(uploadsDir, defaultFile);
-    
-    if (fs.existsSync(defaultPath)) {
+
+    if (!fs.existsSync(defaultPath)) {
+        return res.status(404).json({ error: 'Default document not found' });
+    }
+
+    const hasCurrent = currentDocument.filePath && fs.existsSync(currentDocument.filePath);
+    if (!hasCurrent) {
+        // Only set the default as the current document if there is no current
         currentDocument = {
             id: 'default-doc',
             filename: defaultFile,
             filePath: defaultPath,
             lastUpdated: new Date().toISOString()
         };
-        
-        console.log('✅ Default document set:', defaultFile);
-        res.json(currentDocument);
-    } else {
-        res.status(404).json({ error: 'Default document not found' });
+        console.log('✅ Default document set (no prior current):', defaultFile);
+        // Broadcast only when we actually set the default
+        broadcastSSE({
+            type: 'document-uploaded',
+            message: `Default document available: ${defaultFile}`,
+            documentId: currentDocument.id,
+            filename: defaultFile,
+            timestamp: new Date().toISOString()
+        });
+        return res.json(currentDocument);
     }
+
+    // If there is already a current document, do not overwrite it; just report it
+    console.log('ℹ️ Default document present, but current document already set. Not overwriting.');
+    return res.json(currentDocument);
 });
 
 // Update document from web viewer (placeholder for future bidirectional sync)
@@ -586,7 +608,19 @@ app.post('/api/update-document', upload.single('docx'), (req, res) => {
 app.get('/api/get-updated-docx', (req, res) => {
     try {
         if (!currentDocument.filePath || !fs.existsSync(currentDocument.filePath)) {
-            return res.status(404).json({ error: 'No document available' });
+            // Fallback: attempt to load default document automatically
+            const defaultFile = 'CONTRACT FOR CONTRACTS.docx';
+            const defaultPath = path.join(uploadsDir, defaultFile);
+            if (fs.existsSync(defaultPath)) {
+                currentDocument = {
+                    id: 'default-doc',
+                    filename: defaultFile,
+                    filePath: defaultPath,
+                    lastUpdated: new Date().toISOString()
+                };
+            } else {
+                return res.status(404).json({ error: 'No document available' });
+            }
         }
         
         // Read file and convert to base64
@@ -732,6 +766,41 @@ app.get('/api/user/word/users', (req, res) => {
         users: Object.values(wordUsers),
         platform: 'word'
     });
+});
+
+// FEATURE FLAGS API
+// Get all feature flags
+app.get('/api/features', (req, res) => {
+    res.json({ success: true, features: Object.values(featureFlags) });
+});
+
+// Toggle feature
+app.post('/api/features/toggle', (req, res) => {
+    const { id, enabled } = req.body || {};
+    if (!id || typeof enabled !== 'boolean') {
+        return res.status(400).json({ success: false, error: 'Missing id or enabled boolean' });
+    }
+    if (!featureFlags[id]) {
+        // Create on the fly to match front-end ids
+        featureFlags[id] = { id, enabled: !!enabled };
+    } else {
+        featureFlags[id].enabled = !!enabled;
+    }
+    // Broadcast SSE for sync
+    broadcastSSE({
+        type: 'feature-toggled',
+        id,
+        enabled: !!enabled,
+        timestamp: new Date().toISOString()
+    });
+    // Also broadcast a user-facing notification event
+    broadcastSSE({
+        type: 'notification',
+        message: `Feature ${id} ${enabled ? 'enabled' : 'disabled'}`,
+        level: 'info',
+        timestamp: new Date().toISOString()
+    });
+    res.json({ success: true, feature: featureFlags[id] });
 });
 
 // Switch word user

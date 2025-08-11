@@ -1,23 +1,44 @@
-on both the web viewer and the add-in the approvers section is too tall. compress it down by 20%, and on both of them update the card header to be "Workflows (0/4 approved)" - so it's on the same line and dynamically updates
 
 
-SETUP
--easy for Jen to set up with one click
+Immediate open stuff
 
-ANNOTATION
--field from the add-in
--lock a section
--add a variable
--add an automation
--
+-scripts - welcome-modal and welcome-strings use the same thing? why and can we get rid of one?
+
+-user sync - should use the same users but not switch from add-in to web
+
+send to vendor missing from the website
+no notifications when exuecting the send tovendor
+
+-teal still on the banner
+
+-enable / disable features are sending notifications but the button state isn't changing. is that hooked up to the state machine?
+
+-upload new version of the source file, path is 
+
+"C:\Users\msokrin\OneDrive - OpenGov, Inc\Useful files\Contract of the Future.docx"
+
+- make it easy to upload a new core document - should i just switch it out of a folder for the project?
+
+-also the approve/reject buttons on the web and add-in are different. make them the same pink color
+
+-the approve/reject buttons in the add-in are too big. reduce each of their heights by 50%
+
+-the available for checkout banner 
+
+setup
+-add auto-download of newest version
+-option to delete previous versions
+
+
+NOW - STARTUP
+
+NEXT - ANNOTATION
 
 
 
 
-
-#setup
-#annotation
-#compile
-#templates
-#marketing
-#jokes
+FUTURE, not in this order 
+Compile
+Templates
+Marketing
+Jokes
