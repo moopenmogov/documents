@@ -50,8 +50,8 @@
         }
         /* Parity containers with web */
         .grid-card { background: #ffffff; border: 1px solid #e9ecef; border-radius: 8px; padding: 10px; margin: 10px 0; }
-        .grid-title { font-weight: 600; margin-bottom: 8px; color: #495057; font-size: 13px; }
-        .grid-actions { display: flex; flex-wrap: wrap; gap: 8px; }
+        .grid-title { font-weight: 600; margin-bottom: 6px; color: #495057; font-size: 12px; }
+        .grid-actions { display: flex; flex-wrap: wrap; gap: 6px; }
         .grid-notifications { display: flex; flex-direction: column; gap: 6px; }
         .coming-soon-badge {
             position: absolute;
@@ -679,16 +679,16 @@
             
             <!-- Workflows container -->
             <div class="grid-card" id="workflowsCard">
-                <div class="grid-title">Workflows <span id="usersApprovedCount" style="margin-left:6px; font-weight:600; color:#495057; font-size:12px;"></span></div>
+                <div class="grid-title" id="workflowsTitle">Workflows (0/0 approved)</div>
                 <div id="usersInlineContainer">
                     <div style="overflow:auto; max-height:30vh; border:1px solid #e9ecef; border-radius:6px;">
-                        <table style="width:100%; border-collapse:collapse; font-size:13px;">
+                        <table style="width:100%; border-collapse:collapse; font-size:12px;">
                             <thead style="position:sticky; top:0; background:#f8f9fa;">
                                 <tr>
-                                    <th style="text-align:left; padding:8px; border-bottom:1px solid #e9ecef;">Name</th>
-                                    <th style="text-align:left; padding:8px; border-bottom:1px solid #e9ecef;">Role</th>
-                                    <th style="text-align:left; padding:8px; border-bottom:1px solid #e9ecef; width:90px;">Approved</th>
-                                    <th style="text-align:left; padding:8px; border-bottom:1px solid #e9ecef;">Action</th>
+                                    <th style="text-align:left; padding:6px; border-bottom:1px solid #e9ecef;">Name</th>
+                                    <th style="text-align:left; padding:6px; border-bottom:1px solid #e9ecef;">Role</th>
+                                    <th style="text-align:left; padding:6px; border-bottom:1px solid #e9ecef; width:80px;">Approved</th>
+                                    <th style="text-align:left; padding:6px; border-bottom:1px solid #e9ecef;">Action</th>
                                 </tr>
                             </thead>
                             <tbody id="usersInlineBody"></tbody>
@@ -1077,6 +1077,11 @@
                     `;
                     if (inlineTbody) inlineTbody.appendChild(tr);
                 });
+
+                const approvedCount = approvals.filter(a => a.status === 'approved').length;
+                const totalCount = users.length;
+                const wfTitle = document.getElementById('workflowsTitle');
+                if (wfTitle) wfTitle.textContent = `Workflows (${approvedCount}/${totalCount} approved)`;
 
                 const bindActions = (root) => {
                     root.querySelectorAll('button[data-user]').forEach(btn => {

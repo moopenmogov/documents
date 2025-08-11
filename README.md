@@ -1,28 +1,56 @@
-This is a BRIEF.
+Hello, and welcome to my brief. I shall be be brief. Not a lot of words, but brevity. A summary, an analysis, and a perspective.
 
-Purpose of the brief is to:
+A BRIEF.
 
-- Provide absolute clarity about the purpose of the application
-- Create an embeddable tool that we can deploy immediately behind a flag
-- Unlock a massive feedback pool (our customers)
-- Transform GTM sales pitches for contracting 
+This is designed to be challenged, laughed at, broken, and beaten. And from that, it shall get better. Like a phoenix from a fire, we will rise. My WORD we shall RISE above!
+
+Well you could fall down too. Or go left or right. Because we're building a badass word add-in and an embedded web viewer that literally is going to TRANSFORM how governments do contracting.
+
+So we're going to talk about what that vision will be. That's the point of this brief.
+
+**Reminder that at any point you can leave here and just install it and run for yourself.**
+
+So, given there is a working prototype, why is there this brief?
+
+To accelerate development
+
+Yep.
+
+Ok, there are lots of other benefits. Such as:
+
+- Provide absolute clarity about the goal
+- Immediately unlock a massive feedback pool (aka our customers)
+- Immediately transform GTM sales pitches for contracting 
+- Rapidly align product, design, and engineering about our targets
 - Accelerate development
 
-So...read this first. Think about it. Challenge it. Tell me what you hate. And then go look at what I built and fix it. Make it better.
+So...
 
-Nothing about this is final. Nothing is absolute. No one doesn't not always sometimes make mistakes. Except me, so consider this gospel. But that actually brings up an important point. That's why everything is pink - it makes it an obvious protoytpe.
+I ask you to please read this first. Think about it. Challenge it. Tell me what you hate. And then go look at what I built and get rid of bad stuff. Make it better. Here. Elsewhere. This is your tool.
+
+Nothing about this is final. Nothing is absolute. No one doesn't not always sometimes make mistakes. Except me, so consider this gospel. But that actually brings up an important point. That's why all the colors are pink - not to hurt your eyes, but to make it clear this is just an idea. Mostly hot ones, but some are less.
 
 And when we get to a point where we're all proud of this -- with *us* including our customers, we launch it.
 
 Let's begin.
 
-I wrote this file. Correction, I write this file. I actively modify it. 100% of the words here are mine (minus the earlier series that look like an excitable cartoon wrote them).
+I wrote a few files in this project. Correction, I write a few files:
+
+- readme
+- backlog
+- text file for strings
+
+This means I wrote the original content and actively modify it. I may ask opinions or feedback from the LLM but it never writes to it. At least I do my best to ensure that is true.
+
+Look at the commit history if you want to laugh. It was all Claude, an excitable 16-year old, for a while. Now, you get mohumor. Mo Humor. Like more humor, but "Mo" because I'm Moti.
 
 Everything else came from AI. A combination of Claude 3.5, Claude 4, and 5o, most recently. I worked closely and was simultaneously its architect, prodcut manager, designer, customer, support team member, and more. It was the same back to me.
 
 Some requirements and features are therefore probably stupid. The ones I specified or built, I assume. That context is important for understanding why this exists.
 
-The purpose of this application is to make contracting delightful. The essence of contracting is a legally binding agreement, typically in a written form. It is arguably the essence of democracy, if not solely due to its importance in the foundation of capitalism.
+The purpose of this application is to make contracting delightful. The essence of contracting is a legally binding agreement, typically in a written form.
+
+Contracting  is arguably the essence of democracy, if not solely due to its importance in the foundation of capitalism.
 
 Executing contracts between governments and its citizens is, therefore, one of the most important things that it does. You know, do what you say and say what you do. That kind of thing.
 
@@ -32,193 +60,50 @@ Government agencies almost always use Word. They write and manage their contract
 
 This is the contract document.
 
-It's designed to be a bidirectional system that is tailored to the government contracting process, which is as follows:
+It's designed to be a bidirectional system that is tailored to the government contracting process, which is roughly as follows:
 
-STEPS 
 
+Step 1: Establish a need
+Someone wants to buy something with public funds.
 
+Step 2: The need becomes an official request
+Procurement determines a contract is necessary, either because of a purchase threshold, regulatory requirement, consolidation across departments, etc. This is a key part of the procurement process, and ideally would go through our requisition module.
 
+Step 3: The need goes to bid
+If the contract (notice I said contract already - typically people will talk about a contract as if it exits, very early in the process). They will work on a contract early in its lifecycle, and it might sit in a "draft" type state untouched, yet still advancing in its lifecycle.
 
+Sorry... for interrupting... myself.
 
+Back to step 3. If the contract requires a competitive solicitaiton process, this step happens. Think of projects, in our world.
 
-# 🚀 OpenGov Document Collaboration Tool
+Step 4: The need gets awarded to a provider
+This is, actually, primarily where this project begins. Once the agency knows who they want to sign the contract, they write it. It may be pre-defined, or even entirely boilerplate, but now another human has to put their John Hancock down on the old mouse and keyboard.
 
+Or screen. Or not, if you don't use our esignature module. BAM. I'll be here all night. Next product manager who writes a readme like this gets a serious talking to...
 
+Back to business. This is where you write the contract. And that's the heart and soul of contracting, because it's where all the specific details are established, which determine the likelihood of an advantageous agreement. Wrong price? Too little insurance? Lots of risk?
 
+That's the document.
 
+Say it with me. That's the DOCUMENTX.
 
+Whoops, where did that nice little character come from? 
 
+From Microsoft Word, both our arch-enemy and our arch-friend. Yep roll with it.
 
+This product is Word-centric. Everything about it is targeted towards users who live in Word. The web is secondary. Important, but secondary.
 
+This step is why we are building this project.
 
+Step 5: The provider satisfies the need
+This is when the real world gets affected. When governments help their citizens, filling potholes, building libraries, and developing parks.
 
+This is where our contract record comes in. That is it's entire purpose. And that's where the contract record template system will come in. With custom fields btw.
 
+And that's it. That's the contracting process, and as much as it can be straight and linear, it can be like pickle ball. You know, bouncing back and forth. But no rackets or balls, and definitely no nets. Contracts aren't limited to nets, balls, and pickles.
 
-A powerful local application that enables seamless collaboration between Microsoft Word and web-based document editing.
+Thanks for making it this far. And thank you for building this. Our governments need it. Our citizens need it. Our society needs it.
 
-## **⚡ Quick Start (2 Minutes)**
+And you're giving it to them.
 
-1. **Download:** Clone or download this repository
-2. **Run:** Double-click `start.bat` (Windows)
-3. **Use:** Open the web editor and Word add-in that launch automatically
-
-**📖 Full Setup Guide:** [docs/SETUP.md](docs/SETUP.md)
-
----
-
-## **🔧 Daily Usage Commands**
-
-### **🚀 Initial Setup**
-```bash
-# First time only - install dependencies
-npm install
-
-# Start all services
-start.bat          # Windows (recommended)
-# OR manually: npm run start-api && npm run start-web && npm run start-addin
-```
-
-### **🔄 Restart Everything**
-```bash
-# Stop all services and restart fresh
-start.bat     # Windows (automatically stops existing services first)
-```
-
-### **🛑 Close All Services**
-```bash
-# Stop all running servers and processes
-end.bat           # Windows
-```
-
-### **📥 Update Software (when main branch changes)**
-```bash
-# Stop services first
-end.bat
-
-# Pull latest changes
-git pull origin main
-
-# Install any new dependencies
-npm install
-
-# Restart services
-start.bat
-```
-
-**💡 Pro Tip:** Always run `end.bat` before `git pull` to avoid port conflicts!
-
----
-
-## **✨ Features**
-
-- **🔄 Bidirectional Sync** - Changes in Word sync to web, and vice versa
-- **🌐 Web Editor** - Full-featured document editing in your browser
-- **📄 Word Integration** - Native Microsoft Word add-in
-- **🔒 Checkout System** - Prevents editing conflicts
-- **🔔 Real-time Notifications** - See what's happening across platforms
-- **💾 Local Storage** - Everything runs on your computer
-
----
-
-## **🎯 Use Cases**
-
-- **Document Review** - Collaborate on contracts, reports, and proposals
-- **Cross-Platform Editing** - Switch between Word and web seamlessly
-- **Version Control** - Track changes and prevent conflicts
-- **Team Collaboration** - Multiple editors with conflict prevention
-
----
-
-## **📋 System Requirements**
-
-- **Windows 10/11** (macOS/Linux support via PowerShell)
-- **Microsoft Word 2016+** or Word Online
-- **Node.js LTS** (auto-checked by setup script)
-- **Modern Web Browser** (Chrome, Edge, Firefox)
-
----
-
-## **📁 Documentation**
-
-- **[🚀 Setup Guide](docs/SETUP.md)** - Complete installation instructions
-- **[🔧 Troubleshooting](docs/TROUBLESHOOTING.md)** - Common issues and solutions  
-- **[🤔 What Am I Running?](docs/WHAT-AM-I-RUNNING.md)** - Technical overview
-- **[📚 Lessons Learned](lessons-learned/README.md)** - Development insights
-
----
-
-## **🏗️ Architecture**
-
-```
-┌─────────────────┐    ┌─────────────────┐    ┌─────────────────┐
-│   Microsoft     │    │   API Server    │    │   Web Editor    │
-│     Word        │◄──►│  (Port 3001)    │◄──►│  (Port 3002)    │
-│   + Add-in      │    │                 │    │                 │
-└─────────────────┘    └─────────────────┘    └─────────────────┘
-```
-
-**Three Components:**
-- **API Server** - Document storage and state management
-- **Web Editor** - Browser-based editing with SuperDoc
-- **Word Add-in** - Native Office.js integration
-
----
-
-## **🔒 Security & Privacy**
-
-- ✅ **100% Local** - No external servers or cloud dependencies
-- ✅ **Your Data Stays Put** - Documents stored in local `uploads/` folder
-- ✅ **Standard Technologies** - Uses Office.js and web standards
-- ✅ **Open Source** - Inspect and modify all code
-
----
-
-## **🚦 Status**
-
-- ✅ **Working MVP** - Full bidirectional sync functional
-- ✅ **Word Add-in** - Complete Office.js integration
-- ✅ **Web Editor** - SuperDoc-powered editing
-- ✅ **Real-time Sync** - SSE-based communication
-- ✅ **Conflict Prevention** - Checkout/checkin workflow
-
----
-
-## **🛠️ Development**
-
-### **Branch Strategy**
-- `main` - Stable, user-ready code
-- `feature/*` - New features under development
-
-### **Quick Development Setup**
-```bash
-npm install
-npm run start-api     # Terminal 1
-npm run start-web     # Terminal 2  
-npm run start-addin   # Terminal 3
-```
-
-**For Users:** Just use `start.bat` - it handles everything automatically.
-
----
-
-## **📞 Support**
-
-**Having Issues?**
-1. Check [Troubleshooting Guide](docs/TROUBLESHOOTING.md)
-2. Look for error messages in command windows
-3. Try restarting: close everything, run `start.bat` again
-
-**For Developers:**
-- See [Lessons Learned](lessons-learned/README.md) for technical insights
-- Check console logs for debugging information
-- Use browser dev tools for web editor issues
-
----
-
-## **📜 License**
-
-[Add your license here]
-
----
-
-**🎉 Ready to start collaborating? Run `start.bat` and you'll be up in 2 minutes!** 
+Now happy Friday, let's go build this shit.
