@@ -25,7 +25,7 @@
   async function loadStrings() {
     const candidates = [
       // viewer.html direct file path
-      'scripts/new-feature-banner-text.json',
+      'new-feature-banner-text.json',
       // webpack dev server root for add-in
       '/new-feature-banner-text.json'
     ];

@@ -801,7 +801,7 @@
                 </div>
             </div>
         </div>
-
+        
         <div id="addin-controls-area">
             <div class="document-info">
                 <div class="document-title-section">
@@ -839,7 +839,7 @@
             </button>
             
             <button id="saveProgressBtn" class="button button-secondary" onclick="saveProgress()" style="display: none;">
-💾 Save Progress
+                💾 Save Progress
             </button>
             
             <button id="checkinBtn" class="button button-primary" onclick="checkinDocument()" style="display: none;">
@@ -859,7 +859,7 @@
         <div class="approvals-section">
             <div class="section-header">
                 <h3>✅ Approvals</h3>
-            </div>
+        </div>
             <div id="approvalsList" class="approvals-list">
                 <!-- Approvals will be loaded here -->
             </div>
@@ -1641,7 +1641,7 @@
         }
 
         async function insertBase64IntoWord(base64, filename) {
-            await Word.run(async (context) => {
+                    await Word.run(async (context) => {
                 const canUseDocumentInsert = typeof context.document.insertFileFromBase64 === 'function';
                 if (canUseDocumentInsert) {
                     try {
@@ -1662,10 +1662,10 @@
                     }
                 }
                 // Fallback: clear body and insert at start
-                context.document.body.clear();
+                        context.document.body.clear();
                 context.document.body.insertFileFromBase64(base64, Word.InsertLocation.start);
-                await context.sync();
-            });
+                        await context.sync();
+                    });
         }
 
         async function openBase64AsNewDocument(base64) {
@@ -1813,7 +1813,7 @@
         
         // Override any checkout
         async function overrideCheckout() {
-            console.log('ðŸ“ WORD: Calling override API...');
+            console.log('ðŸ" WORD: Calling override API...');
             try {
                 const response = await fetch('http://localhost:3001/api/override', {
                     method: 'POST',
@@ -1859,24 +1859,455 @@
         // View read-only prefers Word protocol (no download); falls back to base64 new-doc open
         async function viewReadOnly() {
             try {
-                await openLatestExternal();
+                await loadLatestIntoCurrentDocument();
+            } catch (err) {
+                console.error('View Latest failed', err);
+                showStatus('documentStatus', '❌ Failed to load latest document', 'error');
+            }
+        }
+        
+        // Base64 validation function for state management
+        function isValidBase64(base64String) {
+            try {
+                // Test base64 decoding
+                const decoded = atob(base64String);
+                
+                // Check for DOCX ZIP signature (PK)
+                if (decoded.length < 4) return false;
+                const signature = decoded.charCodeAt(0) === 80 && decoded.charCodeAt(1) === 75;
+                
+                console.log(`   - Base64 decode: ${decoded.length} bytes`);
+                console.log(`   - ZIP signature: ${signature ? '✅ Valid' : '❌ Invalid'}`);
+                
+                return signature;
             } catch (e) {
-                console.warn('Word protocol open failed, falling back to createDocument(base64)', e);
+                console.error('   - Base64 validation error:', e.message);
+                return false;
+            }
+        }
+
+        // Global flags
+        window.__documentInsertInProgress = window.__documentInsertInProgress || false;
+        window.__pureInsertMode = window.__pureInsertMode !== undefined ? window.__pureInsertMode : true; // Do not modify the document content before/after insert attempts
+        window.__allowPreInsertStyleReset = window.__allowPreInsertStyleReset || false; // opt-in test; default off
+        window.__baselineStylesJson = window.__baselineStylesJson || null;
+        
+        // Disable HMR/live reload during pure insert testing to reduce WebView churn
+        try { if (window.__pureInsertMode && typeof module !== 'undefined' && module.hot && typeof module.hot.decline === 'function') { module.hot.decline(); console.log('🔕 HMR disabled for pure insert testing'); } } catch(_) {}
+        
+        // Load latest document - with state management and resource control
+        async function loadLatestIntoCurrentDocument() {
+            console.log('📄 View Latest: Loading document with workaround...');
+            try {
+                showStatus('documentStatus', '👀 Loading latest document...', 'info');
+
+                // Requirements check
                 try {
-                    showStatus('documentStatus', '👀 Loading latest version...', 'info');
+                    const supportsWord = !!(Office && Office.context && Office.context.requirements && Office.context.requirements.isSetSupported);
+                    const hasWordApi13 = supportsWord && Office.context.requirements.isSetSupported('WordApi', '1.3');
+                    if (!hasWordApi13) {
+                        console.warn('⚠️ WordApi 1.3 not supported - insertFileFromBase64 may be unavailable');
+                        showStatus('documentStatus', '⚠️ Host missing WordApi 1.3 support', 'warning');
+                        return;
+                    }
+                } catch (e) {
+                    console.log('ℹ️ Word API support check skipped:', e?.message || e);
+                }
+
+                // Idle delay to let Word settle before first insert
+                await new Promise(resolve => setTimeout(resolve, 800));
+                
+                // EARLY MINIMAL INSERTS: try all safe insert paths before any other writes
+                try {
                     const current = await getCurrentOrDefaultDocument();
-                    if (!current || !current.id) { showStatus('documentStatus', 'ℹ️ No document available', 'info'); return; }
-                    const url = `http://localhost:3001/api/document/${encodeURIComponent(current.id)}`;
-                    const resp = await fetch(url);
-                    if (!resp.ok) { showStatus('documentStatus', '❌ Failed to fetch document', 'error'); return; }
+                    if (current && current.id) {
+                        const earlyUrl = `http://localhost:3001/api/document/${encodeURIComponent(current.id)}`;
+                        const earlyResp = await fetch(earlyUrl);
+                        const earlyBuf = await earlyResp.arrayBuffer();
+                        const earlyB64 = arrayBufferToBase64(earlyBuf);
+
+                        // Optional pre-insert style reset (guarded, default off)
+                        if (window.__allowPreInsertStyleReset && window.__baselineStylesJson) {
+                            try {
+                                await Word.run(async (context) => {
+                                    console.log('🧼 PRE-INSERT: Resetting styles to baseline (guarded)');
+                                    const stylesNow = context.document.getStyles();
+                                    stylesNow.load('items');
+                                    await context.sync();
+                                    for (const style of stylesNow.items) {
+                                        style.load('builtIn');
+                                        await context.sync();
+                                        if (!style.builtIn) style.delete();
+                                    }
+                                    await context.sync();
+                                    context.document.importStylesFromJson(window.__baselineStylesJson);
+                                    await context.sync();
+                                });
+                                console.log('✅ PRE-INSERT: Styles reset to baseline');
+                            } catch (preErr) {
+                                console.log('ℹ️ PRE-INSERT reset skipped due to error:', preErr?.message || preErr);
+                            }
+                        }
+
+                        // Attempt A: document-level replace
+                        try {
+                            await Word.run(async (context) => {
+                                console.log('🧪 EARLY INSERT A: document.insertFileFromBase64(replace) before other operations');
+                                context.document.insertFileFromBase64(earlyB64, Word.InsertLocation.replace, {
+                                    importStyles: false,
+                                    importTheme: false,
+                                    importParagraphSpacing: false
+                                });
+                                await context.sync();
+                            });
+                            console.log('✅ EARLY INSERT A succeeded');
+                            showStatus('documentStatus', '✅ Early insert (document.replace) succeeded', 'success');
+                            return; // done
+                        } catch (aErr) {
+                            console.log('ℹ️ EARLY INSERT A failed, trying B (body.replace):', aErr?.message || aErr);
+                        }
+
+                        // Attempt B: body-level replace (no prior clear)
+                        try {
+                            await Word.run(async (context) => {
+                                console.log('🧪 EARLY INSERT B: body.insertFileFromBase64(replace) before other operations');
+                                context.document.body.insertFileFromBase64(earlyB64, Word.InsertLocation.replace);
+                                await context.sync();
+                            });
+                            console.log('✅ EARLY INSERT B succeeded');
+                            showStatus('documentStatus', '✅ Early insert (body.replace) succeeded', 'success');
+                            return; // done
+                        } catch (bErr) {
+                            console.log('ℹ️ EARLY INSERT B failed, trying C (selection.replace):', bErr?.message || bErr);
+                        }
+
+                        // Attempt C: selection-level replace
+                        try {
+                            await Word.run(async (context) => {
+                                console.log('🧪 EARLY INSERT C: selection.insertFileFromBase64(replace) before other operations');
+                                const selection = context.document.getSelection();
+                                selection.insertFileFromBase64(earlyB64, Word.InsertLocation.replace);
+                                await context.sync();
+                            });
+                            console.log('✅ EARLY INSERT C succeeded');
+                            showStatus('documentStatus', '✅ Early insert (selection.replace) succeeded', 'success');
+                            return; // done
+                        } catch (cErr) {
+                            console.log('ℹ️ EARLY INSERT C failed, proceeding with Attempt D (createDocument.open):', cErr?.message || cErr);
+                        }
+
+                        // Attempt D: create new document from base64 and open (still base64 path)
+                        try {
+                            await Word.run(async (context) => {
+                                console.log('🧪 EARLY INSERT D: application.createDocument(base64).open()');
+                                if (typeof context.application.createDocument === 'function') {
+                                    const newDoc = context.application.createDocument(earlyB64);
+                                    newDoc.open();
+                                    await context.sync();
+                                } else {
+                                    throw new Error('application.createDocument not available');
+                                }
+                            });
+                            console.log('✅ EARLY INSERT D succeeded (opened as new document)');
+                            showStatus('documentStatus', '✅ Opened latest in a new document (base64)', 'success');
+                            return; // done
+                        } catch (dErr) {
+                            console.log('ℹ️ EARLY INSERT D failed, trying E (document.start no options):', dErr?.message || dErr);
+                        }
+
+                        // Attempt E: document-level start (no options)
+                        try {
+                            await Word.run(async (context) => {
+                                console.log('🧪 EARLY INSERT E: document.insertFileFromBase64(start) no options');
+                                context.document.insertFileFromBase64(earlyB64, Word.InsertLocation.start);
+                                await context.sync();
+                            });
+                            console.log('✅ EARLY INSERT E succeeded');
+                            showStatus('documentStatus', '✅ Early insert (document.start) succeeded', 'success');
+                            return; // done
+                        } catch (eErr) {
+                            console.log('ℹ️ EARLY INSERT E failed, trying F (body.start no options):', eErr?.message || eErr);
+                        }
+
+                        // Attempt F: body-level start (no options)
+                        try {
+                            await Word.run(async (context) => {
+                                console.log('🧪 EARLY INSERT F: body.insertFileFromBase64(start) no options');
+                                context.document.body.insertFileFromBase64(earlyB64, Word.InsertLocation.start);
+                                await context.sync();
+                            });
+                            console.log('✅ EARLY INSERT F succeeded');
+                            showStatus('documentStatus', '✅ Early insert (body.start) succeeded', 'success');
+                            return; // done
+                        } catch (fErr) {
+                            console.log('ℹ️ EARLY INSERT F failed, proceeding with diagnostic path:', fErr?.message || fErr);
+                        }
+                    }
+                } catch (earlyErrOuter) {
+                    console.log('ℹ️ EARLY INSERT setup skipped/failed, continue with diagnostic path:', earlyErrOuter?.message || earlyErrOuter);
+                }
+                
+                // If pure insert mode is enabled, stop here to avoid any content modifications
+                if (window.__pureInsertMode) {
+                    showStatus('documentStatus', '⚠️ All pure insert attempts failed', 'warning');
+                    return;
+                }
+
+                // STEP 1: Test basic text insertion first (skipped in pure mode)
+                console.log('🧪 STEP 1: Testing basic text insertion');
+                await Word.run(async (context) => {
+                    context.document.body.clear();
+                    context.document.body.insertText('🧪 VIEW LATEST TEST - Basic text insertion works!\n\nDocument loading test in progress...', Word.InsertLocation.start);
+                    await context.sync();
+                    console.log('✅ Basic text insertion successful');
+                });
+
+                // Get document info and provide download solution (skipped in pure mode)
+                const current = await getCurrentOrDefaultDocument();
+                if (!current || !current.id) { 
+                    showStatus('documentStatus', '⚠️ No document available', 'warning'); 
+                    return; 
+                }
+                console.log('📄 Document info:', current);
+                const downloadUrl = `http://localhost:3001/api/document/${encodeURIComponent(current.id)}`;
+                const downloadLink = `<a href="${downloadUrl}" target="_blank" style="color: #0078d4; text-decoration: none;">📥 Download ${current.filename}</a>`;
+                const htmlContent = `<div>...omitted...</div>`;
+                await Word.run(async (context) => {
+                    context.document.body.clear();
+                    context.document.body.insertHtml(htmlContent, Word.InsertLocation.start);
+                    await context.sync();
+                    console.log('✅ Document info and download link inserted');
+                });
+
+                // GITHUB ISSUE #4463 FIX: Prevent multiple insertFileFromBase64 calls
+                console.log('🔍 GITHUB FIX: Single-call protection for insertFileFromBase64...');
+                if (window.__documentInsertInProgress) {
+                    console.log('⚠️ Document insert already in progress - preventing multiple calls (GitHub #4463 fix)');
+                    showStatus('documentStatus', '⚠️ Document loading in progress...', 'warning');
+                    return;
+                }
+                window.__documentInsertInProgress = true;
+                try {
+                    const resp = await fetch(downloadUrl);
                     const buf = await resp.arrayBuffer();
                     const b64 = arrayBufferToBase64(buf);
-                    await openBase64AsNewDocument(b64);
-                    showStatus('documentStatus', `✅ ${(current.filename || 'document')} opened in Word`, 'success');
-                } catch (err) {
-                    console.error('View Latest fallback failed', err);
-                    showStatus('documentStatus', '❌ Failed to open latest in Word', 'error');
+                    
+                    console.log('🔄 STATE RESET: Clearing document state before insertion...');
+                    await Word.run(async (context) => {
+                        // Step 1: Clear document body
+                        console.log('   - Clearing document body...');
+                        context.document.body.clear();
+                        await context.sync();
+                        
+                        // Step 2: Clear styles to prevent accumulation (if available)
+                        console.log('   - Attempting to load and clear styles...');
+                        try {
+                            if (context.document.styles) {
+                                context.document.styles.load("items");
+                                await context.sync();
+                                const styles = context.document.styles.items;
+                                for (let i = 0; i < styles.length; i++) {
+                                    const style = styles[i];
+                                    style.load("builtIn");
+                                    await context.sync();
+                                    if (!style.builtIn) {
+                                        style.delete();
+                                        await context.sync();
+                                        await new Promise(resolve => setTimeout(resolve, 50));
+                                    }
+                                }
+                                console.log('   ✅ Styles cleared successfully');
+                            } else {
+                                console.log('   ⚠️ document.styles not available - skipping style cleanup');
+                            }
+                        } catch (styleError) {
+                            console.log('   ⚠️ Style cleanup failed, continuing:', styleError.message);
+                        }
+                        console.log('✅ Document state reset complete');
+                    });
+                    await new Promise(resolve => setTimeout(resolve, 200));
+                    console.log('🔍 VALIDATION: Checking base64 format...');
+                    if (!isValidBase64(b64)) {
+                        throw new Error('Invalid base64 format detected');
+                    }
+                    console.log(`✅ Base64 valid - ${b64.length} chars, ~${Math.round(b64.length * 3/4 / 1024)}KB`);
+                    await Word.run(async (context) => {
+                        console.log('🧪 STATE-MANAGED INSERTION: Attempting insertFileFromBase64...');
+                        context.document.insertFileFromBase64(b64, Word.InsertLocation.replace, {
+                            importStyles: false,
+                            importTheme: false,
+                            importParagraphSpacing: false,
+                            importPageColor: false,
+                            importChangeTrackingMode: false,
+                            importCustomProperties: false,
+                            importCustomXmlParts: false
+                        });
+                        await context.sync();
+                        console.log('🎉 SUCCESS! State management fix worked - document loaded!');
+                        showStatus('documentStatus', '🎉 State management fix successful! Document loaded!', 'success');
+                    });
+                } catch (error) {
+                    console.log('❌ GitHub fix attempt failed:', error.message);
+                    showStatus('documentStatus', '❌ Known Office.js bug - see GitHub #4463', 'error');
+                } finally {
+                    window.__documentInsertInProgress = false;
                 }
+            } catch (err) {
+                console.error('❌ View Latest test failed:', err);
+                showStatus('documentStatus', `❌ Test failed: ${err.message}`, 'error');
+            }
+        }
+        
+        // Test insertFileFromBase64 with different parameters
+        async function testFileInsertion(base64, filename) {
+            console.log('🧪 Testing insertFileFromBase64 with different approaches...');
+            
+            // Test 1: Simple body insertion with replace
+            try {
+                console.log('🧪 TEST 1: body.insertFileFromBase64(base64, replace)');
+                await Word.run(async (context) => {
+                    context.document.body.insertFileFromBase64(base64, Word.InsertLocation.replace);
+                    await context.sync();
+                    console.log('✅ TEST 1 SUCCESS: Simple replace worked!');
+                });
+                showStatus('documentStatus', `✅ Document loaded: ${filename}`, 'success');
+                return;
+            } catch (error) {
+                console.log('❌ TEST 1 FAILED:', error.message);
+            }
+            
+            // Test 2: Clear body first, then insert at start
+            try {
+                console.log('🧪 TEST 2: clear() + insertFileFromBase64(base64, start)');
+                await Word.run(async (context) => {
+                    context.document.body.clear();
+                    await context.sync();
+                    context.document.body.insertFileFromBase64(base64, Word.InsertLocation.start);
+                    await context.sync();
+                    console.log('✅ TEST 2 SUCCESS: Clear + start worked!');
+                });
+                showStatus('documentStatus', `✅ Document loaded: ${filename}`, 'success');
+                return;
+            } catch (error) {
+                console.log('❌ TEST 2 FAILED:', error.message);
+            }
+            
+            // Test 3: Try document-level insertion (if supported)
+            try {
+                console.log('🧪 TEST 3: document.insertFileFromBase64(base64, replace)');
+                await Word.run(async (context) => {
+                    if (typeof context.document.insertFileFromBase64 === 'function') {
+                        context.document.insertFileFromBase64(base64, Word.InsertLocation.replace);
+                        await context.sync();
+                        console.log('✅ TEST 3 SUCCESS: Document-level insert worked!');
+                        showStatus('documentStatus', `✅ Document loaded: ${filename}`, 'success');
+                        return;
+                    } else {
+                        console.log('ℹ️ TEST 3 SKIPPED: document.insertFileFromBase64 not available');
+                    }
+                });
+            } catch (error) {
+                console.log('❌ TEST 3 FAILED:', error.message);
+            }
+            
+            // Test 4: Try with minimal import options
+            try {
+                console.log('🧪 TEST 4: insertFileFromBase64 with minimal options');
+                await Word.run(async (context) => {
+                    context.document.body.clear();
+                    await context.sync();
+                    context.document.body.insertFileFromBase64(base64, Word.InsertLocation.start, {
+                        importTheme: false,
+                        importStyles: false,
+                        importParagraphSpacing: false,
+                        importPageColor: false,
+                        importChangeTrackingMode: false,
+                        importCustomProperties: false,
+                        importCustomXmlParts: false,
+                        importDifferentOddEvenPages: false
+                    });
+                    await context.sync();
+                    console.log('✅ TEST 4 SUCCESS: Minimal options worked!');
+                });
+                showStatus('documentStatus', `✅ Document loaded: ${filename}`, 'success');
+                return;
+            } catch (error) {
+                console.log('❌ TEST 4 FAILED:', error.message);
+            }
+            
+            // Test 5: Validate base64 and check DOCX format
+            try {
+                console.log('🧪 TEST 5: Validating base64 and DOCX format');
+                console.log(`📄 Base64 starts with: ${base64.substring(0, 50)}...`);
+                console.log(`📄 Base64 ends with: ...${base64.substring(base64.length - 50)}`);
+                console.log(`📄 Base64 length: ${base64.length} chars`);
+                console.log(`📄 Decoded size: ${Math.round(base64.length * 3/4)} bytes`);
+                
+                // Try to create a Blob to validate the base64
+                const binaryString = atob(base64);
+                console.log(`📄 Binary conversion successful: ${binaryString.length} bytes`);
+                
+                // Check if it starts with DOCX magic bytes (PK signature)
+                const firstBytes = binaryString.substring(0, 4);
+                const isPKZip = firstBytes.charCodeAt(0) === 80 && firstBytes.charCodeAt(1) === 75;
+                console.log(`📄 DOCX format check: ${isPKZip ? '✅ Valid ZIP/DOCX signature' : '❌ Not a ZIP/DOCX file'}`);
+                
+                if (!isPKZip) {
+                    console.log('❌ Base64 does not represent a valid DOCX file!');
+                    showStatus('documentStatus', '❌ Invalid DOCX format - not a ZIP file', 'error');
+                    return;
+                }
+                
+                showStatus('documentStatus', '❌ All insertion methods failed - valid DOCX but Word blocks it', 'error');
+            } catch (error) {
+                console.log('❌ TEST 5 FAILED - Invalid base64:', error.message);
+                showStatus('documentStatus', '❌ Invalid base64 format', 'error');
+            }
+            
+            // Test 6: Try minimal OOXML (simplest possible)
+            try {
+                console.log('🧪 TEST 6: Trying minimal OOXML insertion');
+                await Word.run(async (context) => {
+                    // Try the absolute simplest OOXML possible
+                    const minimalOoxml = `<w:p xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main">
+                        <w:r>
+                            <w:t>✅ Minimal OOXML test successful!</w:t>
+                        </w:r>
+                    </w:p>`;
+                    
+                    context.document.body.clear();
+                    await context.sync();
+                    context.document.body.insertOoxml(minimalOoxml, Word.InsertLocation.start);
+                    await context.sync();
+                    console.log('✅ TEST 6 SUCCESS: Minimal OOXML worked!');
+                });
+                showStatus('documentStatus', '✅ Minimal OOXML successful!', 'success');
+                return;
+            } catch (error) {
+                console.log('❌ TEST 6 FAILED - Even minimal OOXML failed:', error.message);
+            }
+            
+            // Test 7: Check Office version and API support
+            try {
+                console.log('🧪 TEST 7: Checking Office environment and API support');
+                await Word.run(async (context) => {
+                    console.log(`📋 Office.js API Version: ${Office.context.requirements.isSetSupported('WordApi', '1.1')}`);
+                    console.log(`📋 InsertFileFromBase64 API: ${typeof context.document.body.insertFileFromBase64}`);
+                    console.log(`📋 InsertOoxml API: ${typeof context.document.body.insertOoxml}`);
+                    console.log(`📋 Platform: ${Office.context.platform}`);
+                    console.log(`📋 Host: ${Office.context.host}`);
+                    
+                    // Check if we can at least insert HTML
+                    context.document.body.clear();
+                    await context.sync();
+                    context.document.body.insertHtml('<p><strong>HTML insertion test</strong></p>', Word.InsertLocation.start);
+                    await context.sync();
+                    console.log('✅ HTML insertion works');
+                });
+                showStatus('documentStatus', '⚠️ Only basic insertion methods work', 'warning');
+            } catch (error) {
+                console.log('❌ TEST 7 FAILED - Even HTML insertion failed:', error.message);
+                showStatus('documentStatus', '🚨 Critical: All insertion methods blocked', 'error');
             }
         }
 
@@ -2281,6 +2712,57 @@
             }
         }
         
+        // Debug function to check document environment 
+        async function debugDocumentEnvironment() {
+            try {
+                console.log('🔍 DEBUGGING DOCUMENT ENVIRONMENT...');
+                
+                await Word.run(async (context) => {
+                    const doc = context.document;
+                    const body = context.document.body;
+                    
+                    // Load properties
+                    doc.load(['saved', 'properties']);
+                    body.load(['text']);
+                    
+                    await context.sync();
+                    
+                    console.log('📄 Document State:', {
+                        saved: doc.saved,
+                        properties: doc.properties,
+                        bodyTextLength: body.text.length,
+                        apiVersion: Office.context.requirements.isSetSupported('WordApi', '1.3')
+                    });
+                    
+                    // Test basic insertion
+                    console.log('🧪 Testing basic text insertion...');
+                    body.insertText("🧪 DEBUG TEST INSERT - " + new Date().toLocaleTimeString(), Word.InsertLocation.end);
+                    await context.sync();
+                    console.log('✅ Basic text insertion: SUCCESS');
+                    
+                    // Test file insertion with a minimal test
+                    console.log('🧪 Testing file insertion capability...');
+                    // We'll add this next
+                    
+                });
+                
+                // Check Office version and environment
+                console.log('🏢 Office Environment:', {
+                    platform: Office.context.platform,
+                    host: Office.context.host,
+                    requirements: Office.context.requirements,
+                    contentLanguage: Office.context.contentLanguage,
+                    displayLanguage: Office.context.displayLanguage
+                });
+                
+            } catch (error) {
+                console.error('❌ Document environment debug failed:', error);
+            }
+        }
+        
+        // Expose debug function globally
+        window.debugDocumentEnvironment = debugDocumentEnvironment;
+        
         // Handle approval actions (approve/reject)
         async function handleApprovalAction(userId, action) {
             try {
@@ -2324,40 +2806,62 @@
         // Connect to SSE when Office is ready
         Office.onReady((info) => {
             if (info.host === Office.HostType.Word) {
+                try { OfficeExtension.config.extendedErrorLogging = true; } catch (e) {}
                 console.log('OpenGov Contract Redlining add-in ready');
                 console.log('Connecting to SSE...');
                 connectSSE();
-                
+
+                // Capture baseline styles once for optional reset (does not touch source file)
+                (async () => {
+                    try {
+                        await Word.run(async (context) => {
+                            const styles = context.document.getStyles();
+                            styles.load('items');
+                            await context.sync();
+                            window.__baselineStylesJson = JSON.stringify(styles.items || []);
+                            console.log('🎯 Captured baseline styles snapshot');
+                        });
+                    } catch (e) {
+                        console.log('ℹ️ Baseline styles capture skipped:', e?.message || e);
+                    }
+                })();
+
                 // Initialize systems
                 setTimeout(async () => {
-                    // Skip automatic cleanup due to crashes - do manual testing instead
-                    console.log('🚨 Skipping automatic cleanup to prevent crashes');
                     await initializeUserSystem();
                     await loadDefaultDocumentIfAvailable();
-                    // Skip lock protection setup due to crashes
+
+                    // GITHUB #4463 FIX: Disable auto-loading to prevent multiple insertFileFromBase64 calls
+                    console.log('🔍 GITHUB #4463 FIX: Skipping auto-load to prevent multiple insertFileFromBase64 calls');
+                    console.log('   - Use "View Latest" button for manual document loading');
+                    console.log('   - This prevents the multiple-call pattern that causes GeneralException');
+
                     fetchDocumentStatus();
-                    
+
+                    // Auto attach to existing open document without modifying content
+                    setTimeout(() => autoAttachToOpenDocument(), 800);
+
                     // Refresh approvals when users are loaded
                     setTimeout(() => loadApprovalsSection(), 2000);
-                    
+
                     // Also refresh when state matrix updates (user switches)
                     setTimeout(() => loadApprovalsSection(), 4000);
                     // NOTE: Disabled auto-open to avoid unexpected new documents on add-in load
-                    
+
                     // Initialize button click animations
                     addButtonClickAnimation();
-                    
+
                     // Initialize new feature banner
                     if (typeof window.initNewFeatureBanner === 'function') {
                         window.initNewFeatureBanner('word');
                     }
-                    
+
                     // Initialize approvals section
                     loadApprovalsSection();
-                    
+
                     // Initialize document actions dropdown
                     populateDocumentActions();
-                    
+
                     // Refresh dropdown when state changes
                     setTimeout(() => populateDocumentActions(), 3000);
                 }, 1000); // Small delay to ensure SSE connection is established
@@ -3051,6 +3555,29 @@
         
         // Make debug function globally available
         window.debugShareToWeb = debugShareToWeb;
+
+        async function autoAttachToOpenDocument() {
+            try {
+                const hasContent = await Word.run(async (context) => {
+                    const body = context.document.body;
+                    body.load("text");
+                    await context.sync();
+                    const length = (body.text || "").trim().length;
+                    return length > 0;
+                });
+                if (hasContent) {
+                    console.log('📎 Detected existing document content; syncing state without modifying doc');
+                    showStatus('documentStatus', '🔄 Attached to current document', 'info');
+                    fetchDocumentStatus();
+                    populateDocumentActions();
+                    loadApprovalsSection();
+                } else {
+                    console.log('ℹ️ No content detected; waiting for user to open a file');
+                }
+            } catch (e) {
+                console.log('ℹ️ autoAttachToOpenDocument skipped:', e?.message || e);
+            }
+        }
     </script>
 </body>
 </html>
