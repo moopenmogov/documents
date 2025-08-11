@@ -43,8 +43,8 @@
     const style = document.createElement('style');
     style.id = 'new-feature-banner-styles';
     style.textContent = `
-      .nfb-btn { background: #ff4d94; color: #fff; border: none; border-radius: 8px; padding: 8px 12px; font-weight: 600; cursor: pointer; }
-      .nfb-btn:hover { background: #ff66a3; }
+      .nfb-btn { background: #ff6fa5; color: #fff; border: none; border-radius: 8px; padding: 8px 12px; font-weight: 600; cursor: pointer; }
+      .nfb-btn:hover { background: #ff8fbd; }
       .nfb-btn[disabled] { opacity: .55; cursor: default; }
       .nfb-btn-inactive { opacity: .55; }
       .nfb-btn-active { background: #ff2d80 !important; }

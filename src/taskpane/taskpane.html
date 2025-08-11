@@ -43,7 +43,7 @@
             text-align: center;
             margin-bottom: 15px;
             padding: 12px;
-            background: linear-gradient(135deg, #1e3a8a, #3b82f6);
+            background: linear-gradient(135deg, #ff6fa5, #ffc1d9);
             color: white;
             border-radius: 8px;
             position: relative;
@@ -57,7 +57,7 @@
             position: absolute;
             top: 6px;
             left: 6px;
-            background: #ff4757;
+            background: #ff6fa5;
             color: white;
             padding: 3px 8px;
             border-radius: 999px;
@@ -1469,7 +1469,7 @@
                 if (existing) {
                     existing.addEventListener('load', () => resolve());
                     existing.addEventListener('error', (e) => reject(e));
-                    return;
+                return;
                 }
                 const s = document.createElement('script');
                 s.src = '/state-matrix-client.js';
@@ -1554,8 +1554,8 @@
             if (typeof window.updateUIFromStateMatrix === 'function') {
                 await window.updateUIFromStateMatrix('word', getCurrentUser, getCurrentUserRole, currentDocumentState);
             }
-                // Refresh dynamic document actions after state matrix applies
-                try { populateDocActionsDropdown(); } catch (e) { console.warn('populateDocActionsDropdown failed', e); }
+                // Refresh dynamic document actions after state matrix applies (matrix-driven)
+                try { if (window.__lastStateMatrix) refreshActionsDropdownFromMatrix('docActionsSelect', window.__lastStateMatrix); } catch (e) { console.warn('refreshActionsDropdownFromMatrix failed', e); }
             
             // Also refresh approvals UI so Approve/Reject reflect current actor
             try { await refreshUsersModal(); } catch (e) {}

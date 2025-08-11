@@ -53,22 +53,18 @@ let webUsers = {
     'user1': { id: 'user1', name: 'Warren Peace', email: 'warren@opengov.com', role: 'editor' },
     'user2': { id: 'user2', name: 'Gettysburger King', email: 'gettysburger@opengov.com', role: 'viewer' },
     'user5': { id: 'user5', name: 'Yuri Lee Laffed', email: 'reese@opengov.com', role: 'suggester' },
-    'vendor1': { id: 'vendor1', name: 'Mo--T', email: 'moti@real.builders', role: 'vendor', vendor: 'Moti\'s Builders' }
+    'vendor1': { id: 'vendor1', name: 'Hoo R. U', email: 'moti@real.builders', role: 'vendor', vendor: 'Moti\'s Builders' }
 };
 
-let wordUsers = {
-    'user3': { id: 'user3', name: 'Phil A Minyon', email: 'phil@opengov.com', role: 'editor' },
-    'user4': { id: 'user4', name: 'Dee Nial', email: 'dee@opengov.com', role: 'viewer' },
-    'user6': { id: 'user6', name: 'Boregard Snoozington', email: 'chuck@opengov.com', role: 'suggester' },
-    'vendor2': { id: 'vendor2', name: 'Hari Seldon', email: 'hari@sel.don', role: 'vendor', vendor: 'Motis Builders' }
-};
+// Use the same canonical 4 users for Word as for Web (names and IDs match)
+let wordUsers = { ...webUsers };
 
 // Combined user pool for reference
 let allUsers = { ...webUsers, ...wordUsers };
 
 // Current active users per platform
 let currentWebUser = webUsers['user1']; // Default to Warren Peace
-let currentWordUser = wordUsers['user3']; // Default to Phil A Minyon
+let currentWordUser = wordUsers['user1']; // Default to Warren Peace
 
 // Legacy support - points to web user for backward compatibility
 let currentUser = currentWebUser;
@@ -187,6 +183,13 @@ app.post('/api/checkout', (req, res) => {
     
     // Determine which user is checking out based on platform
     const checkoutUser = source === 'web' ? currentWebUser : currentWordUser;
+    // Disallow viewer role from performing checkout
+    if (checkoutUser?.role === 'viewer') {
+        return res.status(403).json({
+            success: false,
+            error: 'Viewers cannot check out documents'
+        });
+    }
     
     // Check out the document with enhanced user tracking
     documentState.isCheckedOut = true;
@@ -844,48 +847,118 @@ app.get('/api/document/:documentId/approvals', (req, res) => {
     res.json({ success: true, approvals });
 });
 
-// Update approval for a user on a document
-// Body: { userId, action: 'approve'|'unapprove', actorId }
 app.post('/api/document/:documentId/approvals', (req, res) => {
-    const { documentId } = req.params;
-    const { userId, action, actorId } = req.body || {};
+    try {
+        const { documentId } = req.params;
+        const { userId, action, actorId } = req.body || {};
 
-    if (!userId || !action || !actorId) {
-        return res.status(400).json({ success: false, error: 'Missing userId, action, or actorId' });
+        console.log('🔐 POST /approvals', { documentId, userId, action, actorId });
+
+        if (!userId || !action || !actorId) {
+            return res.status(400).json({ success: false, error: 'Missing userId, action, or actorId' });
+        }
+
+        if (!['approve', 'unapprove'].includes(String(action))) {
+            return res.status(400).json({ success: false, error: 'Invalid action. Use approve|unapprove' });
+        }
+
+        // Look up users across both platforms
+        const actor = allUsers[actorId] || webUsers[actorId] || wordUsers[actorId];
+        const target = allUsers[userId] || webUsers[userId] || wordUsers[userId];
+        if (!actor || !target) {
+            return res.status(404).json({ success: false, error: 'Actor or target user not found' });
+        }
+
+        // Rule: users can only approve themselves unless actor is editor
+        const isEditor = actor.role === 'editor';
+        if (!isEditor && actorId !== userId) {
+            return res.status(403).json({ success: false, error: 'Only editors can approve/unapprove others' });
+        }
+
+        const status = action === 'approve' ? 'approved' : 'unapproved';
+        if (!documentApprovals[documentId]) documentApprovals[documentId] = {};
+        documentApprovals[documentId][userId] = {
+            status,
+            approvedBy: actorId,
+            approvedAt: new Date().toISOString()
+        };
+
+        // Broadcast SSE for UI updates and notification log
+        broadcastSSE({
+            type: 'approvals-updated',
+            documentId,
+            userId,
+            status,
+            actorId,
+            message: `${actor.name} ${status === 'approved' ? 'approved' : 'unapproved'} ${target.name}`,
+            timestamp: new Date().toISOString()
+        });
+
+        res.json({ success: true, approval: { userId, ...documentApprovals[documentId][userId] } });
+    } catch (err) {
+        console.error('❌ Approvals POST error:', err);
+        res.status(500).json({ success: false, error: err.message || 'Internal Server Error' });
+    }
+});
+
+// Approval matrix - computes per-user approval UI state for an actor
+// GET /api/approval-matrix?actorPlatform=web|word&actorId=user1&documentId=default-doc
+app.get('/api/approval-matrix', (req, res) => {
+    const { actorPlatform, actorId, documentId } = req.query;
+
+    // Resolve actor
+    const actor = allUsers[actorId] || webUsers[actorId] || wordUsers[actorId];
+    if (!actor) {
+        return res.status(404).json({ success: false, error: 'Actor not found' });
     }
 
-    const actor = mockUsers[actorId];
-    const target = mockUsers[userId];
-    if (!actor || !target) {
-        return res.status(404).json({ success: false, error: 'Actor or target user not found' });
+    // Use canonical users list (aligned to web)
+    const users = Object.values(webUsers);
+
+    // Determine document id
+    const docId = documentId || currentDocument.id || 'default-doc';
+    const approvalsForDoc = documentApprovals[docId] || {};
+
+    // Helper to compute per-target row config
+    function computeRow(targetUser) {
+        const targetId = targetUser.id;
+        const approvalStatus = approvalsForDoc[targetId]?.status || 'unapproved';
+        const isSelf = actor.id === targetId;
+        const isViewer = actor.role === 'viewer';
+        const isEditor = actor.role === 'editor';
+
+        // Base visibility
+        let showButtons = !isViewer && (isSelf || isEditor);
+
+        // Enabled states follow target's current status
+        const approveEnabled = approvalStatus !== 'approved';
+        const rejectEnabled = approvalStatus !== 'unapproved';
+
+        // Non-editors cannot act on others
+        if (!isSelf && !isEditor) {
+            return { userId: targetId, showButtons: false, approveEnabled: false, rejectEnabled: false, status: approvalStatus };
+        }
+
+        return {
+            userId: targetId,
+            showButtons,
+            approveEnabled: showButtons ? approveEnabled : false,
+            rejectEnabled: showButtons ? rejectEnabled : false,
+            status: approvalStatus
+        };
     }
 
-    // Rule: users can only approve themselves unless actor is editor
-    const isEditor = actor.role === 'editor';
-    if (!isEditor && actorId !== userId) {
-        return res.status(403).json({ success: false, error: 'Only editors can approve/unapprove others' });
-    }
+    const matrix = {};
+    users.forEach(u => { matrix[u.id] = computeRow(u); });
 
-    const status = action === 'approve' ? 'approved' : 'unapproved';
-    if (!documentApprovals[documentId]) documentApprovals[documentId] = {};
-    documentApprovals[documentId][userId] = {
-        status,
-        approvedBy: actorId,
-        approvedAt: new Date().toISOString()
+    // Summary
+    const approvalsArray = Object.entries(approvalsForDoc).map(([userId, a]) => ({ userId, ...a }));
+    const summary = {
+        approvedCount: approvalsArray.filter(a => a.status === 'approved').length,
+        totalUsers: users.length
     };
 
-    // Broadcast SSE for UI updates and notification log
-    broadcastSSE({
-        type: 'approvals-updated',
-        documentId,
-        userId,
-        status,
-        actorId,
-        message: `${actor.name} ${status === 'approved' ? 'approved' : 'unapproved'} ${target.name}`,
-        timestamp: new Date().toISOString()
-    });
-
-    res.json({ success: true, approval: { userId, ...documentApprovals[documentId][userId] } });
+    res.json({ success: true, users, matrix, approvals: approvalsArray, summary, actor: { id: actor.id, role: actor.role } });
 });
 
 // Update user permission for document
@@ -957,8 +1030,8 @@ app.get('/api/state-matrix', (req, res) => {
     }
     
     // Get current user info
-    const users = platform === 'web' ? webUsers : wordUsers;
-    const currentUser = users[userId];
+    // Use canonical lookup across both pools so IDs are consistent across platforms
+    const currentUser = webUsers[userId] || wordUsers[userId];
     
     if (!currentUser) {
         return res.status(404).json({ 
@@ -999,11 +1072,8 @@ app.get('/api/state-matrix', (req, res) => {
 function getStateMatrixConfig(userRole, platform, docState, currentUser) {
     const { isCheckedOut, checkedOutBy, checkedOutUser } = docState;
     
-    // Determine if this is self-checkout
-    const isSelfCheckout = isCheckedOut && (
-        (checkedOutBy === platform && checkedOutUser?.id === currentUser?.id) ||
-        (checkedOutBy === 'vendor' && currentUser?.role === 'vendor' && checkedOutUser?.id === currentUser?.id)
-    );
+    // Determine if this is self-checkout (cross-platform by user id)
+    const isSelfCheckout = isCheckedOut && (checkedOutUser?.id === currentUser?.id);
     
     // Initialize result
     const result = {
@@ -1011,7 +1081,12 @@ function getStateMatrixConfig(userRole, platform, docState, currentUser) {
             checkoutBtn: false,
             overrideBtn: false, 
             sendVendorBtn: false,
-            checkedInBtns: false // saveProgressBtn, checkinBtn, cancelBtn
+      checkedInBtns: false, // saveProgressBtn, checkinBtn, cancelBtn
+      viewOnlyBtn: true // View Latest is always available
+        },
+        approvals: {
+            canApproveSelf: userRole !== 'viewer',
+            canApproveOthers: userRole === 'editor'
         },
         checkoutStatus: {
             show: !!(currentDocument.filename && currentDocument.id),
