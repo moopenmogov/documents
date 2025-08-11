@@ -185,6 +185,7 @@
     function showModal() {
       backdrop.style.display = 'block';
       modal.style.display = 'block';
+      window.__nfbOpen = true;
       if (strings.modal.notifications.opened) {
         notify(strings.modal.notifications.opened);
       }
@@ -192,6 +193,7 @@
     function hideModal() {
       modal.style.display = 'none';
       backdrop.style.display = 'none';
+      window.__nfbOpen = false;
     }
     backdrop.addEventListener('click', hideModal);
 
@@ -218,10 +220,20 @@
       btn.style.top = '8px';
       btn.style.right = '8px';
 
-    const { showModal } = renderModal(strings);
+      const { showModal } = renderModal(strings);
+      // Shield other global click handlers when modal is open or when the banner button is clicked
+      document.addEventListener('click', (evt) => {
+        if (!window.__nfbOpen) return;
+        const modal = document.getElementById('nfbModal');
+        const btnEl = document.getElementById('newFeaturesBtn');
+        if (!modal) return;
+        if (modal.contains(evt.target) || (btnEl && btnEl.contains(evt.target))) {
+          try { evt.stopPropagation(); evt.stopImmediatePropagation(); } catch (_) {}
+        }
+      }, true);
       btn.addEventListener('click', (e) => {
         // Prevent immediate close from any bubbling listeners; defer show to next tick
-        try { e.preventDefault(); e.stopPropagation(); } catch (_) {}
+        try { e.preventDefault(); e.stopPropagation(); e.stopImmediatePropagation(); } catch (_) {}
         setTimeout(() => showModal(), 0);
       });
 
