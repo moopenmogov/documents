@@ -53,6 +53,12 @@
       /* Force-open safety (if other code toggles display) */
       html.nfb-is-open .nfb-modal { display: block !important; }
       html.nfb-is-open .nfb-modal-backdrop { display: block !important; }
+      /* Compact layout for add-in */
+      .nfb-modal.nfb-compact { width: min(430px, 96vw); }
+      .nfb-modal.nfb-compact .nfb-table th,
+      .nfb-modal.nfb-compact .nfb-table td { font-size: 12px; padding: 6px; }
+      .nfb-modal.nfb-compact .nfb-actions { flex-direction: column; gap: 6px; align-items: stretch; }
+      .nfb-modal.nfb-compact .nfb-actions .nfb-btn { width: 100%; min-width: 0; padding: 6px 8px; font-size: 12px; }
       .nfb-modal-title { font-size: 18px; font-weight: 700; margin: 0 0 6px 0; }
       .nfb-modal-sub { font-size: 12px; color: #6c757d; margin: 0 0 12px 0; }
       .nfb-table { width: 100%; border-collapse: collapse; }
@@ -172,18 +178,9 @@
 
     table.appendChild(tbody);
 
-    const footer = document.createElement('div');
-    footer.className = 'nfb-footer';
-    const closeBtn = document.createElement('button');
-    closeBtn.className = 'nfb-btn';
-    closeBtn.textContent = strings.modal.buttons.close;
-    closeBtn.addEventListener('click', () => hideModal());
-    footer.appendChild(closeBtn);
-
     modal.appendChild(title);
     modal.appendChild(sub);
     modal.appendChild(table);
-    modal.appendChild(footer);
 
     document.body.appendChild(backdrop);
     document.body.appendChild(modal);
