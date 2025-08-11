@@ -1,42 +1,77 @@
 @echo off
-echo OpenGov Document Collaboration Tool - Starting All Services
+title OpenGov Startup
+echo =====================================================
+echo OpenGov Document Collaboration Tool - Startup Wizard
+echo =====================================================
 echo.
 
-REM First, stop any existing processes
-echo Step 1: Stopping any existing servers...
-call end.bat
-
+REM Step 0: Welcome
+echo Showing welcome message...
+powershell -NoProfile -ExecutionPolicy Bypass -File "%~dp0scripts\welcome-modal.ps1"
+if errorlevel 100 (
+  echo Startup cancelled by user.
+  pause
+  exit /b 0
+)
 echo.
-echo Step 2: Starting all services...
+echo Welcome to the OpenGov Document Collaboration Tool!
+echo  - This script will start the API, Web Viewer, and Word Add-in
+echo  - API:       http://localhost:3001
+echo  - Web Viewer http://localhost:3002/viewer.html
+echo  - Dev Server https://localhost:3000 (Word Add-in)
 echo.
 
-REM Start API Server (Port 3001) in new window
-echo Starting API Server on port 3001...
+echo Step 1/6: Closing Word if it's open...
+taskkill /IM WINWORD.EXE /F >nul 2>&1
+echo   Done.
+echo.
+
+echo Step 2/6: Stopping previous servers...
+call end.bat >nul 2>&1
+echo   Done.
+echo.
+
+echo Step 3/6: Freeing ports (3001 API)...
+for /f "tokens=5" %%P in ('netstat -ano ^| findstr :3001 ^| findstr LISTENING') do (
+  echo   Killing PID %%P on port 3001
+  taskkill /PID %%P /F >nul 2>&1
+  goto :port3001_done
+)
+:port3001_done
+echo   Done.
+echo.
+
+echo Step 4/6: Trusting local dev certificates (one-time prompt)...
+call npx --yes office-addin-dev-certs install -y >nul 2>&1
+echo   Done.
+echo.
+
+echo Step 5/6: Starting API Server (port 3001)...
 start "API Server" cmd /k "npm run start:api"
+echo   Waiting for API health (http://localhost:3001/api/health)...
+for /L %%i in (1,1,20) do (
+  powershell -NoProfile -Command "try{Invoke-WebRequest -UseBasicParsing http://localhost:3001/api/health -TimeoutSec 1 ^| Out-Null; exit 0}catch{exit 1}" >nul 2>&1 && goto :api_up
+  >nul timeout /t 1 /nobreak
+)
+:api_up
+echo   API is up.
+echo.
 
-REM Wait a moment for API server to start
-timeout /t 3 /nobreak >nul
-
-REM Start Web Viewer (Port 3002) in new window
-echo Starting Web Viewer on port 3002...
+echo Step 6/6: Starting Web Viewer and Word Add-in...
 start "Web Viewer" cmd /k "npm run start:web"
-
-REM Wait a moment for web server to start
-timeout /t 3 /nobreak >nul
-
-REM Start Word Add-in (Port 3000) in new window
-echo Starting Word Add-in on port 3000...
 start "Word Add-in" cmd /k "npm start"
-
+echo   Word will open automatically with the add-in. If prompted, allow the add-in to run.
 echo.
 echo ===============================================
-echo All services are starting!
-echo.
-echo API Server:    http://localhost:3001
-echo Web Viewer:    http://localhost:3002/viewer.html
-echo Word Add-in:   http://localhost:3000
-echo.
-echo Wait a few seconds for all services to be ready.
+echo Services are starting:
+echo   API Server:  http://localhost:3001
+echo   Web Viewer:  http://localhost:3002/viewer.html
+echo   Dev Server:  https://localhost:3000 (Word Add-in)
 echo ===============================================
+echo.
+echo Tips:
+echo - If you see a cert prompt, click Yes/Trust.
+echo - If the add-in taskpane does not appear, close Word and run this again.
+echo - To stop everything, close the opened windows or run end.bat.
 echo.
 pause

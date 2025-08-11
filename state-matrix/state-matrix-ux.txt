@@ -1,0 +1,25 @@
+﻿Expected UX by role and state (updated)
+
+| State | Role | Document dropdown | Visible actions (nested) | View Latest | Banners | Approvals (Actions column) |
+|---|---|---|---|---|---|---|
+| NoDoc | Viewer | Hidden |  | Shown (disabled) | None | None |
+| NoDoc | Suggester | Hidden |  | Shown (disabled) | None | Self only |
+| NoDoc | Vendor | Hidden |  | Shown (disabled) | None | Self only |
+| NoDoc | Editor | Hidden |  | Shown (disabled) | None | Any user |
+| Idle (has doc, not checked out) | Viewer | Hidden |  | Shown | Status: Available for check-out; Viewer msg shown | None |
+| Idle | Suggester | Shown | Checkout | Shown | Status: Available for check-out | Self only |
+| Idle | Vendor | Shown | Checkout | Shown | Status: Available for check-out | Self only |
+| Idle | Editor | Shown | Checkout, Send to Vendor | Shown | Status: Available for check-out | Any user |
+| CheckedOutSelf | Viewer | N/A | N/A | N/A | N/A | N/A |
+| CheckedOutSelf | Suggester | Shown | Save & Check-in, Cancel Check-out | Shown | Status: Checked out by <NAME> | Self only |
+| CheckedOutSelf | Vendor | Shown | Save & Check-in, Cancel Check-out | Shown | Status: Checked out by <NAME> | Self only |
+| CheckedOutSelf | Editor | Shown | Save & Check-in, Cancel Check-out | Shown | Status: Checked out by <NAME> | Any user |
+| CheckedOutOther | Viewer | Hidden |  | Shown | Status: Checked out by <NAME>; Viewer msg shown | None |
+| CheckedOutOther | Suggester | Hidden |  | Shown | Status: Checked out by <NAME> | Self only |
+| CheckedOutOther | Vendor | Hidden |  | Shown | Status: Checked out by <NAME> | Self only |
+| CheckedOutOther | Editor | Shown | Override Check-out | Shown | Status: Checked out by <NAME> | Any user |
+
+Notes
+- Document dropdown toggle: only shown if at least one nested action (Checkout / Save & Check-in / Cancel / Override) is visible. Otherwise hidden.
+- View Latest: always allowed; shown standalone for all users (disabled when no document is loaded).
+- Approvals counter: always visible (X/Y approved).

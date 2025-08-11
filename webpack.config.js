@@ -3,6 +3,8 @@
 const devCerts = require("office-addin-dev-certs");
 const CopyWebpackPlugin = require("copy-webpack-plugin");
 const HtmlWebpackPlugin = require("html-webpack-plugin");
+const fs = require("fs");
+const path = require("path");
 
 const urlDev = "https://localhost:3000/";
 const urlProd = "https://www.contoso.com/"; // CHANGE THIS TO YOUR PRODUCTION DEPLOYMENT LOCATION
@@ -18,7 +20,7 @@ module.exports = async (env, options) => {
     devtool: "source-map",
     entry: {
       polyfill: ["core-js/stable", "regenerator-runtime/runtime"],
-      taskpane: ["./src/taskpane/taskpane.js", "./src/taskpane/taskpane.html"],
+      taskpane: ["./src/taskpane/taskpane.js"],
       commands: "./src/commands/commands.js",
     },
     output: {
@@ -53,7 +55,7 @@ module.exports = async (env, options) => {
     plugins: [
       new HtmlWebpackPlugin({
         filename: "taskpane.html",
-        template: "./src/taskpane/taskpane.html",
+        templateContent: () => fs.readFileSync(path.resolve(__dirname, "./src/taskpane/taskpane.html"), "utf8"),
         chunks: ["polyfill", "taskpane"],
       }),
       new CopyWebpackPlugin({
@@ -61,6 +63,18 @@ module.exports = async (env, options) => {
           {
             from: "assets/*",
             to: "assets/[name][ext][query]",
+          },
+          {
+            from: "state-matrix-client.js",
+            to: "[name][ext]",
+          },
+          {
+            from: "new-feature-banner.js",
+            to: "[name][ext]",
+          },
+          {
+            from: path.resolve(__dirname, "scripts", "new-feature-banner-text.json"),
+            to: "new-feature-banner-text.json",
           },
           {
             from: "manifest*.xml",
@@ -77,7 +91,7 @@ module.exports = async (env, options) => {
       }),
       new HtmlWebpackPlugin({
         filename: "commands.html",
-        template: "./src/commands/commands.html",
+        templateContent: () => fs.readFileSync(path.resolve(__dirname, "./src/commands/commands.html"), "utf8"),
         chunks: ["polyfill", "commands"],
       }),
     ],

@@ -1,0 +1,403 @@
+(function () {
+  const GLOBAL_KEY = '__newFeatureBannerInit';
+  if (window[GLOBAL_KEY]) return; // prevent double init
+  window[GLOBAL_KEY] = true;
+
+  function log(...args) { try { console.log('[features]', ...args); } catch (_) {} }
+
+  function notify(message) {
+    try {
+      if (typeof window.addNotification === 'function') {
+        window.addNotification(message);
+        return;
+      }
+      const area = document.getElementById('notificationWindowBody_grid');
+      if (area) {
+        const div = document.createElement('div');
+        div.textContent = message;
+        area.appendChild(div);
+        return;
+      }
+    } catch (_) {}
+    log('NOTIFY:', message);
+  }
+
+  async function loadStrings() {
+    const candidates = [
+      // viewer.html direct file path
+      'new-feature-banner-text.json',
+      // webpack dev server root for add-in
+      '/new-feature-banner-text.json'
+    ];
+    for (const url of candidates) {
+      try {
+        const res = await fetch(url, { cache: 'no-store' });
+        if (res.ok) return await res.json();
+      } catch (_) {}
+    }
+    return null;
+  }
+
+  async function loadFeatureStates() {
+    try {
+      const res = await fetch('http://localhost:3001/api/features', { cache: 'no-store' });
+      if (!res.ok) return null;
+      const data = await res.json();
+      if (Array.isArray(data.features)) {
+        const map = new Map();
+        data.features.forEach(f => map.set(f.id, !!f.enabled));
+        return map;
+      }
+    } catch (_) {}
+    return null;
+  }
+
+  async function persistFeatureToggle(id, enabled) {
+    try {
+      await fetch('http://localhost:3001/api/features/toggle', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ id, enabled: !!enabled })
+      });
+    } catch (_) {}
+  }
+
+  function ensureStyles() {
+    if (document.getElementById('new-feature-banner-styles')) return;
+    const style = document.createElement('style');
+    style.id = 'new-feature-banner-styles';
+    style.textContent = `
+      .nfb-btn { background: #ff6fa5; color: #fff; border: none; border-radius: 8px; padding: 8px 12px; font-weight: 600; cursor: pointer; }
+      .nfb-btn:hover { background: #ff8fbd; }
+      .nfb-btn[disabled] { opacity: .55; cursor: default; }
+      .nfb-btn-inactive { opacity: .55; }
+      .nfb-btn-active { background: #ff2d80 !important; }
+      /* Use extreme z-index to appear above any stacking contexts */
+      .nfb-modal-backdrop { position: fixed; inset: 0; background: rgba(0,0,0,0.35); display: none; z-index: 2147483646; }
+      .nfb-modal { position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%); background: #fff; border-radius: 10px; width: min(700px, 92vw); max-height: 80vh; overflow: auto; padding: 16px; box-shadow: 0 8px 24px rgba(0,0,0,0.25); display: none; z-index: 2147483647; opacity: 1; }
+      /* Force-open safety (if other code toggles display) */
+      html.nfb-is-open .nfb-modal { display: block !important; }
+      html.nfb-is-open .nfb-modal-backdrop { display: block !important; }
+      /* Compact layout for add-in */
+      .nfb-modal.nfb-compact { width: min(430px, 96vw); }
+      .nfb-modal.nfb-compact .nfb-table th,
+      .nfb-modal.nfb-compact .nfb-table td { font-size: 12px; padding: 6px; }
+      .nfb-modal.nfb-compact .nfb-actions { flex-direction: column; gap: 6px; align-items: stretch; }
+      .nfb-modal.nfb-compact .nfb-actions .nfb-btn { width: 100%; min-width: 0; padding: 6px 8px; font-size: 12px; }
+      .nfb-modal-title { font-size: 18px; font-weight: 700; margin: 0 0 6px 0; }
+      .nfb-modal-sub { font-size: 12px; color: #6c757d; margin: 0 0 12px 0; }
+      .nfb-table { width: 100%; border-collapse: collapse; }
+      .nfb-table th, .nfb-table td { border-bottom: 1px solid #eee; padding: 8px; text-align: left; font-size: 14px; }
+      .nfb-actions { display: flex; gap: 8px; flex-direction: column; align-items: stretch; }
+      .nfb-footer { display: flex; justify-content: space-between; margin-top: 12px; }
+      .nfb-pill { display: inline-block; padding: 2px 8px; border-radius: 999px; font-size: 12px; font-weight: 600; background: #f1f3f5; color: #495057; }
+    `;
+    document.head.appendChild(style);
+    log('styles-injected');
+  }
+
+  function formatRelease(feature) {
+    if (feature.releaseDate) return feature.releaseDate;
+    if (feature.releaseWindow) return feature.releaseWindow;
+    return '';
+  }
+
+  function renderModal(strings, platform) {
+    ensureStyles();
+
+    const backdrop = document.createElement('div');
+    backdrop.className = 'nfb-modal-backdrop';
+    backdrop.id = 'nfbBackdrop';
+
+    const modal = document.createElement('div');
+    modal.className = 'nfb-modal';
+    modal.id = 'nfbModal';
+    // Use compact mode universally for consistent layout across platforms
+    modal.classList.add('nfb-compact');
+
+    const title = document.createElement('div');
+    title.className = 'nfb-modal-title';
+    title.textContent = strings.modal.title;
+
+    const sub = document.createElement('div');
+    sub.className = 'nfb-modal-sub';
+    sub.textContent = strings.modal.subtitle || '';
+
+    const table = document.createElement('table');
+    table.className = 'nfb-table';
+    const thead = document.createElement('thead');
+    const thr = document.createElement('tr');
+    ['feature','status','release','actions'].forEach(key => {
+      const th = document.createElement('th');
+      th.textContent = strings.modal.columns[key];
+      thr.appendChild(th);
+    });
+    thead.appendChild(thr);
+    table.appendChild(thead);
+
+    const tbody = document.createElement('tbody');
+
+    const featureState = new Map();
+
+    strings.features.forEach(f => {
+      // If server-driven single flag controls banner visibility, keep per-feature controls but default from server state later
+      featureState.set(f.id, !!f.defaultEnabled);
+      const tr = document.createElement('tr');
+      const tdName = document.createElement('td');
+      tdName.textContent = f.name;
+
+      const tdStatus = document.createElement('td');
+      const pill = document.createElement('span');
+      pill.className = 'nfb-pill';
+      pill.textContent = f.status || '';
+      tdStatus.appendChild(pill);
+
+      const tdRelease = document.createElement('td');
+      tdRelease.textContent = formatRelease(f);
+
+      const tdActions = document.createElement('td');
+      const actions = document.createElement('div');
+      actions.className = 'nfb-actions';
+      const btnEnable = document.createElement('button');
+      btnEnable.className = 'nfb-btn';
+      btnEnable.textContent = strings.modal.buttons.enable;
+      const btnDisable = document.createElement('button');
+      btnDisable.className = 'nfb-btn';
+      btnDisable.textContent = strings.modal.buttons.disable;
+
+      function updateActionButtons() {
+        const enabled = !!featureState.get(f.id);
+        // Reset classes to a known baseline
+        ['nfb-btn-active','nfb-btn-inactive'].forEach(c => {
+          btnEnable.classList.remove(c);
+          btnDisable.classList.remove(c);
+        });
+        // Apply mutually exclusive visual states
+        if (enabled) {
+          btnEnable.classList.add('nfb-btn-active');
+          btnDisable.classList.add('nfb-btn-inactive');
+        } else {
+          btnDisable.classList.add('nfb-btn-active');
+          btnEnable.classList.add('nfb-btn-inactive');
+        }
+        // Accessibility pressed state
+        btnEnable.setAttribute('aria-pressed', String(enabled));
+        btnDisable.setAttribute('aria-pressed', String(!enabled));
+        // Data attributes for quick inspection
+        btnEnable.setAttribute('data-state', enabled ? 'active' : 'inactive');
+        btnDisable.setAttribute('data-state', enabled ? 'inactive' : 'active');
+      }
+
+      const enableHandler = async (e) => {
+        try { e.preventDefault(); } catch (_) {}
+        featureState.set(f.id, true);
+        updateActionButtons();
+        const msg = (strings.modal.notifications.toggledOn || 'Enabled: {{name}}').replace('{{name}}', f.name);
+        notify(msg);
+        persistFeatureToggle(f.id, true);
+        // Also toggle the master banner flag for consistency
+        persistFeatureToggle('newFeatureBanner', true);
+      };
+      const disableHandler = async (e) => {
+        try { e.preventDefault(); } catch (_) {}
+        featureState.set(f.id, false);
+        updateActionButtons();
+        const msg = (strings.modal.notifications.toggledOff || 'Disabled: {{name}}').replace('{{name}}', f.name);
+        notify(msg);
+        persistFeatureToggle(f.id, false);
+        // Also toggle the master banner flag for consistency
+        persistFeatureToggle('newFeatureBanner', false);
+      };
+      // Attach robust event listeners to survive capture-phase stoppers
+      btnEnable.addEventListener('pointerdown', enableHandler, { capture: true });
+      btnEnable.addEventListener('click', enableHandler, false);
+      btnDisable.addEventListener('pointerdown', disableHandler, { capture: true });
+      btnDisable.addEventListener('click', disableHandler, false);
+
+      actions.appendChild(btnEnable);
+      actions.appendChild(btnDisable);
+      tdActions.appendChild(actions);
+
+      tr.appendChild(tdName);
+      tr.appendChild(tdStatus);
+      tr.appendChild(tdRelease);
+      tr.appendChild(tdActions);
+      tbody.appendChild(tr);
+
+      updateActionButtons();
+    });
+
+    table.appendChild(tbody);
+
+    modal.appendChild(title);
+    modal.appendChild(sub);
+    modal.appendChild(table);
+
+    document.body.appendChild(backdrop);
+    document.body.appendChild(modal);
+    log('modal-dom-ready', { hasBackdrop: !!document.getElementById('nfbBackdrop'), hasModal: !!document.getElementById('nfbModal') });
+
+    function showModal() {
+      backdrop.style.display = 'block';
+      modal.style.display = 'block';
+      modal.style.opacity = '1';
+      modal.style.zIndex = '2147483647';
+      backdrop.style.zIndex = '2147483646';
+      modal.setAttribute('tabindex', '-1');
+      try { document.documentElement.classList.add('nfb-is-open'); } catch (_) {}
+      window.__nfbOpen = true;
+      const rect = modal.getBoundingClientRect();
+      log('modal-open', { rect });
+      try { modal.focus({ preventScroll: false }); modal.scrollIntoView({ block: 'center', inline: 'center' }); } catch (_) {}
+      if (strings.modal.notifications.opened) {
+        notify(strings.modal.notifications.opened);
+      }
+    }
+    function hideModal() {
+      modal.style.display = 'none';
+      backdrop.style.display = 'none';
+      window.__nfbOpen = false;
+      try { document.documentElement.classList.remove('nfb-is-open'); } catch (_) {}
+      log('modal-close');
+    }
+    backdrop.addEventListener('click', hideModal);
+
+    // Defensive: if other code toggles styles after we open, force them back
+    const reinforce = () => {
+      if (!window.__nfbOpen) return;
+      const md = getComputedStyle(modal).display;
+      const bd = getComputedStyle(backdrop).display;
+      if (md === 'none') modal.style.display = 'block';
+      if (bd === 'none') backdrop.style.display = 'block';
+    };
+    const mo = new MutationObserver(reinforce);
+    mo.observe(modal, { attributes: true, attributeFilter: ['style','class'] });
+    mo.observe(backdrop, { attributes: true, attributeFilter: ['style','class'] });
+
+    return { showModal, hideModal, featureState };
+  }
+
+  async function initNewFeatureBanner(platform) {
+    try {
+      const strings = await loadStrings();
+      if (!strings) { log('strings-load-failed'); return; }
+      log('strings-loaded', { platform, features: (strings.features||[]).length });
+
+      // Update badge label if present
+      const badge = document.querySelector('.coming-soon-badge');
+      if (badge) { badge.textContent = strings.banner.label || 'Coming soon'; log('badge-set', { text: badge.textContent }); }
+
+      const header = document.querySelector('.opengov-header') || document.body;
+      const btn = document.createElement('button');
+      btn.className = 'nfb-btn';
+      btn.id = 'newFeaturesBtn';
+      btn.textContent = strings.banner.buttonLabel || 'New features';
+      btn.style.marginLeft = '8px';
+      btn.style.marginTop = '8px';
+      // Anchor inside header to avoid overflowing taskpane width
+      try { if (header && getComputedStyle(header).position === 'static') header.style.position = 'relative'; } catch (_) {}
+      btn.style.position = 'absolute';
+      btn.style.top = '8px';
+      btn.style.right = '8px';
+      btn.style.zIndex = '1000002';
+      btn.style.pointerEvents = 'auto';
+      log('button-created');
+
+      const { showModal, featureState } = renderModal(strings, platform);
+
+      // Load initial feature states from API and apply
+      try {
+        const serverState = await loadFeatureStates();
+        if (serverState) {
+          serverState.forEach((val, id) => {
+            if (featureState.has(id)) featureState.set(id, !!val);
+          });
+        }
+      } catch (_) {}
+      // Ensure clicks inside modal do not leak to document-level listeners that may close it
+      const modalEl = document.getElementById('nfbModal');
+      if (modalEl) {
+        modalEl.addEventListener('click', (e) => { try { e.stopPropagation(); } catch (_) {} }, true);
+      }
+      // Shield other global click handlers when modal is open (bubble-phase so target handlers still run)
+      document.addEventListener('click', (evt) => {
+        if (!window.__nfbOpen) return;
+        const modal = document.getElementById('nfbModal');
+        const btnEl = document.getElementById('newFeaturesBtn');
+        if (!modal) return;
+        if (modal.contains(evt.target) || (btnEl && btnEl.contains(evt.target))) {
+          try { evt.stopPropagation(); } catch (_) {}
+          log('doc-click-suppressed');
+        }
+      }, false);
+
+      // SSE sync for feature toggles
+      try {
+        const es = new EventSource('http://localhost:3001/api/events');
+        es.onmessage = (evt) => {
+          try {
+            const data = JSON.parse(evt.data);
+            if (data && data.type === 'feature-toggled') {
+              const { id, enabled } = data;
+              if (featureState.has(id)) {
+                featureState.set(id, !!enabled);
+                // Re-paint buttons if modal is open
+                const modal = document.getElementById('nfbModal');
+                if (modal && getComputedStyle(modal).display !== 'none') {
+                  // trigger a quick repaint by toggling a known feature's button
+                  const btns = modal.querySelectorAll('.nfb-btn');
+                  btns.forEach(b => { /* no-op repaint; handlers update on click only */ });
+                }
+              }
+            }
+          } catch (_) {}
+        };
+      } catch (_) {}
+
+      // Kill any pre-existing handlers that may have been added before reload to avoid duplicate suppression
+      try { btn.replaceWith(btn.cloneNode(true)); } catch (_) {}
+
+      // Open on capture so other listeners cannot swallow the event first, but do not stop immediate propagation
+      const captureOpen = (evt) => {
+        const btnEl = document.getElementById('newFeaturesBtn');
+        if (!btnEl) return;
+        if (evt.target === btnEl || btnEl.contains(evt.target)) {
+          try { evt.preventDefault(); evt.stopPropagation(); } catch (_) {}
+          setTimeout(() => showModal(), 0);
+          log('capture-open');
+        }
+      };
+      document.addEventListener('pointerdown', captureOpen, true);
+      document.addEventListener('click', captureOpen, true);
+      log('capture-open-installed');
+      btn.addEventListener('click', (e) => {
+        // Prevent immediate close from any bubbling listeners; defer show to next tick
+        try { e.preventDefault(); e.stopPropagation(); } catch (_) {}
+        log('button-clicked');
+        setTimeout(() => showModal(), 0);
+      });
+
+      // Insert button in header if possible
+      if (header && header.appendChild) { header.appendChild(btn); } else { document.body.insertBefore(btn, document.body.firstChild); }
+      log('button-inserted', { inHeader: !!header });
+    } catch (e) {
+      log('init-error', String(e && (e.stack || e.message || e)));
+    }
+  }
+
+  // Expose init for explicit calls
+  window.initNewFeatureBanner = initNewFeatureBanner;
+  window.__nfbDebug = function() {
+    const btn = document.getElementById('newFeaturesBtn');
+    const modal = document.getElementById('nfbModal');
+    const backdrop = document.getElementById('nfbBackdrop');
+    return {
+      open: !!window.__nfbOpen,
+      btn: !!btn, btnRect: btn && btn.getBoundingClientRect(),
+      modal: !!modal, modalDisplay: modal && getComputedStyle(modal).display,
+      backdrop: !!backdrop, backdropDisplay: backdrop && getComputedStyle(backdrop).display,
+    };
+  }
+})();
+
+

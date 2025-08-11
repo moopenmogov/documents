@@ -11,12 +11,12 @@ function applyStateMatrixToUI(config) {
     // Apply button visibility - EXACT copy from web viewer
     const buttonMap = {
         checkoutBtn: config.buttons.checkoutBtn,
-        overrideBtn: config.buttons.overrideBtn,        // Both platforms now use this ID
+        overrideBtn: config.buttons.overrideBtn,
         sendVendorBtn: config.buttons.sendVendorBtn,
         saveProgressBtn: config.buttons.checkedInBtns,
         checkinBtn: config.buttons.checkedInBtns,
         cancelBtn: config.buttons.checkedInBtns,
-        viewOnlyBtn: false // Not in our matrix
+        viewOnlyBtn: config.buttons.viewOnlyBtn
     };
     
     Object.entries(buttonMap).forEach(([buttonId, shouldShow]) => {
@@ -24,6 +24,36 @@ function applyStateMatrixToUI(config) {
         if (button) {
             button.style.display = shouldShow ? 'inline-block' : 'none';
         }
+    });
+    // Disable View Latest when no document is loaded
+    const viewOnlyBtn = document.getElementById('viewOnlyBtn');
+    if (viewOnlyBtn && config.checkoutStatus) {
+        const hasDocument = !!config.checkoutStatus.show;
+        viewOnlyBtn.disabled = !hasDocument;
+    }
+    // Control visibility of the Document dropdown toggle based on nested actions
+    const hasAnyDocAction = !!(
+        config.buttons?.checkoutBtn ||
+        config.buttons?.overrideBtn ||
+        config.buttons?.checkedInBtns
+        // viewOnlyBtn intentionally excluded unless modeled in matrix
+    );
+    const docToggle = document.getElementById('docActionsToggle');
+    const docMenu = document.getElementById('docActionsMenu');
+    if (docToggle) {
+        docToggle.style.display = hasAnyDocAction ? 'inline-block' : 'none';
+        // Ensure menu is closed if toggle is hidden
+        if (!hasAnyDocAction && docMenu) {
+            docMenu.style.display = 'none';
+        }
+    }
+    // Grouped "checked in" buttons visibility
+    const checkinBtn = document.getElementById('checkinBtn');
+    const cancelBtn = document.getElementById('cancelBtn');
+    const saveProgressBtn = document.getElementById('saveProgressBtn');
+    const showCheckedIn = !!config.buttons.checkedInBtns;
+    [checkinBtn, cancelBtn, saveProgressBtn].forEach(el => {
+        if (el) el.style.display = showCheckedIn ? 'inline-block' : 'none';
     });
     
     // Apply checkout status banner
@@ -33,10 +63,10 @@ function applyStateMatrixToUI(config) {
             checkoutStatus.textContent = config.checkoutStatus.text;
             checkoutStatus.style.display = 'block';
             
-            // Apply colors directly via JavaScript (CSS wasn't working due to specificity issues)
+            // Apply softer pink/teal directly via JavaScript (CSS specificity)
             if (config.checkoutStatus.text.includes('Checked out by')) {
-                console.log('🔴 Applying red background - text contains "Checked out by":', config.checkoutStatus.text);
-                checkoutStatus.style.backgroundColor = '#dc3545';
+                console.log('🔴 Applying pink background - text contains "Checked out by":', config.checkoutStatus.text);
+                checkoutStatus.style.backgroundColor = '#ff6fa5';
                 checkoutStatus.style.color = 'white';
                 checkoutStatus.style.padding = '8px 16px';
                 checkoutStatus.style.borderRadius = '4px';
@@ -44,10 +74,10 @@ function applyStateMatrixToUI(config) {
                 checkoutStatus.style.fontWeight = '500';
                 checkoutStatus.style.margin = '8px 0';
                 checkoutStatus.classList.add('checked-out');
-                console.log('🎨 Applied red checkout styling');
+                console.log('🎨 Applied pink checkout styling');
             } else {
-                console.log('🔵 Applying teal background - text does not contain "Checked out by":', config.checkoutStatus.text);
-                checkoutStatus.style.backgroundColor = '#17a2b8';
+                console.log('🔵 Applying soft pink background - available state:', config.checkoutStatus.text);
+                checkoutStatus.style.backgroundColor = '#ffc1d9';
                 checkoutStatus.style.color = 'white';
                 checkoutStatus.style.padding = '8px 16px';
                 checkoutStatus.style.borderRadius = '4px';
@@ -55,7 +85,7 @@ function applyStateMatrixToUI(config) {
                 checkoutStatus.style.fontWeight = '500';
                 checkoutStatus.style.margin = '8px 0';
                 checkoutStatus.classList.remove('checked-out');
-                console.log('🎨 Applied teal checkout styling');
+                console.log('🎨 Applied available checkout styling');
             }
         } else {
             checkoutStatus.style.display = 'none';
@@ -88,6 +118,10 @@ function applyStateMatrixToUI(config) {
             banner.textContent = '';
         }
     }
+
+    // After applying visibility, refresh any dynamic document actions dropdowns
+    try { refreshActionsDropdown('docActionsSelect'); } catch (e) {}
+    try { refreshActionsDropdown('webDocActionsSelect'); } catch (e) {}
 }
 
 /**
@@ -111,8 +145,14 @@ async function updateUIFromStateMatrix(platform, getCurrentUser, getCurrentUserR
             const config = data.config;
             console.log(`📋 ${platform.toUpperCase()}: Matrix config from API:`, config);
             
-            // Use the exact same applyStateMatrixToUI function as web viewer
+            // Expose last state for UI components (e.g., approvals modal)
+            window.__lastStateMatrix = config;
+            // Apply matrix to UI
             applyStateMatrixToUI(config);
+            
+            // After applying, refresh platform-specific action dropdowns if present
+            try { if (platform === 'word') refreshActionsDropdownFromMatrix('docActionsSelect', config); } catch (e) {}
+            try { if (platform === 'web') refreshActionsDropdownFromMatrix('webDocActionsSelect', config); } catch (e) {}
             
             console.log(`✅ ${platform.toUpperCase()}: State matrix applied to UI`);
         } else {
@@ -121,4 +161,70 @@ async function updateUIFromStateMatrix(platform, getCurrentUser, getCurrentUserR
     } catch (error) {
         console.error(`❌ ${platform.toUpperCase()}: Error calling state matrix API:`, error);
     }
+}
+
+// Expose refresh helper globally so pages can call it
+window.refreshActionsDropdownFromMatrix = function(selectId, config) {
+    const select = document.getElementById(selectId);
+    if (!select || !config || !config.buttons) return;
+    while (select.options.length > 1) select.remove(1);
+    const actions = [];
+    const add = (id, label, fn, include) => { if (include && typeof fn === 'function') actions.push({ id, label, fn }); };
+    const b = config.buttons;
+    const hasDoc = !!config.checkoutStatus?.show;
+    add('viewOnlyBtn', 'View Latest', window.viewReadOnly, hasDoc && b.viewOnlyBtn !== false);
+    add('shareToWebBtn', 'Open in Web', window.shareToWeb, true);
+    add('checkoutBtn', 'Check-out Document', window.checkoutDocument, !!b.checkoutBtn);
+    add('checkinBtn', 'Save & Check-in', window.checkinDocument, !!b.checkedInBtns);
+    add('cancelBtn', 'Cancel Check-out', window.cancelCheckout, !!b.checkedInBtns);
+    add('saveProgressBtn', 'Save Progress', window.saveProgress, !!b.checkedInBtns);
+    add('overrideBtn', 'Override Check-out', window.overrideCheckout, !!b.overrideBtn);
+    add('sendVendorBtn', 'Send to Vendor', window.openVendorModal, !!b.sendVendorBtn);
+    actions.forEach(a => { const opt = document.createElement('option'); opt.value = a.id; opt.textContent = a.label; select.appendChild(opt); });
+    const wrapper = select.parentElement || select;
+    wrapper.style.display = actions.length ? 'block' : 'none';
+    select.onchange = (e) => { const val = e.target.value; if (!val) return; const a = actions.find(x => x.id === val); if (a) a.fn(); select.value = ''; };
+}
+
+// Populate a select dropdown with currently available document actions by inspecting visible buttons
+function refreshActionsDropdown(selectId) {
+    const select = document.getElementById(selectId);
+    if (!select) return;
+    // Clear options except placeholder
+    while (select.options.length > 1) select.remove(1);
+
+    const actions = [];
+    const add = (id, label, fn, visible) => { if (visible && typeof fn === 'function') actions.push({ id, label, fn }); };
+
+    const el = (id) => document.getElementById(id);
+    const isVisible = (id) => {
+        const n = el(id);
+        return !!(n && n.style.display !== 'none' && n.offsetParent !== null);
+    };
+
+    // Build from current DOM visibility
+    add('viewOnlyBtn', 'View Latest', window.viewReadOnly, !!el('viewOnlyBtn') && !el('viewOnlyBtn').disabled);
+    add('shareToWebBtn', 'Open in Web', window.shareToWeb, !!el('shareToWebBtn'));
+    add('checkoutBtn', 'Check-out Document', window.checkoutDocument, isVisible('checkoutBtn'));
+    add('checkinBtn', 'Save & Check-in', window.checkinDocument, isVisible('checkinBtn'));
+    add('cancelBtn', 'Cancel Check-out', window.cancelCheckout, isVisible('cancelBtn'));
+    add('saveProgressBtn', 'Save Progress', window.saveProgress, isVisible('saveProgressBtn'));
+    add('overrideBtn', 'Override Check-out', window.overrideCheckout, isVisible('overrideBtn'));
+    add('sendVendorBtn', 'Send to Vendor', window.openVendorModal, isVisible('sendVendorBtn'));
+
+    actions.forEach(a => {
+        const opt = document.createElement('option');
+        opt.value = a.id;
+        opt.textContent = a.label;
+        select.appendChild(opt);
+    });
+
+    select.parentElement.style.display = actions.length ? 'block' : 'none';
+    select.onchange = (e) => {
+        const val = e.target.value;
+        if (!val) return;
+        const a = actions.find(x => x.id === val);
+        if (a) a.fn();
+        select.value = '';
+    };
 }

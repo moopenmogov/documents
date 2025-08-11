@@ -53,22 +53,18 @@ let webUsers = {
     'user1': { id: 'user1', name: 'Warren Peace', email: 'warren@opengov.com', role: 'editor' },
     'user2': { id: 'user2', name: 'Gettysburger King', email: 'gettysburger@opengov.com', role: 'viewer' },
     'user5': { id: 'user5', name: 'Yuri Lee Laffed', email: 'reese@opengov.com', role: 'suggester' },
-    'vendor1': { id: 'vendor1', name: 'Mo--T', email: 'moti@real.builders', role: 'vendor', vendor: 'Moti\'s Builders' }
+    'vendor1': { id: 'vendor1', name: 'Hoo R. U', email: 'moti@real.builders', role: 'vendor', vendor: 'Moti\'s Builders' }
 };
 
-let wordUsers = {
-    'user3': { id: 'user3', name: 'Phil A Minyon', email: 'phil@opengov.com', role: 'editor' },
-    'user4': { id: 'user4', name: 'Dee Nial', email: 'dee@opengov.com', role: 'viewer' },
-    'user6': { id: 'user6', name: 'Boregard Snoozington', email: 'chuck@opengov.com', role: 'suggester' },
-    'vendor2': { id: 'vendor2', name: 'Hari Seldon', email: 'hari@sel.don', role: 'vendor', vendor: 'Motis Builders' }
-};
+// Use the same canonical 4 users for Word as for Web (names and IDs match)
+let wordUsers = { ...webUsers };
 
 // Combined user pool for reference
 let allUsers = { ...webUsers, ...wordUsers };
 
 // Current active users per platform
 let currentWebUser = webUsers['user1']; // Default to Warren Peace
-let currentWordUser = wordUsers['user3']; // Default to Phil A Minyon
+let currentWordUser = wordUsers['user1']; // Default to Warren Peace
 
 // Legacy support - points to web user for backward compatibility
 let currentUser = currentWebUser;
@@ -80,8 +76,18 @@ documentState.wordUser = currentWordUser;
 // Document permissions
 let documentPermissions = {};
 
+// Document approvals (per document per user)
+// Shape: { [documentId]: { [userId]: { status: 'approved'|'unapproved', approvedBy, approvedAt } } }
+let documentApprovals = {};
+
 // Store SSE connections
 let sseConnections = [];
+
+// Feature flags (shared across platforms)
+// Minimal example: ids should match those in new-feature-banner text JSON
+let featureFlags = {
+    'newFeatureBanner': { id: 'newFeatureBanner', enabled: false }
+};
 
 // Health check
 app.get('/api/health', (req, res) => {
@@ -100,8 +106,10 @@ app.get('/api/events', (req, res) => {
         'Access-Control-Allow-Headers': 'Cache-Control'
     });
     
-    // Store connection for broadcasting
-    sseConnections.push(res);
+    // Capture client metadata for scoped broadcasts
+    const platform = (req.query.platform || 'unknown').toString();
+    const clientId = (req.query.clientId || ('c-' + Math.random().toString(36).slice(2))).toString();
+    sseConnections.push({ res, platform, clientId });
     
     // Send initial connection message
     res.write('data: {"type":"connected","message":"SSE connected successfully","timestamp":"' + new Date().toISOString() + '"}\n\n');
@@ -109,10 +117,7 @@ app.get('/api/events', (req, res) => {
     // Handle client disconnect
     req.on('close', () => {
         console.log('📡 SSE connection closed');
-        const index = sseConnections.indexOf(res);
-        if (index !== -1) {
-            sseConnections.splice(index, 1);
-        }
+        sseConnections = sseConnections.filter(c => c.res !== res);
     });
 });
 
@@ -121,9 +126,11 @@ function broadcastSSE(event) {
     const eventData = JSON.stringify(event);
     console.log('📡 Broadcasting SSE event:', event.type);
     
-    sseConnections.forEach((res, index) => {
+    sseConnections.forEach((conn, index) => {
         try {
-            res.write(`data: ${eventData}\n\n`);
+            // If event targets a specific platform, only send to those clients
+            if (event.platform && conn.platform && event.platform !== conn.platform) return;
+            conn.res.write(`data: ${eventData}\n\n`);
         } catch (error) {
             console.log('📡 Removing dead SSE connection');
             sseConnections.splice(index, 1);
@@ -159,6 +166,7 @@ app.get('/api/status', (req, res) => {
             webUser: currentWebUser,
             wordUser: currentWordUser
         },
+        features: Object.values(featureFlags),
         platformUsers: {
             web: currentWebUser,
             word: currentWordUser
@@ -183,6 +191,13 @@ app.post('/api/checkout', (req, res) => {
     
     // Determine which user is checking out based on platform
     const checkoutUser = source === 'web' ? currentWebUser : currentWordUser;
+    // Disallow viewer role from performing checkout
+    if (checkoutUser?.role === 'viewer') {
+        return res.status(403).json({
+            success: false,
+            error: 'Viewers cannot check out documents'
+        });
+    }
     
     // Check out the document with enhanced user tracking
     documentState.isCheckedOut = true;
@@ -533,20 +548,35 @@ app.get('/api/current-document', (req, res) => {
 app.get('/api/default-document', (req, res) => {
     const defaultFile = 'CONTRACT FOR CONTRACTS.docx';
     const defaultPath = path.join(uploadsDir, defaultFile);
-    
-    if (fs.existsSync(defaultPath)) {
+
+    if (!fs.existsSync(defaultPath)) {
+        return res.status(404).json({ error: 'Default document not found' });
+    }
+
+    const hasCurrent = currentDocument.filePath && fs.existsSync(currentDocument.filePath);
+    if (!hasCurrent) {
+        // Only set the default as the current document if there is no current
         currentDocument = {
             id: 'default-doc',
             filename: defaultFile,
             filePath: defaultPath,
             lastUpdated: new Date().toISOString()
         };
-        
-        console.log('✅ Default document set:', defaultFile);
-        res.json(currentDocument);
-    } else {
-        res.status(404).json({ error: 'Default document not found' });
+        console.log('✅ Default document set (no prior current):', defaultFile);
+        // Broadcast only when we actually set the default
+        broadcastSSE({
+            type: 'document-uploaded',
+            message: `Default document available: ${defaultFile}`,
+            documentId: currentDocument.id,
+            filename: defaultFile,
+            timestamp: new Date().toISOString()
+        });
+        return res.json(currentDocument);
     }
+
+    // If there is already a current document, do not overwrite it; just report it
+    console.log('ℹ️ Default document present, but current document already set. Not overwriting.');
+    return res.json(currentDocument);
 });
 
 // Update document from web viewer (placeholder for future bidirectional sync)
@@ -578,7 +608,19 @@ app.post('/api/update-document', upload.single('docx'), (req, res) => {
 app.get('/api/get-updated-docx', (req, res) => {
     try {
         if (!currentDocument.filePath || !fs.existsSync(currentDocument.filePath)) {
-            return res.status(404).json({ error: 'No document available' });
+            // Fallback: attempt to load default document automatically
+            const defaultFile = 'CONTRACT FOR CONTRACTS.docx';
+            const defaultPath = path.join(uploadsDir, defaultFile);
+            if (fs.existsSync(defaultPath)) {
+                currentDocument = {
+                    id: 'default-doc',
+                    filename: defaultFile,
+                    filePath: defaultPath,
+                    lastUpdated: new Date().toISOString()
+                };
+            } else {
+                return res.status(404).json({ error: 'No document available' });
+            }
         }
         
         // Read file and convert to base64
@@ -648,12 +690,9 @@ app.get('/api/user/current', (req, res) => {
 
 // Legacy endpoint - returns all users for backward compatibility
 app.get('/api/users', (req, res) => {
-    // Regenerate allUsers to include any updates
-    const allUsers = { ...webUsers, ...wordUsers };
-    res.json({
-        success: true,
-        users: Object.values(allUsers)
-    });
+    // Return the canonical 4 users from the web viewer across both platforms
+    const users = Object.values(webUsers);
+    res.json({ success: true, users });
 });
 
 // PLATFORM-SPECIFIC USER ENDPOINTS
@@ -727,6 +766,41 @@ app.get('/api/user/word/users', (req, res) => {
         users: Object.values(wordUsers),
         platform: 'word'
     });
+});
+
+// FEATURE FLAGS API
+// Get all feature flags
+app.get('/api/features', (req, res) => {
+    res.json({ success: true, features: Object.values(featureFlags) });
+});
+
+// Toggle feature
+app.post('/api/features/toggle', (req, res) => {
+    const { id, enabled } = req.body || {};
+    if (!id || typeof enabled !== 'boolean') {
+        return res.status(400).json({ success: false, error: 'Missing id or enabled boolean' });
+    }
+    if (!featureFlags[id]) {
+        // Create on the fly to match front-end ids
+        featureFlags[id] = { id, enabled: !!enabled };
+    } else {
+        featureFlags[id].enabled = !!enabled;
+    }
+    // Broadcast SSE for sync
+    broadcastSSE({
+        type: 'feature-toggled',
+        id,
+        enabled: !!enabled,
+        timestamp: new Date().toISOString()
+    });
+    // Also broadcast a user-facing notification event
+    broadcastSSE({
+        type: 'notification',
+        message: `Feature ${id} ${enabled ? 'enabled' : 'disabled'}`,
+        level: 'info',
+        timestamp: new Date().toISOString()
+    });
+    res.json({ success: true, feature: featureFlags[id] });
 });
 
 // Switch word user
@@ -833,6 +907,130 @@ app.get('/api/document/:documentId/permissions', (req, res) => {
     });
 });
 
+// ===== APPROVALS API =====
+
+// Get approvals for a document
+app.get('/api/document/:documentId/approvals', (req, res) => {
+    const { documentId } = req.params;
+    const approvalsMap = documentApprovals[documentId] || {};
+    const approvals = Object.entries(approvalsMap).map(([userId, a]) => ({ userId, ...a }));
+    res.json({ success: true, approvals });
+});
+
+app.post('/api/document/:documentId/approvals', (req, res) => {
+    try {
+        const { documentId } = req.params;
+        const { userId, action, actorId } = req.body || {};
+
+        console.log('🔐 POST /approvals', { documentId, userId, action, actorId });
+
+        if (!userId || !action || !actorId) {
+            return res.status(400).json({ success: false, error: 'Missing userId, action, or actorId' });
+        }
+
+        if (!['approve', 'unapprove'].includes(String(action))) {
+            return res.status(400).json({ success: false, error: 'Invalid action. Use approve|unapprove' });
+        }
+
+        // Look up users across both platforms
+        const actor = allUsers[actorId] || webUsers[actorId] || wordUsers[actorId];
+        const target = allUsers[userId] || webUsers[userId] || wordUsers[userId];
+        if (!actor || !target) {
+            return res.status(404).json({ success: false, error: 'Actor or target user not found' });
+        }
+
+        // Rule: users can only approve themselves unless actor is editor
+        const isEditor = actor.role === 'editor';
+        if (!isEditor && actorId !== userId) {
+            return res.status(403).json({ success: false, error: 'Only editors can approve/unapprove others' });
+        }
+
+        const status = action === 'approve' ? 'approved' : 'unapproved';
+        if (!documentApprovals[documentId]) documentApprovals[documentId] = {};
+        documentApprovals[documentId][userId] = {
+            status,
+            approvedBy: actorId,
+            approvedAt: new Date().toISOString()
+        };
+
+        // Broadcast SSE for UI updates and notification log
+        broadcastSSE({
+            type: 'approvals-updated',
+            documentId,
+            userId,
+            status,
+            actorId,
+            message: `${actor.name} ${status === 'approved' ? 'approved' : 'unapproved'} ${target.name}`,
+            timestamp: new Date().toISOString()
+        });
+
+        res.json({ success: true, approval: { userId, ...documentApprovals[documentId][userId] } });
+    } catch (err) {
+        console.error('❌ Approvals POST error:', err);
+        res.status(500).json({ success: false, error: err.message || 'Internal Server Error' });
+    }
+});
+
+// Approval matrix - computes per-user approval UI state for an actor
+// GET /api/approval-matrix?actorPlatform=web|word&actorId=user1&documentId=default-doc
+app.get('/api/approval-matrix', (req, res) => {
+    const { actorPlatform, actorId, documentId } = req.query;
+
+    // Resolve actor
+    const actor = allUsers[actorId] || webUsers[actorId] || wordUsers[actorId];
+    if (!actor) {
+        return res.status(404).json({ success: false, error: 'Actor not found' });
+    }
+
+    // Use canonical users list (aligned to web)
+    const users = Object.values(webUsers);
+
+    // Determine document id
+    const docId = documentId || currentDocument.id || 'default-doc';
+    const approvalsForDoc = documentApprovals[docId] || {};
+
+    // Helper to compute per-target row config
+    function computeRow(targetUser) {
+        const targetId = targetUser.id;
+        const approvalStatus = approvalsForDoc[targetId]?.status || 'unapproved';
+        const isSelf = actor.id === targetId;
+        const isViewer = actor.role === 'viewer';
+        const isEditor = actor.role === 'editor';
+
+        // Base visibility
+        let showButtons = !isViewer && (isSelf || isEditor);
+
+        // Enabled states follow target's current status
+        const approveEnabled = approvalStatus !== 'approved';
+        const rejectEnabled = approvalStatus !== 'unapproved';
+
+        // Non-editors cannot act on others
+        if (!isSelf && !isEditor) {
+            return { userId: targetId, showButtons: false, approveEnabled: false, rejectEnabled: false, status: approvalStatus };
+        }
+
+        return {
+            userId: targetId,
+            showButtons,
+            approveEnabled: showButtons ? approveEnabled : false,
+            rejectEnabled: showButtons ? rejectEnabled : false,
+            status: approvalStatus
+        };
+    }
+
+    const matrix = {};
+    users.forEach(u => { matrix[u.id] = computeRow(u); });
+
+    // Summary
+    const approvalsArray = Object.entries(approvalsForDoc).map(([userId, a]) => ({ userId, ...a }));
+    const summary = {
+        approvedCount: approvalsArray.filter(a => a.status === 'approved').length,
+        totalUsers: users.length
+    };
+
+    res.json({ success: true, users, matrix, approvals: approvalsArray, summary, actor: { id: actor.id, role: actor.role } });
+});
+
 // Update user permission for document
 app.post('/api/document/:documentId/permissions', (req, res) => {
     const { documentId } = req.params;
@@ -902,8 +1100,8 @@ app.get('/api/state-matrix', (req, res) => {
     }
     
     // Get current user info
-    const users = platform === 'web' ? webUsers : wordUsers;
-    const currentUser = users[userId];
+    // Use canonical lookup across both pools so IDs are consistent across platforms
+    const currentUser = webUsers[userId] || wordUsers[userId];
     
     if (!currentUser) {
         return res.status(404).json({ 
@@ -944,11 +1142,8 @@ app.get('/api/state-matrix', (req, res) => {
 function getStateMatrixConfig(userRole, platform, docState, currentUser) {
     const { isCheckedOut, checkedOutBy, checkedOutUser } = docState;
     
-    // Determine if this is self-checkout
-    const isSelfCheckout = isCheckedOut && (
-        (checkedOutBy === platform && checkedOutUser?.id === currentUser?.id) ||
-        (checkedOutBy === 'vendor' && currentUser?.role === 'vendor' && checkedOutUser?.id === currentUser?.id)
-    );
+    // Determine if this is self-checkout (cross-platform by user id)
+    const isSelfCheckout = isCheckedOut && (checkedOutUser?.id === currentUser?.id);
     
     // Initialize result
     const result = {
@@ -956,7 +1151,12 @@ function getStateMatrixConfig(userRole, platform, docState, currentUser) {
             checkoutBtn: false,
             overrideBtn: false, 
             sendVendorBtn: false,
-            checkedInBtns: false // saveProgressBtn, checkinBtn, cancelBtn
+      checkedInBtns: false, // saveProgressBtn, checkinBtn, cancelBtn
+      viewOnlyBtn: true // View Latest is always available
+        },
+        approvals: {
+            canApproveSelf: userRole !== 'viewer',
+            canApproveOthers: userRole === 'editor'
         },
         checkoutStatus: {
             show: !!(currentDocument.filename && currentDocument.id),
