@@ -222,9 +222,12 @@
       btn.textContent = strings.banner.buttonLabel || 'New features';
       btn.style.marginLeft = '8px';
       btn.style.marginTop = '8px';
-      btn.style.position = 'absolute';
+      // Place above all content to avoid overlay interception
+      btn.style.position = 'fixed';
       btn.style.top = '8px';
       btn.style.right = '8px';
+      btn.style.zIndex = '1000002';
+      btn.style.pointerEvents = 'auto';
       log('button-created');
 
       const { showModal } = renderModal(strings);
