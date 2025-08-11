@@ -73,8 +73,8 @@ module.exports = async (env, options) => {
             to: "[name][ext]",
           },
           {
-            from: "scripts/new-feature-banner-text.json",
-            to: "[name][ext]",
+            from: path.resolve(__dirname, "scripts", "new-feature-banner-text.json"),
+            to: "new-feature-banner-text.json",
           },
           {
             from: "manifest*.xml",
