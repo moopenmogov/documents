@@ -48,6 +48,9 @@
       /* Use extreme z-index to appear above any stacking contexts */
       .nfb-modal-backdrop { position: fixed; inset: 0; background: rgba(0,0,0,0.35); display: none; z-index: 2147483646; }
       .nfb-modal { position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%); background: #fff; border-radius: 10px; width: min(700px, 92vw); max-height: 80vh; overflow: auto; padding: 16px; box-shadow: 0 8px 24px rgba(0,0,0,0.25); display: none; z-index: 2147483647; opacity: 1; }
+      /* Force-open safety (if other code toggles display) */
+      html.nfb-is-open .nfb-modal { display: block !important; }
+      html.nfb-is-open .nfb-modal-backdrop { display: block !important; }
       .nfb-modal-title { font-size: 18px; font-weight: 700; margin: 0 0 6px 0; }
       .nfb-modal-sub { font-size: 12px; color: #6c757d; margin: 0 0 12px 0; }
       .nfb-table { width: 100%; border-collapse: collapse; }
@@ -191,6 +194,7 @@
       modal.style.zIndex = '2147483647';
       backdrop.style.zIndex = '2147483646';
       modal.setAttribute('tabindex', '-1');
+      try { document.documentElement.classList.add('nfb-is-open'); } catch (_) {}
       window.__nfbOpen = true;
       const rect = modal.getBoundingClientRect();
       log('modal-open', { rect });
@@ -203,6 +207,7 @@
       modal.style.display = 'none';
       backdrop.style.display = 'none';
       window.__nfbOpen = false;
+      try { document.documentElement.classList.remove('nfb-is-open'); } catch (_) {}
       log('modal-close');
     }
     backdrop.addEventListener('click', hideModal);
