@@ -984,11 +984,16 @@ app.get('/api/approval-matrix', (req, res) => {
     function computeRow(targetUser) {
         const targetId = targetUser.id;
         const approvalStatus = approvalsForDoc[targetId]?.status || 'no';
+        const isSelf = actor.id === targetId;
+        const isViewer = actor.role === 'viewer';
+        const isEditor = actor.role === 'editor';
 
-        // ALL USERS ARE APPROVERS: show buttons for everyone
-        const showButtons = true;
-        const approveEnabled = approvalStatus !== 'approved';
-        const rejectEnabled = approvalStatus !== 'rejected';
+        // Visibility: non-viewers can act on self; editors can act on anyone
+        const showButtons = !isViewer && (isSelf || isEditor);
+
+        // Enabled states based on current status
+        const approveEnabled = showButtons && approvalStatus !== 'approved';
+        const rejectEnabled = showButtons && approvalStatus !== 'rejected';
 
         return {
             userId: targetId,
