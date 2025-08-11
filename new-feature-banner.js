@@ -64,7 +64,7 @@
       .nfb-modal-sub { font-size: 12px; color: #6c757d; margin: 0 0 12px 0; }
       .nfb-table { width: 100%; border-collapse: collapse; }
       .nfb-table th, .nfb-table td { border-bottom: 1px solid #eee; padding: 8px; text-align: left; font-size: 14px; }
-      .nfb-actions { display: flex; gap: 8px; }
+      .nfb-actions { display: flex; gap: 8px; flex-direction: column; align-items: stretch; }
       .nfb-footer { display: flex; justify-content: space-between; margin-top: 12px; }
       .nfb-pill { display: inline-block; padding: 2px 8px; border-radius: 999px; font-size: 12px; font-weight: 600; background: #f1f3f5; color: #495057; }
     `;
@@ -88,9 +88,8 @@
     const modal = document.createElement('div');
     modal.className = 'nfb-modal';
     modal.id = 'nfbModal';
-    if (platform === 'add-in') {
-      modal.classList.add('nfb-compact');
-    }
+    // Use compact mode universally for consistent layout across platforms
+    modal.classList.add('nfb-compact');
 
     const title = document.createElement('div');
     title.className = 'nfb-modal-title';
@@ -136,10 +135,10 @@
       actions.className = 'nfb-actions';
       const btnEnable = document.createElement('button');
       btnEnable.className = 'nfb-btn';
-      btnEnable.textContent = platform === 'add-in' ? 'On' : strings.modal.buttons.enable;
+      btnEnable.textContent = strings.modal.buttons.enable;
       const btnDisable = document.createElement('button');
       btnDisable.className = 'nfb-btn';
-      btnDisable.textContent = platform === 'add-in' ? 'Off' : strings.modal.buttons.disable;
+      btnDisable.textContent = strings.modal.buttons.disable;
 
       function updateActionButtons() {
         const enabled = !!featureState.get(f.id);
