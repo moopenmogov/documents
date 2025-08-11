@@ -71,7 +71,7 @@
     return '';
   }
 
-  function renderModal(strings) {
+  function renderModal(strings, platform) {
     ensureStyles();
 
     const backdrop = document.createElement('div');
@@ -81,6 +81,9 @@
     const modal = document.createElement('div');
     modal.className = 'nfb-modal';
     modal.id = 'nfbModal';
+    if (platform === 'add-in') {
+      modal.classList.add('nfb-compact');
+    }
 
     const title = document.createElement('div');
     title.className = 'nfb-modal-title';
@@ -126,10 +129,10 @@
       actions.className = 'nfb-actions';
       const btnEnable = document.createElement('button');
       btnEnable.className = 'nfb-btn';
-      btnEnable.textContent = strings.modal.buttons.enable;
+      btnEnable.textContent = platform === 'add-in' ? 'On' : strings.modal.buttons.enable;
       const btnDisable = document.createElement('button');
       btnDisable.className = 'nfb-btn';
-      btnDisable.textContent = strings.modal.buttons.disable;
+      btnDisable.textContent = platform === 'add-in' ? 'Off' : strings.modal.buttons.disable;
 
       function updateActionButtons() {
         const enabled = featureState.get(f.id);
@@ -251,7 +254,7 @@
       btn.style.pointerEvents = 'auto';
       log('button-created');
 
-      const { showModal } = renderModal(strings);
+      const { showModal } = renderModal(strings, platform);
       // Shield other global click handlers when modal is open or when the banner button is clicked
       document.addEventListener('click', (evt) => {
         if (!window.__nfbOpen) return;
