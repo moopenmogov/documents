@@ -75,7 +75,6 @@ module.exports = async (env, options) => {
           {
             from: "scripts/new-feature-banner-text.json",
             to: "[name][ext]",
-            context: "scripts",
           },
           {
             from: "manifest*.xml",
