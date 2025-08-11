@@ -57,6 +57,7 @@
       .nfb-pill { display: inline-block; padding: 2px 8px; border-radius: 999px; font-size: 12px; font-weight: 600; background: #f1f3f5; color: #495057; }
     `;
     document.head.appendChild(style);
+    log('styles-injected');
   }
 
   function formatRelease(feature) {
@@ -181,11 +182,14 @@
 
     document.body.appendChild(backdrop);
     document.body.appendChild(modal);
+    log('modal-dom-ready', { hasBackdrop: !!document.getElementById('nfbBackdrop'), hasModal: !!document.getElementById('nfbModal') });
 
     function showModal() {
       backdrop.style.display = 'block';
       modal.style.display = 'block';
       window.__nfbOpen = true;
+      const rect = modal.getBoundingClientRect();
+      log('modal-open', { rect });
       if (strings.modal.notifications.opened) {
         notify(strings.modal.notifications.opened);
       }
@@ -194,6 +198,7 @@
       modal.style.display = 'none';
       backdrop.style.display = 'none';
       window.__nfbOpen = false;
+      log('modal-close');
     }
     backdrop.addEventListener('click', hideModal);
 
@@ -203,11 +208,12 @@
   async function initNewFeatureBanner(platform) {
     try {
       const strings = await loadStrings();
-      if (!strings) { log('Failed to load new-feature-banner strings'); return; }
+      if (!strings) { log('strings-load-failed'); return; }
+      log('strings-loaded', { platform, features: (strings.features||[]).length });
 
       // Update badge label if present
       const badge = document.querySelector('.coming-soon-badge');
-      if (badge) badge.textContent = strings.banner.label || 'Coming soon';
+      if (badge) { badge.textContent = strings.banner.label || 'Coming soon'; log('badge-set', { text: badge.textContent }); }
 
       const header = document.querySelector('.opengov-header') || document.body;
       const btn = document.createElement('button');
@@ -219,6 +225,7 @@
       btn.style.position = 'absolute';
       btn.style.top = '8px';
       btn.style.right = '8px';
+      log('button-created');
 
       const { showModal } = renderModal(strings);
       // Shield other global click handlers when modal is open or when the banner button is clicked
@@ -229,27 +236,37 @@
         if (!modal) return;
         if (modal.contains(evt.target) || (btnEl && btnEl.contains(evt.target))) {
           try { evt.stopPropagation(); evt.stopImmediatePropagation(); } catch (_) {}
+          log('doc-click-suppressed');
         }
       }, true);
       btn.addEventListener('click', (e) => {
         // Prevent immediate close from any bubbling listeners; defer show to next tick
         try { e.preventDefault(); e.stopPropagation(); e.stopImmediatePropagation(); } catch (_) {}
+        log('button-clicked');
         setTimeout(() => showModal(), 0);
       });
 
       // Insert button in header if possible
-      if (header && header.appendChild) {
-        header.appendChild(btn);
-      } else {
-        document.body.insertBefore(btn, document.body.firstChild);
-      }
+      if (header && header.appendChild) { header.appendChild(btn); } else { document.body.insertBefore(btn, document.body.firstChild); }
+      log('button-inserted', { inHeader: !!header });
     } catch (e) {
-      log('init error', e);
+      log('init-error', String(e && (e.stack || e.message || e)));
     }
   }
 
   // Expose init for explicit calls
   window.initNewFeatureBanner = initNewFeatureBanner;
+  window.__nfbDebug = function() {
+    const btn = document.getElementById('newFeaturesBtn');
+    const modal = document.getElementById('nfbModal');
+    const backdrop = document.getElementById('nfbBackdrop');
+    return {
+      open: !!window.__nfbOpen,
+      btn: !!btn, btnRect: btn && btn.getBoundingClientRect(),
+      modal: !!modal, modalDisplay: modal && getComputedStyle(modal).display,
+      backdrop: !!backdrop, backdropDisplay: backdrop && getComputedStyle(backdrop).display,
+    };
+  }
 })();
 
 
