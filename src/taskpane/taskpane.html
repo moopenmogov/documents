@@ -809,8 +809,9 @@
                 </div>
                 <div class="document-buttons-section">
                 <div class="document-buttons">
-                        <button class="btn-view-latest" onclick="viewReadOnly()">👀 View Latest</button>
-                        <button id="shareToWebBtn" class="btn-open-web" onclick="shareToWeb()">🌐 Open in Web</button>
+                        <!-- Removed standalone action buttons now consolidated into dropdown -->
+                        <!-- <button class="btn-view-latest" onclick="viewReadOnly()">👀 View Latest</button>
+                        <button id="shareToWebBtn" class="btn-open-web" onclick="shareToWeb()">🌐 Open in Web</button> -->
                     </div>
                 </div>
             </div>
@@ -2680,9 +2681,9 @@
                     const approvalItem = document.createElement('div');
                     approvalItem.className = 'approval-item';
                     
-                    const status = userMatrix.status || 'unapproved';
-                    const statusColor = status === 'approved' ? '#28a745' : '#dc3545';
-                    const statusText = status === 'approved' ? 'Approved' : 'Pending';
+                    const status = userMatrix.status || 'no';
+                    const statusColor = status === 'approved' ? '#28a745' : (status === 'rejected' ? '#dc3545' : '#6c757d');
+                    const statusText = status === 'approved' ? 'Approved' : (status === 'rejected' ? 'Rejected' : 'No');
                     
                     const showButtons = userMatrix.showButtons;
                     const approveEnabled = userMatrix.approveEnabled;
@@ -2696,7 +2697,7 @@
                                 <button class="btn-approve" ${!approveEnabled ? 'disabled' : ''} 
                                         onclick="handleApprovalAction('${user.id}', 'approve')">✓</button>
                                 <button class="btn-reject" ${!rejectEnabled ? 'disabled' : ''} 
-                                        onclick="handleApprovalAction('${user.id}', 'unapprove')">✗</button>
+                                        onclick="handleApprovalAction('${user.id}', 'reject')">✗</button>
                             ` : '<span style="color: #6c757d; font-size: 10px;">No actions</span>'}
                         </div>
                     `;

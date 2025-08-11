@@ -2688,11 +2688,12 @@
 
                 users.forEach(u => {
                     const tr = document.createElement('tr');
-                    const row = matrix && matrix[u.id] ? matrix[u.id] : { status: 'unapproved', showButtons: (actorRole === 'editor') || (actorId === u.id && actorRole !== 'viewer'), approveEnabled: true, rejectEnabled: false };
-                    const isYes = (approvalMap[u.id]?.status === 'approved');
-                    const pill = isYes
-                      ? `<span style=\"display:inline-block;padding:2px 8px;border-radius:12px;font-size:12px;font-weight:600;color:#155724;background:#d4edda;\">Yes</span>`
-                      : `<span style=\"display:inline-block;padding:2px 8px;border-radius:12px;font-size:12px;font-weight:600;color:#721c24;background:#f8d7da;\">No</span>`;
+                    const row = matrix && matrix[u.id] ? matrix[u.id] : { status: 'no', showButtons: true, approveEnabled: true, rejectEnabled: true };
+                    const status = approvalMap[u.id]?.status || row.status || 'no';
+                    const isApproved = status === 'approved';
+                    const pill = isApproved
+                      ? `<span style="display:inline-block;padding:2px 8px;border-radius:12px;font-size:12px;font-weight:600;color:#155724;background:#d4edda;">Approved</span>`
+                      : `<span style="display:inline-block;padding:2px 8px;border-radius:12px;font-size:12px;font-weight:600;color:#721c24;background:#f8d7da;">${status === 'rejected' ? 'Rejected' : 'No'}</span>`;
                     tr.innerHTML = `
                         <td style="padding:8px; border-bottom:1px solid #f1f3f5;">${u.name}</td>
                         <td style="padding:8px; border-bottom:1px solid #f1f3f5;">${u.role}</td>
@@ -2700,10 +2701,10 @@
                         <td style="padding:8px; border-bottom:1px solid #f1f3f5;">
                             ${row.showButtons ? `
                                 <div style=\"display:flex; gap:6px;\">
-                                    <button class=\"btn\" ${isYes ? 'disabled' : ''} data-action=\"approve\" data-user=\"${u.id}\" data-status=\"${approvalMap[u.id]?.status || 'unapproved'}\">Approve</button>
-                                    <button class=\"btn\" ${!isYes ? 'disabled' : ''} data-action=\"unapprove\" data-user=\"${u.id}\" data-status=\"${approvalMap[u.id]?.status || 'unapproved'}\">Reject</button>
+                                    <button class=\"btn\" ${isApproved ? 'disabled' : ''} data-action=\"approve\" data-user=\"${u.id}\" data-status=\"${status}\">Approve</button>
+                                    <button class=\"btn\" ${status === 'rejected' ? 'disabled' : ''} data-action=\"reject\" data-user=\"${u.id}\" data-status=\"${status}\">Reject</button>
                                 </div>
-                            ` : `<span style=\\\"opacity:.6; font-size:12px;\\\">No actions</span>`}
+                            ` : `<span style=\"opacity:.6; font-size:12px;\">No actions</span>`}
                         </td>
                     `;
                     if (modalTbody) modalTbody.appendChild(tr.cloneNode(true));
@@ -2716,7 +2717,8 @@
                         btn.addEventListener('click', async (e) => {
                             const targetUserId = btn.getAttribute('data-user');
                             const explicitAction = btn.getAttribute('data-action');
-                            const nextAction = explicitAction || (btn.getAttribute('data-status') === 'approved' ? 'unapprove' : 'approve');
+                            const currentStatus = btn.getAttribute('data-status');
+                            const nextAction = explicitAction || (currentStatus === 'approved' ? 'reject' : 'approve');
                             try {
                                 const currentId = (window.currentDocumentState && window.currentDocumentState.currentDocument && window.currentDocumentState.currentDocument.id) || 'default-doc';
                                 await fetch(`http://localhost:3001/api/document/${currentId}/approvals`, {

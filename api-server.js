@@ -920,47 +920,38 @@ app.get('/api/document/:documentId/approvals', (req, res) => {
 app.post('/api/document/:documentId/approvals', (req, res) => {
     try {
         const { documentId } = req.params;
-        const { userId, action, actorId } = req.body || {};
-
-        console.log('🔐 POST /approvals', { documentId, userId, action, actorId });
-
+        const { userId, action, actorId } = req.body;
         if (!userId || !action || !actorId) {
             return res.status(400).json({ success: false, error: 'Missing userId, action, or actorId' });
         }
 
-        if (!['approve', 'unapprove'].includes(String(action))) {
-            return res.status(400).json({ success: false, error: 'Invalid action. Use approve|unapprove' });
+        // Initialize structure
+        if (!documentApprovals[documentId]) {
+            documentApprovals[documentId] = {};
         }
 
-        // Look up users across both platforms
-        const actor = allUsers[actorId] || webUsers[actorId] || wordUsers[actorId];
-        const target = allUsers[userId] || webUsers[userId] || wordUsers[userId];
-        if (!actor || !target) {
-            return res.status(404).json({ success: false, error: 'Actor or target user not found' });
-        }
+        // Map action to status
+        let status = 'no';
+        if (action === 'approve') status = 'approved';
+        if (action === 'unapprove' || action === 'reject') status = 'rejected';
 
-        // Rule: users can only approve themselves unless actor is editor
-        const isEditor = actor.role === 'editor';
-        if (!isEditor && actorId !== userId) {
-            return res.status(403).json({ success: false, error: 'Only editors can approve/unapprove others' });
-        }
+        const actor = allUsers[actorId] || webUsers[actorId] || wordUsers[actorId] || { id: actorId, name: actorId };
+        const target = allUsers[userId] || webUsers[userId] || wordUsers[userId] || { id: userId, name: userId };
 
-        const status = action === 'approve' ? 'approved' : 'unapproved';
-        if (!documentApprovals[documentId]) documentApprovals[documentId] = {};
         documentApprovals[documentId][userId] = {
             status,
-            approvedBy: actorId,
+            approvedBy: actor.id,
             approvedAt: new Date().toISOString()
         };
 
-        // Broadcast SSE for UI updates and notification log
+        // Broadcast SSE
         broadcastSSE({
             type: 'approvals-updated',
             documentId,
             userId,
             status,
             actorId,
-            message: `${actor.name} ${status === 'approved' ? 'approved' : 'unapproved'} ${target.name}`,
+            message: `${actor.name} ${status === 'approved' ? 'approved' : status === 'rejected' ? 'rejected' : 'set to no'} ${target.name}`,
             timestamp: new Date().toISOString()
         });
 
@@ -992,12 +983,12 @@ app.get('/api/approval-matrix', (req, res) => {
     // Helper to compute per-target row config
     function computeRow(targetUser) {
         const targetId = targetUser.id;
-        const approvalStatus = approvalsForDoc[targetId]?.status || 'unapproved';
+        const approvalStatus = approvalsForDoc[targetId]?.status || 'no';
 
         // ALL USERS ARE APPROVERS: show buttons for everyone
         const showButtons = true;
         const approveEnabled = approvalStatus !== 'approved';
-        const rejectEnabled = approvalStatus !== 'unapproved';
+        const rejectEnabled = approvalStatus !== 'rejected';
 
         return {
             userId: targetId,
