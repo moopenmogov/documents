@@ -28,6 +28,11 @@ if (-not $strings) {
   }
 }
 
+# Normalize line endings from JSON so newlines render properly in Windows Forms
+$bodyText = $strings.message
+$bodyText = $bodyText -replace "`r", ''
+$bodyText = $bodyText -replace "`n", "`r`n"
+
 $form                = New-Object System.Windows.Forms.Form
 $form.Text           = $strings.title  # modal title
 $form.StartPosition  = "CenterScreen"
@@ -42,7 +47,8 @@ $tb.ScrollBars       = 'Vertical'
 $tb.BorderStyle      = 'None'
 $tb.BackColor        = [System.Drawing.Color]::FromArgb(248,249,250)
 $tb.Font             = New-Object System.Drawing.Font('Segoe UI',10)
-$tb.Text             = $strings.message  # modal body text
+$tb.WordWrap         = $true
+$tb.Text             = $bodyText  # modal body text
 $tb.SetBounds(16,16,596,340)
 
 $btnGo               = New-Object System.Windows.Forms.Button
