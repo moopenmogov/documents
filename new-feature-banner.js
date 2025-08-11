@@ -258,8 +258,9 @@
       btn.textContent = strings.banner.buttonLabel || 'New features';
       btn.style.marginLeft = '8px';
       btn.style.marginTop = '8px';
-      // Place above all content to avoid overlay interception
-      btn.style.position = 'fixed';
+      // Anchor inside header to avoid overflowing taskpane width
+      try { if (header && getComputedStyle(header).position === 'static') header.style.position = 'relative'; } catch (_) {}
+      btn.style.position = 'absolute';
       btn.style.top = '8px';
       btn.style.right = '8px';
       btn.style.zIndex = '1000002';
