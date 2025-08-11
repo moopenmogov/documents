@@ -48,6 +48,11 @@
             border-radius: 8px;
             position: relative;
         }
+        /* Parity containers with web */
+        .grid-card { background: #ffffff; border: 1px solid #e9ecef; border-radius: 8px; padding: 10px; margin: 10px 0; }
+        .grid-title { font-weight: 600; margin-bottom: 8px; color: #495057; font-size: 13px; }
+        .grid-actions { display: flex; flex-wrap: wrap; gap: 8px; }
+        .grid-notifications { display: flex; flex-direction: column; gap: 6px; }
         .coming-soon-badge {
             position: absolute;
             top: 6px;
@@ -671,64 +676,53 @@
             <div id="checkoutBanner" class="checkout-banner" style="display: none;">
             </div>
             
-            <div class="sync-section">
-            <!-- Checkout/Checkin buttons (shown/hidden based on state) -->
-            <button id="checkoutBtn" class="button button-primary" onclick="checkoutDocument()" style="display: none;">
-                🔒 Check-out Document
-            </button>            
-            <button id="sendVendorBtn" class="button button-vendor" onclick="openVendorModal()" style="display: none;">
-                📤 Send to Vendor
-            </button>
-            
-            <button id="saveProgressBtn" class="button button-secondary" onclick="saveProgress()" style="display: none;">
-                💾 Save Progress
-            </button>
-            
-            <button id="checkinBtn" class="button button-primary" onclick="checkinDocument()" style="display: none;">
-                ✅ Save & Check-in
-            </button>
-    
-            <button id="cancelBtn" class="button button-secondary" onclick="cancelCheckout()" style="display: none;">
-                ❌ Cancel Check-out
-            </button>
-        
-            <button id="overrideBtn" class="button button-secondary" onclick="overrideCheckout()" style="display: none;">
-                Override Check-out
-            </button>
-            
-            <!-- Inline Users/Approvals (matches web viewer) -->
-            <div id="usersInlineContainer" style="margin-top:8px;">
-                <div style="font-weight:600; margin-bottom:6px;">Workflows</div>
-                <div style="overflow:auto; max-height:30vh; border:1px solid #e9ecef; border-radius:6px;">
-                    <table style="width:100%; border-collapse:collapse; font-size:14px;">
-                        <thead style="position:sticky; top:0; background:#f8f9fa;">
-                            <tr>
-                                <th style="text-align:left; padding:8px; border-bottom:1px solid #e9ecef;">Name</th>
-                                <th style="text-align:left; padding:8px; border-bottom:1px solid #e9ecef;">Role</th>
-                                <th style="text-align:left; padding:8px; border-bottom:1px solid #e9ecef; width:110px;">Approved</th>
-                                <th style="text-align:left; padding:8px; border-bottom:1px solid #e9ecef;">Action</th>
-                            </tr>
-                        </thead>
-                        <tbody id="usersInlineBody"></tbody>
-                    </table>
+            <!-- Workflows container -->
+            <div class="grid-card" id="workflowsCard">
+                <div class="grid-title">Workflows <span id="usersApprovedCount" style="margin-left:6px; font-weight:600; color:#495057; font-size:12px;"></span></div>
+                <div id="usersInlineContainer">
+                    <div style="overflow:auto; max-height:30vh; border:1px solid #e9ecef; border-radius:6px;">
+                        <table style="width:100%; border-collapse:collapse; font-size:13px;">
+                            <thead style="position:sticky; top:0; background:#f8f9fa;">
+                                <tr>
+                                    <th style="text-align:left; padding:8px; border-bottom:1px solid #e9ecef;">Name</th>
+                                    <th style="text-align:left; padding:8px; border-bottom:1px solid #e9ecef;">Role</th>
+                                    <th style="text-align:left; padding:8px; border-bottom:1px solid #e9ecef; width:90px;">Approved</th>
+                                    <th style="text-align:left; padding:8px; border-bottom:1px solid #e9ecef;">Action</th>
+                                </tr>
+                            </thead>
+                            <tbody id="usersInlineBody"></tbody>
+                        </table>
+                    </div>
                 </div>
             </div>
-            
-        </div>
-        
-        <!-- Transparent Notification Window -->
-        <div class="notification-window">
-            <div class="notification-window-header">
-                🔔 Notifications
-            </div>
-            <div class="notification-window-body" id="notificationWindowBody">
-                <div class="no-notifications">
-                    No notifications yet
+
+            <!-- Buttons container -->
+            <div class="grid-card" id="workOnDocCard">
+                <div class="grid-title">Work on Document</div>
+                <div class="grid-actions">
+                    <!-- Checkout/Checkin buttons (shown/hidden based on state) -->
+                    <button id="checkoutBtn" class="button button-primary" onclick="checkoutDocument()" style="display: none;">Check-out Document</button>
+                    <button id="checkinBtn" class="button button-primary" onclick="checkinDocument()" style="display: none;">Save & Check-in</button>
+                    <button id="cancelBtn" class="button button-secondary" onclick="cancelCheckout()" style="display: none;">Cancel Check-out</button>
+                    <button id="saveProgressBtn" class="button button-secondary" onclick="saveProgress()" style="display: none;">Save Progress</button>
+                    <button id="overrideBtn" class="button button-secondary" onclick="overrideCheckout()" style="display: none;">Override Check-out</button>
+                    <button id="sendVendorBtn" class="button button-vendor" onclick="openVendorModal()" style="display: none;">Send to Vendor</button>
                 </div>
             </div>
-        </div>
-        
-        </div> <!-- End addin-controls-area -->
+
+            <!-- Notifications container -->
+            <div class="grid-card" id="notificationsCard">
+                <div class="grid-title">Status & Notifications</div>
+                <div class="grid-notifications">
+                    <div class="notification-window-body" id="notificationWindowBody">
+                        <div class="no-notifications">No notifications yet</div>
+                    </div>
+                    <!-- alias id for parity with web if needed by shared code -->
+                    <div id="notificationWindowBody_grid" style="display:none;"></div>
+                </div>
+            </div>
+
+            </div> <!-- End addin-controls-area -->
     </div>
     
     <!-- Notification Modal -->
