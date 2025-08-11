@@ -697,22 +697,7 @@
                 </div>
             </div>
 
-            <!-- Buttons container -->
-            <div class="grid-card" id="workOnDocCard">
-                <div class="grid-title">Work on Document</div>
-                <div class="grid-actions">
-                    <!-- Cross-platform always-visible actions -->
-                    <button id="viewOnlyBtn" class="button button-secondary" onclick="viewReadOnly()">View Latest</button>
-                    <button id="shareToWebBtn" class="button button-secondary" onclick="shareToWeb()">Open in Web</button>
-                    <!-- Checkout/Checkin buttons (shown/hidden based on state) -->
-                    <button id="checkoutBtn" class="button button-primary" onclick="checkoutDocument()" style="display: none;">Check-out Document</button>
-                    <button id="checkinBtn" class="button button-primary" onclick="checkinDocument()" style="display: none;">Save & Check-in</button>
-                    <button id="cancelBtn" class="button button-secondary" onclick="cancelCheckout()" style="display: none;">Cancel Check-out</button>
-                    <button id="saveProgressBtn" class="button button-secondary" onclick="saveProgress()" style="display: none;">Save Progress</button>
-                    <button id="overrideBtn" class="button button-secondary" onclick="overrideCheckout()" style="display: none;">Override Check-out</button>
-                    <button id="sendVendorBtn" class="button button-vendor" onclick="openVendorModal()" style="display: none;">Send to Vendor</button>
-                </div>
-            </div>
+            <!-- Buttons container removed; actions are provided via the Document actions dropdown -->
 
             <!-- Notifications container -->
             <div class="grid-card" id="notificationsCard">
