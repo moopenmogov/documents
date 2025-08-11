@@ -15,8 +15,7 @@
     "buttons": {
       "enable": "Enable",
       "disable": "Disable",
-      "close": "Close",
-      "backToOpenGov": "Back to OpenGov"
+      "close": "Close"
     },
     "notifications": {
       "opened": "Viewed: New features modal",

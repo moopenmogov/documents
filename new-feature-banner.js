@@ -45,6 +45,8 @@
     style.textContent = `
       .nfb-btn { background: #ff4d94; color: #fff; border: none; border-radius: 8px; padding: 8px 12px; font-weight: 600; cursor: pointer; }
       .nfb-btn:hover { background: #ff66a3; }
+      .nfb-btn[disabled] { opacity: .55; cursor: default; }
+      .nfb-btn-active { background: #ff2d80 !important; }
       /* Use extreme z-index to appear above any stacking contexts */
       .nfb-modal-backdrop { position: fixed; inset: 0; background: rgba(0,0,0,0.35); display: none; z-index: 2147483646; }
       .nfb-modal { position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%); background: #fff; border-radius: 10px; width: min(700px, 92vw); max-height: 80vh; overflow: auto; padding: 16px; box-shadow: 0 8px 24px rgba(0,0,0,0.25); display: none; z-index: 2147483647; opacity: 1; }
@@ -133,8 +135,10 @@
         const enabled = featureState.get(f.id);
         btnEnable.disabled = enabled === true;
         btnDisable.disabled = enabled === false;
-        btnEnable.style.opacity = btnEnable.disabled ? '0.6' : '1';
-        btnDisable.style.opacity = btnDisable.disabled ? '0.6' : '1';
+        btnEnable.classList.toggle('nfb-btn-active', enabled === true);
+        btnDisable.classList.toggle('nfb-btn-active', enabled === false);
+        btnEnable.setAttribute('aria-pressed', String(enabled === true));
+        btnDisable.setAttribute('aria-pressed', String(enabled === false));
       }
 
       btnEnable.addEventListener('click', () => {
@@ -167,15 +171,10 @@
 
     const footer = document.createElement('div');
     footer.className = 'nfb-footer';
-    const backBtn = document.createElement('button');
-    backBtn.className = 'nfb-btn';
-    backBtn.textContent = strings.modal.buttons.backToOpenGov;
-    backBtn.addEventListener('click', () => hideModal());
     const closeBtn = document.createElement('button');
     closeBtn.className = 'nfb-btn';
     closeBtn.textContent = strings.modal.buttons.close;
     closeBtn.addEventListener('click', () => hideModal());
-    footer.appendChild(backBtn);
     footer.appendChild(closeBtn);
 
     modal.appendChild(title);
