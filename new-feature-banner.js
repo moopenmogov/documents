@@ -142,14 +142,25 @@
 
       function updateActionButtons() {
         const enabled = !!featureState.get(f.id);
-        // Explicitly set classes so only one is active at a time
-        btnEnable.classList.toggle('nfb-btn-active', enabled);
-        btnEnable.classList.toggle('nfb-btn-inactive', !enabled);
-        btnDisable.classList.toggle('nfb-btn-active', !enabled);
-        btnDisable.classList.toggle('nfb-btn-inactive', enabled);
+        // Reset classes to a known baseline
+        ['nfb-btn-active','nfb-btn-inactive'].forEach(c => {
+          btnEnable.classList.remove(c);
+          btnDisable.classList.remove(c);
+        });
+        // Apply mutually exclusive visual states
+        if (enabled) {
+          btnEnable.classList.add('nfb-btn-active');
+          btnDisable.classList.add('nfb-btn-inactive');
+        } else {
+          btnDisable.classList.add('nfb-btn-active');
+          btnEnable.classList.add('nfb-btn-inactive');
+        }
         // Accessibility pressed state
         btnEnable.setAttribute('aria-pressed', String(enabled));
         btnDisable.setAttribute('aria-pressed', String(!enabled));
+        // Data attributes for quick inspection
+        btnEnable.setAttribute('data-state', enabled ? 'active' : 'inactive');
+        btnDisable.setAttribute('data-state', enabled ? 'inactive' : 'active');
       }
 
       btnEnable.addEventListener('click', (e) => {
