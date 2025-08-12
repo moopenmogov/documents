@@ -896,7 +896,7 @@
             </div>
         
         <!-- Approvals Modal (collapses the inline approvals table into a modal) -->
-        <div id="approvalsModalWord" class="notification-modal" style="display:none;">
+        <div id="approvalsModalWord" class="notification-modal" style="display:none; z-index: 100000;">
             <div class="notification-modal-backdrop" onclick="(function(){document.getElementById('approvalsModalWord').style.display='none'})()"></div>
             <div class="notification-modal-content" style="max-width:700px; width:90%;">
                 <div class="notification-modal-header">
@@ -3480,7 +3480,11 @@
 window.openApprovalsModalWord = function() {
     try {
         const m = document.getElementById('approvalsModalWord');
-        if (m) m.style.display = 'flex';
+        if (m) {
+            m.style.display = 'flex';
+            // Force reflow for WebView2 quirks
+            try { void m.offsetHeight; } catch(_) {}
+        }
     } catch(_) {}
 };
                 
