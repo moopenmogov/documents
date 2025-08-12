@@ -2120,9 +2120,13 @@
                 if (response.ok) {
                     const result = await response.json();
                     showStatus('documentStatus', '✅ Document checked out successfully', 'success');
-                    
-                    // Disable user selection during checkoutawait fetchDocumentStatus(); // Refresh UI (includes unlocking)
-                    
+                    // Immediately refresh local state/UI so controls reflect checkout
+                    try {
+                        await fetchDocumentStatus();
+                        populateDocumentActions();
+                        await updateButtonStates();
+                        if (window.updateQuickActionsVisibility) updateQuickActionsVisibility();
+                    } catch(_) {}
                     // Load document content using working method
                     await loadDocumentContent();
                 } else {
@@ -2315,6 +2319,13 @@
                 
                 if (response.ok) {
                     showStatus('documentStatus', '✅ Checkout cancelled', 'success');
+                    // Refresh local state/UI immediately so controls reflect unlock
+                    try {
+                        await fetchDocumentStatus();
+                        populateDocumentActions();
+                        await updateButtonStates();
+                        if (window.updateQuickActionsVisibility) updateQuickActionsVisibility();
+                    } catch(_) {}
                     
                     // Re-enable user selection after cancelling checkoutawait fetchDocumentStatus(); // Refresh UI
                 } else {
@@ -3176,6 +3187,78 @@
             } catch(_) {}
         })();
         
+        // --- Quick Actions (temporary explicit buttons, bypass dropdown/matrix) ---
+        (function setupQuickActions() {
+            try {
+                function createQuickActionsUI() {
+                    const bar = document.createElement('div');
+                    bar.id = 'quickActionsBar';
+                    bar.style.marginTop = '8px';
+                    bar.style.display = 'flex';
+                    bar.style.flexWrap = 'wrap';
+                    bar.style.gap = '6px';
+
+                    const mkBtn = (id, text, onClick) => {
+                        const b = document.createElement('button');
+                        b.id = id;
+                        b.type = 'button';
+                        b.textContent = text;
+                        b.style.padding = '6px 10px';
+                        b.style.fontSize = '12px';
+                        b.addEventListener('click', onClick);
+                        return b;
+                    };
+
+                    const btnCheckout = mkBtn('quickCheckoutBtn', '🔒 Check out', () => checkoutDocument());
+                    const btnSave = mkBtn('quickSaveBtn', '💾 Save progress', () => saveProgress());
+                    const btnCheckin = mkBtn('quickCheckinBtn', '✅ Check in', () => checkinDocument());
+                    const btnCancel = mkBtn('quickCancelBtn', '❌ Cancel', () => cancelCheckout());
+                    const btnOverride = mkBtn('quickOverrideBtn', '🔄 Override', () => overrideCheckout());
+
+                    bar.appendChild(btnCheckout);
+                    bar.appendChild(btnSave);
+                    bar.appendChild(btnCheckin);
+                    bar.appendChild(btnCancel);
+                    bar.appendChild(btnOverride);
+
+                    const viewBtn = document.getElementById('viewLatestBtn');
+                    if (viewBtn && viewBtn.parentElement) {
+                        viewBtn.parentElement.insertBefore(bar, viewBtn.nextSibling);
+                    } else {
+                        (document.getElementById('documentActions') || document.body).appendChild(bar);
+                    }
+                }
+
+                function updateQuickActionsVisibility() {
+                    // Simplified: always show and enable all quick action buttons.
+                    const q = (id) => document.getElementById(id);
+                    const buttons = [
+                        q('quickCheckoutBtn'),
+                        q('quickSaveBtn'),
+                        q('quickCheckinBtn'),
+                        q('quickCancelBtn'),
+                        q('quickOverrideBtn')
+                    ];
+                    buttons.forEach(b => { if (b) b.disabled = false; });
+                }
+
+                if (document.readyState === 'loading') {
+                    document.addEventListener('DOMContentLoaded', () => { createQuickActionsUI(); updateQuickActionsVisibility(); });
+                } else {
+                    createQuickActionsUI();
+                    updateQuickActionsVisibility();
+                }
+
+                // Keep the quick actions in sync periodically (lightweight, temporary)
+                setInterval(updateQuickActionsVisibility, 1000);
+
+                // Expose for debug
+                window.updateQuickActionsVisibility = updateQuickActionsVisibility;
+            } catch (e) {
+                console.warn('QuickActions setup failed:', e);
+            }
+        })();
+
         // Load approvals from state machine and API
         async function loadApprovalsSection() {
             const approvalsList = document.getElementById('approvalsList');
