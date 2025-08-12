@@ -836,6 +836,7 @@
                 <button id="btnWordSendVendor" type="button" onclick="window.openVendorModal?.()">📤 Send to Vendor</button>
                 <button id="btnReplaceCurrent" type="button">⬆️ Replace default document</button>
                 <input id="inputReplaceCurrent" type="file" accept=".docx,application/vnd.openxmlformats-officedocument.wordprocessingml.document" style="display:none;" />
+                <button id="btnApprovalDetailsNfb" type="button" onclick="window.openTestApprovalsModal && window.openTestApprovalsModal()">✅ Approval details</button>
             </div>
 
             <!-- Approvals summary pill and details trigger -->
@@ -3564,6 +3565,39 @@ window.openApprovalsModalWord = async function() {
         modal.style.display = 'block';
         try { modal.focus(); modal.scrollIntoView({ block: 'center' }); } catch(_) {}
     } catch(_) {}
+};
+
+// Minimal test modal opener, identical to NFB plumbing, to validate click → modal open
+window.openTestApprovalsModal = function() {
+    try {
+        let backdrop = document.getElementById('testApprovalsBackdrop');
+        let modal = document.getElementById('testApprovalsModal');
+        if (!backdrop) {
+            backdrop = document.createElement('div');
+            backdrop.id = 'testApprovalsBackdrop';
+            backdrop.className = 'nfb-modal-backdrop';
+            document.body.appendChild(backdrop);
+        }
+        if (!modal) {
+            modal = document.createElement('div');
+            modal.id = 'testApprovalsModal';
+            modal.className = 'nfb-modal nfb-compact';
+            modal.innerHTML = `
+                <div class="nfb-modal-title">Approval details (test)</div>
+                <div class="nfb-modal-sub">This is a test modal opened from the new button.</div>
+                <div style="margin:8px 0;">If you can see this, the modal plumbing works.</div>
+                <div class="nfb-footer"><span></span><button class="nfb-btn" id="testApprovalsClose">Close</button></div>
+            `;
+            document.body.appendChild(modal);
+            const close = () => { try { modal.style.display='none'; backdrop.style.display='none'; document.documentElement.classList.remove('nfb-is-open'); } catch(_) {} };
+            backdrop.addEventListener('click', close);
+            modal.querySelector('#testApprovalsClose').addEventListener('click', close);
+        }
+        document.documentElement.classList.add('nfb-is-open');
+        backdrop.style.display = 'block';
+        modal.style.display = 'block';
+        try { modal.focus(); } catch(_) {}
+    } catch (_) {}
 };
                 
                 // Warn if acting on behalf of someone else and current user is editor
