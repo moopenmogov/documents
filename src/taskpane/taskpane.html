@@ -1083,7 +1083,7 @@
                     if (!kill) {
                         kill = document.createElement('style');
                         kill.id = 'approvals-modal-nfb-kill-word';
-                        kill.textContent = `#nfbBackdrop{display:none!important} #nfbModal{display:none!important}`;
+                        kill.textContent = `#nfbBackdrop{display:none!important} #nfbModal{display:none!important} .nfb-modal-backdrop{display:none!important} .nfb-modal{display:none!important}`;
                         document.head.appendChild(kill);
                     }
                 } catch(_) {}
@@ -3727,7 +3727,20 @@
                 });
 
                 // Open + close handlers
+                // Ensure they are last in DOM (top of paint order)
+                try { document.body.append(backdrop, modal); } catch(_) {}
                 backdrop.style.display='block'; modal.style.display='block';
+                // Force top stacking and interactivity with !important
+                try {
+                    backdrop.style.setProperty('z-index','2147483646','important');
+                    backdrop.style.setProperty('pointer-events','none','important');
+                    modal.style.setProperty('z-index','2147483647','important');
+                    modal.style.setProperty('pointer-events','auto','important');
+                    modal.style.setProperty('position','fixed','important');
+                    modal.style.setProperty('top','50%','important');
+                    modal.style.setProperty('left','50%','important');
+                    modal.style.setProperty('transform','translate(-50%,-50%)','important');
+                } catch(_) {}
                 const close=()=>{ try{ modal.style.display='none'; backdrop.style.display='none'; document.getElementById('approvals-modal-nfb-kill-word')?.remove(); }catch(_){} };
                 // Close only when clicking backdrop; never close on clicks inside the modal
                 modal.querySelector('#approvalsCloseWord').onclick = close;
