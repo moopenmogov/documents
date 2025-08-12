@@ -901,31 +901,7 @@
             </button>
             </div>
         
-        <!-- Approvals Modal (collapses the inline approvals table into a modal) -->
-        <div id="approvalsModalWord" class="notification-modal" style="display:none; z-index: 100000;">
-            <div class="notification-modal-backdrop" onclick="(function(){document.getElementById('approvalsModalWord').style.display='none'})()"></div>
-            <div class="notification-modal-content" style="max-width:700px; width:90%;">
-                <div class="notification-modal-header">
-                    <h3 class="notification-modal-title">✅ Approval details</h3>
-                    <button class="notification-modal-close" onclick="document.getElementById('approvalsModalWord').style.display='none'">×</button>
-                </div>
-                <div class="notification-modal-body">
-                    <div id="approvalsTableContainer" style="margin-top:8px;">
-                        <table class="approvals-table" style="width:100%; border-collapse:collapse; font-size:12px;">
-                            <thead>
-                                <tr id="approvalsHeaderRowAddin" style="text-align:left; color:#495057;">
-                                    <th style="padding:5px 4px; border-bottom:1px solid #f1f3f5;" data-col="user">User</th>
-                                    <th style="padding:5px 4px; border-bottom:1px solid #f1f3f5;" data-col="role">Role</th>
-                                    <th style="padding:5px 4px; border-bottom:1px solid #f1f3f5; width:80px;" data-col="status">Approved</th>
-                                    <th style="padding:5px 4px; border-bottom:1px solid #f1f3f5;" data-col="actions">Actions</th>
-                                </tr>
-                            </thead>
-                            <tbody id="approvalsList"></tbody>
-                        </table>
-                    </div>
-                </div>
-            </div>
-        </div>
+        <!-- Approvals Modal: removed legacy static container; dynamic modal is created by openUsersModalWord() -->
 
         <!-- Transparent Notification Window -->
         <div class="notification-window">
@@ -3794,8 +3770,17 @@ window.__forceOpenApprovalsTest = function() {
                 
                 if (result.success) {
                     console.log('✅ Approval action successful');
-                    // Refresh approvals section
-                    await loadApprovalsSection();
+                    // Refresh approvals pill/section immediately
+                    try { await loadApprovalsSection(); } catch(_) {}
+                    // If modal is open, re-render it in-place for instant feedback
+                    try {
+                        const m = document.getElementById('approvalsModalWord');
+                        const isOpen = m && getComputedStyle(m).display !== 'none';
+                        if (isOpen && typeof window.openUsersModalWord === 'function') {
+                            await window.openUsersModalWord();
+                        }
+                    } catch(_) {}
+                    try { window.addNotification && window.addNotification(`${currentUser.name} ${action === 'approve' ? 'approved' : 'rejected'}`, 'info'); } catch(_) {}
                 } else {
                     console.error('❌ Approval action failed:', result.error);
                     window.addNotification && window.addNotification(`❌ ${result.error}`);

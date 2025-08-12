@@ -1019,16 +1019,35 @@ app.post('/api/document/:documentId/approvals', (req, res) => {
             approvedAt: new Date().toISOString()
         };
 
-        // Broadcast SSE
-        broadcastSSE({
-            type: 'approvals-updated',
-            documentId,
-            userId,
-            status,
-            actorId,
-            message: `${actor.name} ${status === 'approved' ? 'approved' : status === 'rejected' ? 'rejected' : 'set to no'} ${target.name}`,
-            timestamp: new Date().toISOString()
-        });
+        // Broadcast SSE with counts for web pill updates
+        try {
+            const usersList = Object.values(webUsers || {});
+            const approvalsMap = documentApprovals[documentId] || {};
+            const approvalsArr = Object.entries(approvalsMap).map(([uid, a]) => ({ userId: uid, ...a }));
+            const approvedCount = approvalsArr.filter(a => a.status === 'approved').length;
+            const totalUsers = usersList.length;
+            broadcastSSE({
+                type: 'approvals-updated',
+                documentId,
+                userId,
+                status,
+                actorId,
+                approved: approvedCount,
+                total: totalUsers,
+                message: `${actor.name} ${status === 'approved' ? 'approved' : status === 'rejected' ? 'rejected' : 'set to no'} ${target.name}`,
+                timestamp: new Date().toISOString()
+            });
+        } catch (_e) {
+            broadcastSSE({
+                type: 'approvals-updated',
+                documentId,
+                userId,
+                status,
+                actorId,
+                message: `${actor.name} ${status === 'approved' ? 'approved' : status === 'rejected' ? 'rejected' : 'set to no'} ${target.name}`,
+                timestamp: new Date().toISOString()
+            });
+        }
 
         res.json({ success: true, approval: { userId, ...documentApprovals[documentId][userId] } });
     } catch (err) {

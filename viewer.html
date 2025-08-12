@@ -1251,6 +1251,8 @@
                     } else if (data.type === 'approvals-updated') {
                         console.log('📡 SSE: approvals-updated received');
                         try { refreshUsersModal(); } catch (e) {}
+                        try { if (typeof window.__updateApprovalsPillWeb === 'function') window.__updateApprovalsPillWeb(data.approved || 0, data.total || 0); } catch (e) {}
+                        try { addNotification(data.message || 'Approvals updated', 'info'); } catch (e) {}
                     } else if (data.type === 'permission-changed') {
                         console.log(`📡 SSE: Permission changed for ${data.user.name}`);
                         // Refresh button states if this affects current user
