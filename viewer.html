@@ -972,21 +972,23 @@
     </style>
 
     <div class="controls-grid">
-        <!-- Top-left: Workflows (Users) - collapsed to summary + modal -->
+        <!-- Left: Users + Actions -->
         <div class="grid-card" style="grid-column:1; grid-row:1;">
-            <div style="display:flex; align-items:center; justify-content:space-between;">
-                <div class="grid-title" id="approvalsTitleWeb">Workflows</div>
-                <div style="display:flex; align-items:center; gap:8px;">
-                    <span id="approvalsPillWeb" style="display:inline-block; padding:4px 10px; border-radius:999px; background:#e9f5ee; color:#0f5132; font-weight:600; font-size:12px;">—/— approved</span>
-                    <button type="button" id="btnApprovalsDetailsWeb" class="btn btn-secondary" style="padding:4px 10px; font-size:12px;">Approval details</button>
-                </div>
+            <div class="grid-title" id="approvalsTitleWeb">Workflows</div>
+            <div class="grid-actions" style="align-items:center; gap:8px;">
+                <label for="userSwitcher">Switch User (Demo):</label>
+                <select id="userSwitcher" class="user-select" onchange="switchUser(this.value)"></select>
+                <select id="webDocActionsSelect" class="user-select">
+                    <option value="">Document actions…</option>
+                </select>
+                <span id="approvalsPillWeb" style="display:inline-block; padding:4px 10px; border-radius:999px; background:#e9f5ee; color:#0f5132; font-weight:600; font-size:12px;">—/— approved</span>
+                <button type="button" id="btnApprovalsDetailsWeb" class="btn btn-secondary" style="padding:4px 10px; font-size:12px;">Approval details</button>
             </div>
+            <div id="docActionsDropdown_grid" class="dropdown" style="display:none;"></div>
         </div>
 
-        <!-- Bottom-left Work on Document card removed; actions now via dropdown above -->
-
-        <!-- Right: Status & Notifications (span 2 rows) -->
-        <div class="grid-card grid-notifications">
+        <!-- Right: Notifications (span 2 rows) -->
+        <div class="grid-card grid-notifications" style="grid-column:2; grid-row:1 / span 2; display:flex; flex-direction:column;">
             <div class="status-bar">Status: <span id="statusMirror">—</span></div>
             <div class="notification-window" style="flex:1 1 auto; overflow:auto;">
                 <div class="notification-window-header">🔔 Notifications</div>

@@ -808,46 +808,25 @@
             </div>
         </div>
         
-        <!-- User Controls (Demo Mode) -->
-        <div class="user-controls">
-            <div class="current-user">
-                <span class="user-label">User:</span>
-                <span id="currentUserDisplay" class="user-name">Loading...</span>
-                <span id="currentUserRole" class="user-role">(editor)</span>
-            </div>
-            <div class="user-switcher">
-                <select id="userSwitcher" class="user-select" onchange="switchUser(this.value)">
-                    <option value="">Loading users...</option>
-                </select>
-            </div>
-            
-            <!-- Document Actions Dropdown -->
-            <!-- Legacy action row removed; using unified toolbar below -->
-
-            <!-- Always-visible Word Action Toolbar (simple, reliable) -->
-            <div id="wordActionToolbar" style="margin: 10px 0; padding: 8px; border: 1px solid #eee; border-radius: 6px; background: #fafafa; display: flex; flex-wrap: wrap; gap: 8px; z-index: 10000;">
-                <button id="btnWordViewLatest" type="button">👀 View Latest</button>
-                <button id="btnWordOpenWeb" type="button" onclick="window.shareToWeb?.()">🌐 Open in Web</button>
-                <button id="btnWordCheckout" type="button" onclick="window.checkoutDocument?.()">🔒 Check out</button>
-                <button id="btnWordSaveProgress" type="button" onclick="window.saveProgress?.()">💾 Save progress</button>
-                <button id="btnWordCheckin" type="button" onclick="window.checkinDocument?.()">✅ Check in</button>
-                <button id="btnWordCancel" type="button" onclick="window.cancelCheckout?.()">❌ Cancel</button>
-                <button id="btnWordOverride" type="button" onclick="window.overrideCheckout?.()">🔄 Override</button>
-                <button id="btnWordSendVendor" type="button" onclick="window.openVendorModal?.()">📤 Send to Vendor</button>
-                <button id="btnReplaceCurrent" type="button">⬆️ Replace default document</button>
-                <input id="inputReplaceCurrent" type="file" accept=".docx,application/vnd.openxmlformats-officedocument.wordprocessingml.document" style="display:none;" />
-            </div>
-            <!-- Word Document Actions Dropdown (for state-matrix actions like Approval details) -->
-            <div style="margin:6px 0;">
-                <select id="docActionsSelect" class="user-select">
-                    <option value="">Document actions…</option>
-                </select>
-            </div>
-
-            <!-- Approvals summary pill and details trigger -->
-            <div id="approvalsSummaryRowWord" style="display:flex; align-items:center; gap:8px; margin: 6px 0 12px 0;">
-                <span id="approvalsPillWord" style="display:inline-block; padding:4px 10px; border-radius:999px; background:#e9f5ee; color:#0f5132; font-weight:600; font-size:12px;">—/— approved</span>
-                <button id="btnApprovalsDetailsWord" type="button" style="padding:4px 10px; font-size:12px;" onclick="window.openUsersModalWord && window.openUsersModalWord()">Approval details</button>
+        <!-- Two-container layout for add-in: top (controls) + bottom (notifications) -->
+        <div class="user-controls" style="display:flex; flex-direction:column; gap:10px;">
+            <div class="section" style="display:flex; flex-direction:column; gap:8px;">
+                <div class="current-user">
+                    <span class="user-label">User:</span>
+                    <span id="currentUserDisplay" class="user-name">Loading...</span>
+                    <span id="currentUserRole" class="user-role">(editor)</span>
+                </div>
+                <div class="section-body" style="display:flex; align-items:center; gap:8px; flex-wrap:wrap;">
+                    <label for="userSwitcher">Switch User:</label>
+                    <select id="userSwitcher" class="user-select" onchange="switchUser(this.value)">
+                        <option value="">Loading users...</option>
+                    </select>
+                    <select id="docActionsSelect" class="user-select">
+                        <option value="">Document actions…</option>
+                    </select>
+                    <span id="approvalsPillWord" style="display:inline-block; padding:4px 10px; border-radius:999px; background:#e9f5ee; color:#0f5132; font-weight:600; font-size:12px;">—/— approved</span>
+                    <button id="btnApprovalsDetailsWord" type="button" style="padding:4px 10px; font-size:12px;" onclick="window.openUsersModalWord && window.openUsersModalWord()">Approval details</button>
+                </div>
             </div>
         </div>
         
