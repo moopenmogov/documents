@@ -1109,93 +1109,9 @@
                 window.insertDocxBase64Normalized = insertDocxBase64Normalized;
             } catch (_) {}
 
-            function createUI() {
-                const wrapper = document.createElement('div');
-                wrapper.id = 'self-test-insert-docx-wrapper';
-                wrapper.style.marginTop = '8px';
-                wrapper.style.padding = '8px';
-                wrapper.style.borderTop = '1px solid #eee';
-
-                const btn = document.createElement('button');
-                btn.id = 'selfTestInsertDocxBtn';
-                btn.type = 'button';
-                btn.textContent = '🧪 Self Test: Insert DOCX';
-                btn.style.padding = '6px 10px';
-                btn.style.fontSize = '12px';
-
-                const hint = document.createElement('div');
-                hint.textContent = 'Pick a local .docx (e.g., Contract of the Future.docx) to insert in-place.';
-                hint.style.fontSize = '11px';
-                hint.style.color = '#555';
-                hint.style.marginTop = '4px';
-
-                const input = document.createElement('input');
-                input.type = 'file';
-                input.accept = '.docx,application/vnd.openxmlformats-officedocument.wordprocessingml.document';
-                input.style.display = 'none';
-                input.id = 'selfTestFileInputDocx';
-
-                btn.addEventListener('click', () => input.click());
-                input.addEventListener('change', async () => {
-                    const file = input.files && input.files[0];
-                    if (!file) return;
-                    if (window.__documentInsertInProgress) {
-                        console.log('⚠️ SelfTest: insert already in progress');
-                        return;
-                    }
-                    try {
-                        window.__documentInsertInProgress = true;
-                        if (typeof showStatus === 'function') {
-                            showStatus('documentStatus', `👀 Loading ${file.name}...`, 'info');
-                        }
-                        const buffer = await file.arrayBuffer();
-                        const base64 = await ensureBase64FromArrayBuffer(buffer);
-                        await insertDocxBase64Normalized(base64);
-                        if (typeof showStatus === 'function') {
-                            showStatus('documentStatus', `✅ Inserted: ${file.name}`, 'success');
-                        }
-                    } catch (e) {
-                        console.error('🧪 SelfTest insert error:', e);
-                        try { logRichApiError(e, 'SelfTest insert'); } catch(_) {}
-                        if (typeof showStatus === 'function') {
-                            showStatus('documentStatus', `❌ Self Test failed: ${e && e.message ? e.message : e}`, 'error');
-                        }
-                    } finally {
-                        window.__documentInsertInProgress = false;
-                        input.value = '';
-                    }
-                });
-
-                wrapper.appendChild(btn);
-                wrapper.appendChild(hint);
-                wrapper.appendChild(input);
-
-                // Prefer to place right after the View Latest button
-                const viewBtn = document.getElementById('viewLatestBtn');
-                if (viewBtn && viewBtn.parentElement) {
-                    console.log('🧪 Adding Self Test button next to View Latest');
-                    viewBtn.parentElement.insertBefore(wrapper, viewBtn.nextSibling);
-                    return;
-                }
-                // Otherwise attach near existing actions area; fallback to body
-                const targets = [
-                    document.getElementById('documentActions'),
-                    document.getElementById('actions'),
-                    document.getElementById('app'),
-                    document.body
-                ];
-                const host = targets.find(Boolean) || document.body;
-                console.log('🧪 Adding Self Test button to fallback host');
-                host.appendChild(wrapper);
-            }
-
-            if (document.readyState === 'loading') {
-                document.addEventListener('DOMContentLoaded', createUI);
-            } else {
-                createUI();
-            }
+            // No self-test UI injected; helpers only (kept for server/base64 loaders and Replace Current)
         } catch (e) {
-            console.warn('Failed to set up Self Test Insert DOCX UI', e);
+            console.warn('Failed to set up Self Test Insert DOCX helpers', e);
         }
     })();
 
