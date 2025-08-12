@@ -860,9 +860,19 @@
         <div class="approvals-section">
             <div class="section-header">
                 <h3>✅ Approvals</h3>
-        </div>
-            <div id="approvalsList" class="approvals-list">
-                <!-- Approvals will be loaded here -->
+            </div>
+            <div id="approvalsTableContainer" style="margin-top:8px;">
+                <table class="approvals-table" style="width:100%; border-collapse:collapse; font-size:12px;">
+                    <thead>
+                        <tr id="approvalsHeaderRowAddin" style="text-align:left; color:#495057;">
+                            <th style="padding:5px 4px; border-bottom:1px solid #f1f3f5;" data-col="user">User</th>
+                            <th style="padding:5px 4px; border-bottom:1px solid #f1f3f5;" data-col="role">Role</th>
+                            <th style="padding:5px 4px; border-bottom:1px solid #f1f3f5; width:80px;" data-col="status">Approved</th>
+                            <th style="padding:5px 4px; border-bottom:1px solid #f1f3f5;" data-col="actions">Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody id="approvalsList"></tbody>
+                </table>
             </div>
         </div>
 
@@ -997,43 +1007,46 @@
                     
                     if (data.type === 'connected') {
                         showStatus('sseStatus', `📡 ${data.message}`, 'success');
+                    } else if (data.type === 'notification') {
+                        // Mirror web: show server-sent notifications
+                        try { addNotification(data.message || 'Notification'); } catch(_) {}
                     } else if (data.type === 'approvals-updated') {
                         showStatus('sseStatus', `📡 ${data.message}`, 'info');
                         // Refresh approvals section when approvals change
                         setTimeout(() => loadApprovalsSection(), 100);
+                        // Matrix does not change for approvals, but update to keep parity
+                        setTimeout(() => updateUIFromStateMatrix('word', getCurrentUser, getCurrentUserRole, currentDocumentState), 100);
                     } else if (data.type === 'document-checked-out') {
                         showStatus('sseStatus', `📡 ${data.message}`, 'info');
-                        fetchDocumentStatus(); // Refresh UI when checkout state changes
-                        // Auto-load document content when someone checks it out (initial loading)
+                        fetchDocumentStatus();
+                        setTimeout(() => updateUIFromStateMatrix('word', getCurrentUser, getCurrentUserRole, currentDocumentState), 50);
                         if (data.checkedOutBy !== 'word') {
                             loadDocumentContent();
                         }
                     } else if (data.type === 'document-checked-in') {
                         showStatus('sseStatus', `📡 ${data.message}`, 'info');
-                        fetchDocumentStatus(); // Refresh UI when checkout state changes
-                        // Note: User must manually click "View Read-Only" to pull updates
+                        fetchDocumentStatus();
+                        setTimeout(() => updateUIFromStateMatrix('word', getCurrentUser, getCurrentUserRole, currentDocumentState), 50);
                     } else if (data.type === 'document-saved') {
                         showStatus('sseStatus', `📡 ${data.message}`, 'info');
-                        // Note: User must manually click "View Read-Only" to pull updates
+                        setTimeout(() => updateUIFromStateMatrix('word', getCurrentUser, getCurrentUserRole, currentDocumentState), 50);
                     } else if (data.type === 'checkout-cancelled') {
                         showStatus('sseStatus', `📡 ${data.message}`, 'info');
-                        fetchDocumentStatus(); // Refresh UI when checkout state changes
+                        fetchDocumentStatus();
+                        setTimeout(() => updateUIFromStateMatrix('word', getCurrentUser, getCurrentUserRole, currentDocumentState), 50);
                     } else if (data.type === 'document-uploaded') {
                         showStatus('sseStatus', `📡 ${data.message}`, 'info');
-                        // Only update status to avoid racing; startup auto-load will handle initial load
                         fetchDocumentStatus();
+                        setTimeout(() => updateUIFromStateMatrix('word', getCurrentUser, getCurrentUserRole, currentDocumentState), 50);
                     } else if (data.type === 'user-switched') {
                         console.log(`📡 WORD SSE: User switched event received:`, data);
-                        
-                        // Only handle word platform user switches
                         if (data.platform === 'word') {
                             console.log(`📡 WORD: Processing word user switch to ${data.currentUser.name}`);
-                        // Update current user if this was triggered by another client
-                        if (data.currentUser.id !== currentUser?.id) {
-                            currentUser = data.currentUser;
-                            updateCurrentUserDisplay();
-                            populateUserSwitcher();
-                            updateButtonStates();
+                            if (data.currentUser.id !== currentUser?.id) {
+                                currentUser = data.currentUser;
+                                updateCurrentUserDisplay();
+                                populateUserSwitcher();
+                                setTimeout(() => updateUIFromStateMatrix('word', getCurrentUser, getCurrentUserRole, currentDocumentState), 50);
                             }
                         } else {
                             console.log(`📡 WORD: Ignoring ${data.platform || 'legacy'} user switch event`);
@@ -1152,14 +1165,24 @@
                     currentUser = data.user;
                     updateCurrentUserDisplay();
                     
-                    // Update button states and document locking based on new user role
+                    // Always refresh document status first to pass accurate state to the matrix
+                    await fetchDocumentStatus();
+                    
+                    // Update UI from shared state machine for current user and document state
+                    await updateUIFromStateMatrix('word', getCurrentUser, getCurrentUserRole, currentDocumentState);
+                    
+                    // Repopulate actions dropdown from matrix output
+                    try { if (window.__lastStateMatrix) refreshActionsDropdownFromMatrix('docActionsSelect', window.__lastStateMatrix); } catch (e) {}
+                    
+                    // Reload approvals to reflect actor-specific button visibility
+                    await loadApprovalsSection();
+                    
+                    // Keep legacy button logic in sync (no-ops if hidden)
                     await updateButtonStates();
                     
-                    // Add notification
+                    // Notify
                     addNotification(`Word user switched to ${currentUser.name} (${currentUser.role})`, 'info');
-                    
                     console.log('✅ WORD: User switched to:', currentUser.name, `(${currentUser.role})`);
-                    console.log('🔐 Document lock state updated for new user role');
                 } else {
                     const error = await response.json();
                     console.error('❌ WORD: Failed to switch user:', error);
@@ -2640,6 +2663,17 @@
             }
         }
         
+        // Load shared approvals UI config
+        window.__approvalsUi = window.__approvalsUi || null;
+        (async function loadApprovalsUi(){
+            try {
+                const candidates = ['../../approvals-ui.json', '/approvals-ui.json'];
+                for (const url of candidates) {
+                    try { const resp = await fetch(url); if (resp.ok) { window.__approvalsUi = await resp.json(); break; } } catch(_) {}
+                }
+            } catch(_) {}
+        })();
+        
         // Load approvals from state machine and API
         async function loadApprovalsSection() {
             const approvalsList = document.getElementById('approvalsList');
@@ -2649,7 +2683,7 @@
                 // Get current user and document ID
                 const currentUser = window.getCurrentUser ? window.getCurrentUser() : null;
                 if (!currentUser) {
-                    approvalsList.innerHTML = '<div style="color: #6c757d; font-size: 12px;">User not loaded</div>';
+                    approvalsList.innerHTML = '<tr><td colspan="4" style="color:#6c757d; font-size:12px; padding:6px;">User not loaded</td></tr>';
                     return;
                 }
                 
@@ -2660,7 +2694,7 @@
                 const data = await response.json();
                 
                 if (!data.success) {
-                    approvalsList.innerHTML = '<div style="color: #dc3545; font-size: 12px;">Failed to load approvals</div>';
+                    approvalsList.innerHTML = '<tr><td colspan="4" style="color:#dc3545; font-size:12px; padding:6px;">Failed to load approvals</td></tr>';
                     return;
                 }
                 
@@ -2668,48 +2702,66 @@
                 const users = data.users || [];
                 const matrix = data.matrix || {};
                 
+                // Header title with count
+                const uiCfg = window.__approvalsUi;
+                const titleEl = document.querySelector('.approvals-section .section-header h3');
+                if (titleEl) {
+                    const approvedCount = (data.approvals || []).filter(a => a.status === 'approved').length;
+                    const totalCount = users.length;
+                    const title = uiCfg?.title || 'Approvals';
+                    titleEl.textContent = `${title} (${approvedCount}/${totalCount} approved)`;
+                    if (uiCfg?.colors?.title) titleEl.style.color = uiCfg.colors.title;
+                }
+                
                 // Clear and populate
                 approvalsList.innerHTML = '';
                 
                 if (!users.length) {
-                    approvalsList.innerHTML = '<div style="color: #6c757d; font-size: 12px;">No users available</div>';
+                    approvalsList.innerHTML = '<tr><td colspan="4" style="color:#6c757d; font-size:12px; padding:6px;">No users available</td></tr>';
                     return;
                 }
                 
                 users.forEach(user => {
                     const userMatrix = matrix[user.id] || {};
-                    const approvalItem = document.createElement('div');
-                    approvalItem.className = 'approval-item';
+                    const tr = document.createElement('tr');
                     
                     const status = userMatrix.status || 'no';
-                    const statusColor = status === 'approved' ? '#28a745' : (status === 'rejected' ? '#dc3545' : '#6c757d');
-                    const statusText = status === 'approved' ? 'Approved' : (status === 'rejected' ? 'Rejected' : 'No');
+                    const labelApproved = uiCfg?.labels?.approved || 'Approved';
+                    const labelRejected = uiCfg?.labels?.rejected || 'Rejected';
+                    const labelNo = uiCfg?.labels?.no || 'No';
+                    
+                    let pillStyle = `color:${uiCfg?.colors?.pillNoText || '#495057'}; background:${uiCfg?.colors?.pillNoBg || '#f1f3f5'};`;
+                    let statusText = labelNo;
+                    if (status === 'approved') { pillStyle = `color:${uiCfg?.colors?.pillApprovedText || '#155724'}; background:${uiCfg?.colors?.pillApprovedBg || '#d4edda'};`; statusText = labelApproved; }
+                    if (status === 'rejected') { pillStyle = `color:${uiCfg?.colors?.pillRejectedText || '#721c24'}; background:${uiCfg?.colors?.pillRejectedBg || '#f8d7da'};`; statusText = labelRejected; }
                     
                     const showButtons = userMatrix.showButtons;
                     const approveEnabled = userMatrix.approveEnabled;
                     const rejectEnabled = userMatrix.rejectEnabled;
                     
-                    approvalItem.innerHTML = `
-                        <div class="approval-user">${user.name} (${user.role})</div>
-                        <div class="approval-actions">
-                            <span style="color: ${statusColor}; font-size: 11px; font-weight: 500;">${statusText}</span>
+                    tr.innerHTML = `
+                        <td style="padding:8px; border-bottom:1px solid #f1f3f5;">${user.name}</td>
+                        <td style="padding:8px; border-bottom:1px solid #f1f3f5;">${user.role}</td>
+                        <td style="padding:8px; border-bottom:1px solid #f1f3f5; white-space:nowrap;">
+                            <span style="${pillStyle} display:inline-block;padding:2px 8px;border-radius:12px;font-size:12px;font-weight:600;">${statusText}</span>
+                        </td>
+                        <td style="padding:8px; border-bottom:1px solid #f1f3f5;">
                             ${showButtons ? `
-                                <button class="btn-approve" ${!approveEnabled ? 'disabled' : ''} 
-                                        onclick="handleApprovalAction('${user.id}', 'approve')">✓</button>
-                                <button class="btn-reject" ${!rejectEnabled ? 'disabled' : ''} 
-                                        onclick="handleApprovalAction('${user.id}', 'reject')">✗</button>
-                            ` : '<span style="color: #6c757d; font-size: 10px;">No actions</span>'}
-                        </div>
+                                <div style=\"display:flex; gap:6px;\">
+                                    <button class=\"btn\" ${!approveEnabled ? 'disabled' : ''} onclick=\"handleApprovalAction('${user.id}', 'approve')\">Approve</button>
+                                    <button class=\"btn\" ${!rejectEnabled ? 'disabled' : ''} onclick=\"handleApprovalAction('${user.id}', 'reject')\">Reject</button>
+                                </div>
+                            ` : `<span style=\"opacity:.6; font-size:12px;\">No actions</span>`}
+                        </td>
                     `;
-                    
-                    approvalsList.appendChild(approvalItem);
+                    approvalsList.appendChild(tr);
                 });
                 
                 console.log('✅ Approvals loaded from API:', users.length, 'users');
                 
             } catch (error) {
                 console.error('❌ Failed to load approvals:', error);
-                approvalsList.innerHTML = '<div style="color: #dc3545; font-size: 12px;">Error loading approvals</div>';
+                approvalsList.innerHTML = '<tr><td colspan="4" style="color:#dc3545; font-size:12px; padding:6px;">Error loading approvals</td></tr>';
             }
         }
         
@@ -2773,6 +2825,14 @@
                     return;
                 }
                 
+                // Warn if acting on behalf of someone else and current user is editor
+                try {
+                    if (currentUser.role === 'editor' && currentUser.id !== userId) {
+                        const ok = window.confirm(`You are about to ${action} on behalf of another user. Continue?`);
+                        if (!ok) return;
+                    }
+                } catch(_) {}
+                
                 const documentId = currentDocumentState?.currentDocument?.id || 'default-doc';
                 
                 console.log('🎯 Approval action:', { userId, action, actorId: currentUser.id, documentId });
@@ -2831,39 +2891,30 @@
                 setTimeout(async () => {
                     await initializeUserSystem();
                     await loadDefaultDocumentIfAvailable();
-
-                    // GITHUB #4463 FIX: Disable auto-loading to prevent multiple insertFileFromBase64 calls
+                    
                     console.log('🔍 GITHUB #4463 FIX: Skipping auto-load to prevent multiple insertFileFromBase64 calls');
                     console.log('   - Use "View Latest" button for manual document loading');
                     console.log('   - This prevents the multiple-call pattern that causes GeneralException');
-
+                    
                     fetchDocumentStatus();
-
+                    // Initial UI sync from state matrix
+                    setTimeout(() => updateUIFromStateMatrix('word', getCurrentUser, getCurrentUserRole, currentDocumentState), 100);
+                    
                     // Auto attach to existing open document without modifying content
                     setTimeout(() => autoAttachToOpenDocument(), 800);
-
+                    
                     // Refresh approvals when users are loaded
                     setTimeout(() => loadApprovalsSection(), 2000);
-
+                    
                     // Also refresh when state matrix updates (user switches)
                     setTimeout(() => loadApprovalsSection(), 4000);
-                    // NOTE: Disabled auto-open to avoid unexpected new documents on add-in load
-
-                    // Initialize button click animations
+                    
                     addButtonClickAnimation();
-
-                    // Initialize new feature banner
                     if (typeof window.initNewFeatureBanner === 'function') {
                         window.initNewFeatureBanner('word');
                     }
-
-                    // Initialize approvals section
                     loadApprovalsSection();
-
-                    // Initialize document actions dropdown
                     populateDocumentActions();
-
-                    // Refresh dropdown when state changes
                     setTimeout(() => populateDocumentActions(), 3000);
                 }, 1000); // Small delay to ensure SSE connection is established
             }
@@ -3579,6 +3630,48 @@
                 console.log('ℹ️ autoAttachToOpenDocument skipped:', e?.message || e);
             }
         }
+
+        // Fresh minimal View Latest loader (no pre-writes, single call)
+        window.cleanViewLatest = async function() {
+            if (window.__documentInsertInProgress) {
+                console.log('⚠️ cleanViewLatest: insert already in progress');
+                return;
+            }
+            try {
+                window.__documentInsertInProgress = true;
+                const current = await getCurrentOrDefaultDocument();
+                if (!current || !current.id) {
+                    showStatus('documentStatus', '⚠️ No document available', 'warning');
+                    return;
+                }
+                const url = `http://localhost:3001/api/document/${encodeURIComponent(current.id)}`;
+                const resp = await fetch(url, { cache: 'no-store' });
+                if (!resp.ok) throw new Error('Download failed');
+                const buf = await resp.arrayBuffer();
+                const b64 = arrayBufferToBase64(buf);
+                // quick validation (PK signature)
+                try {
+                    const d = atob(b64);
+                    if (!(d.charCodeAt(0) === 80 && d.charCodeAt(1) === 75)) throw new Error('Invalid DOCX');
+                } catch (e) {
+                    throw new Error('Invalid base64 content');
+                }
+                // One-shot insert
+                await Word.run(async (context) => {
+                    if (typeof context.document.insertFileFromBase64 !== 'function') {
+                        throw new Error('insertFileFromBase64 not supported');
+                    }
+                    context.document.insertFileFromBase64(b64, Word.InsertLocation.replace);
+                    await context.sync();
+                });
+                showStatus('documentStatus', '✅ Loaded latest document', 'success');
+            } catch (e) {
+                console.error('cleanViewLatest error:', e);
+                showStatus('documentStatus', `❌ View Latest failed: ${e.message}`, 'error');
+            } finally {
+                window.__documentInsertInProgress = false;
+            }
+        };
     </script>
 </body>
 </html>

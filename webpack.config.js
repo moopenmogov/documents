@@ -77,6 +77,10 @@ module.exports = async (env, options) => {
             to: "new-feature-banner-text.json",
           },
           {
+            from: path.resolve(__dirname, "src", "approvals-ui.json"),
+            to: "approvals-ui.json",
+          },
+          {
             from: "manifest*.xml",
             to: "[name]" + "[ext]",
             transform(content) {

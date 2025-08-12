@@ -1,0 +1,25 @@
+{
+  "title": "Approvals",
+  "columns": {
+    "user": "User",
+    "role": "Role",
+    "status": "Approved",
+    "actions": "Actions"
+  },
+  "labels": {
+    "approved": "Approved",
+    "rejected": "Rejected",
+    "no": "No"
+  },
+  "colors": {
+    "title": "#495057",
+    "pillApprovedBg": "#d4edda",
+    "pillApprovedText": "#155724",
+    "pillRejectedBg": "#f8d7da",
+    "pillRejectedText": "#721c24",
+    "pillNoBg": "#f1f3f5",
+    "pillNoText": "#495057"
+  }
+}
+
+

@@ -876,6 +876,24 @@
         }
         .controls-grid .dropdown .dropdown-menu button:hover,
         .controls-grid .dropdown .dropdown-menu .doc-action:hover { background: var(--btn-pink-hover) !important; }
+
+        /* Plain style for approvals table action buttons (match add-in) */
+        #usersInlineContainer table button.btn {
+            background: #f8f9fa !important;
+            color: #212529 !important;
+            border: 1px solid #ced4da !important;
+            padding: 6px 10px !important;
+            border-radius: 4px !important;
+            font-size: 12px !important;
+            font-weight: 500 !important;
+            min-height: unset !important;
+            min-width: unset !important;
+            box-shadow: none !important;
+        }
+        #usersInlineContainer table button.btn[disabled] {
+            opacity: .5 !important;
+            cursor: default !important;
+        }
     </style>
     <script>
         // Work around SuperDoc UMD builds referencing a global __IS_DEBUG__
@@ -922,6 +940,19 @@
         if (typeof window.initNewFeatureBanner === 'function') {
             window.initNewFeatureBanner('web');
         }
+        
+        // Load shared approvals UI config
+        window.__approvalsUi = null;
+        (async function loadApprovalsUi(){
+            const candidates = ['approvals-ui.json', '/approvals-ui.json', '/scripts/approvals-ui.json'];
+            for (const url of candidates) {
+                try {
+                    const resp = await fetch(url);
+                    if (resp.ok) { window.__approvalsUi = await resp.json(); break; }
+                } catch(_) {}
+            }
+        })();
+
         // Helper to refresh web document actions dropdown from matrix
         function refreshWebActionsFromMatrix() {
             if (window.__lastStateMatrix && typeof window.refreshActionsDropdownFromMatrix === 'function') {
@@ -943,16 +974,16 @@
     <div class="controls-grid">
         <!-- Top-left: Workflows (Users) -->
         <div class="grid-card" style="grid-column:1; grid-row:1;">
-            <div class="grid-title">Workflows</div>
+            <div class="grid-title" id="approvalsTitleWeb">Workflows</div>
             <div class="grid-actions"></div>
             <div id="usersInlineContainer" style="margin-top:8px;">
                 <table style="width:100%; border-collapse:collapse; font-size:12px;">
                     <thead>
-                        <tr style="text-align:left; color:#495057;">
-                            <th style="padding:5px 4px; border-bottom:1px solid #f1f3f5;">User</th>
-                            <th style="padding:5px 4px; border-bottom:1px solid #f1f3f5;">Role</th>
-                            <th style="padding:5px 4px; border-bottom:1px solid #f1f3f5; width:80px;">Approved</th>
-                            <th style="padding:5px 4px; border-bottom:1px solid #f1f3f5;">Actions</th>
+                        <tr style="text-align:left; color:#495057;" id="approvalsHeaderRowWeb">
+                            <th style="padding:5px 4px; border-bottom:1px solid #f1f3f5;" data-col="user">User</th>
+                            <th style="padding:5px 4px; border-bottom:1px solid #f1f3f5;" data-col="role">Role</th>
+                            <th style="padding:5px 4px; border-bottom:1px solid #f1f3f5; width:80px;" data-col="status">Approved</th>
+                            <th style="padding:5px 4px; border-bottom:1px solid #f1f3f5;" data-col="actions">Actions</th>
                         </tr>
                     </thead>
                     <tbody id="usersInlineBody"></tbody>
@@ -2678,22 +2709,31 @@
                 const totalCount = users.length;
                 const usersCardTitle = document.querySelector('.grid-card[style*="grid-column:1; grid-row:1;"] .grid-title');
                 if (usersCardTitle) {
-                    usersCardTitle.textContent = `Workflows (${approvedCount}/${totalCount} approved)`;
+                    const ui = window.__approvalsUi;
+                    const title = ui?.title || 'Approvals';
+                    usersCardTitle.textContent = `${title} (${approvedCount}/${totalCount} approved)`;
+                    if (ui?.colors?.title) usersCardTitle.style.color = ui.colors.title;
                 }
-                const workDocTitle = document.querySelector('.grid-card[style*="grid-column:1; grid-row:2;"] .grid-title');
-                if (workDocTitle) {
-                    workDocTitle.textContent = `Work on Document`;
+                
+                // Apply shared column headers
+                const headerRow = document.getElementById('approvalsHeaderRowWeb');
+                const ui = window.__approvalsUi;
+                if (headerRow && ui?.columns) {
+                    headerRow.querySelector('[data-col="user"]').textContent = ui.columns.user || 'User';
+                    headerRow.querySelector('[data-col="role"]').textContent = ui.columns.role || 'Role';
+                    headerRow.querySelector('[data-col="status"]').textContent = ui.columns.status || 'Approved';
+                    headerRow.querySelector('[data-col="actions"]').textContent = ui.columns.actions || 'Actions';
                 }
-                // Remove redundant indicator; header shows the approval count
 
                 users.forEach(u => {
                     const tr = document.createElement('tr');
                     const row = matrix && matrix[u.id] ? matrix[u.id] : { status: 'no', showButtons: true, approveEnabled: true, rejectEnabled: true };
                     const status = approvalMap[u.id]?.status || row.status || 'no';
                     const isApproved = status === 'approved';
+                    const uiCfg = window.__approvalsUi;
                     const pill = isApproved
-                      ? `<span style="display:inline-block;padding:2px 8px;border-radius:12px;font-size:12px;font-weight:600;color:#155724;background:#d4edda;">Approved</span>`
-                      : `<span style="display:inline-block;padding:2px 8px;border-radius:12px;font-size:12px;font-weight:600;color:#721c24;background:#f8d7da;">${status === 'rejected' ? 'Rejected' : 'No'}</span>`;
+                      ? `<span style=\"display:inline-block;padding:2px 8px;border-radius:12px;font-size:12px;font-weight:600;color:${uiCfg?.colors?.pillApprovedText || '#155724'};background:${uiCfg?.colors?.pillApprovedBg || '#d4edda'};\">${uiCfg?.labels?.approved || 'Approved'}<\/span>`
+                      : `<span style=\"display:inline-block;padding:2px 8px;border-radius:12px;font-size:12px;font-weight:600;color:${uiCfg?.colors?.pillRejectedText || '#721c24'};background:${uiCfg?.colors?.pillRejectedBg || '#f8d7da'};\">${status === 'rejected' ? (uiCfg?.labels?.rejected || 'Rejected') : (uiCfg?.labels?.no || 'No')}<\/span>`;
                     tr.innerHTML = `
                         <td style="padding:8px; border-bottom:1px solid #f1f3f5;">${u.name}</td>
                         <td style="padding:8px; border-bottom:1px solid #f1f3f5;">${u.role}</td>
@@ -2719,6 +2759,17 @@
                             const explicitAction = btn.getAttribute('data-action');
                             const currentStatus = btn.getAttribute('data-status');
                             const nextAction = explicitAction || (currentStatus === 'approved' ? 'reject' : 'approve');
+                            // Warn if acting on behalf of someone else and current user is editor
+                            try {
+                                const actor = (window.currentUser && window.currentUser.id) ? window.currentUser : (getCurrentUser && getCurrentUser());
+                                const actorRole = actor && actor.role ? actor.role : (getCurrentUserRole && getCurrentUserRole());
+                                if (actorRole === 'editor' && actor && actor.id !== targetUserId) {
+                                    const target = (window.__lastUsersCache || []).find(u => u.id === targetUserId);
+                                    const targetName = target ? target.name : targetUserId;
+                                    const ok = window.confirm(`You are about to ${nextAction} on behalf of ${targetName}. Continue?`);
+                                    if (!ok) return;
+                                }
+                            } catch(_) {}
                             try {
                                 const currentId = (window.currentDocumentState && window.currentDocumentState.currentDocument && window.currentDocumentState.currentDocument.id) || 'default-doc';
                                 await fetch(`http://localhost:3001/api/document/${currentId}/approvals`, {

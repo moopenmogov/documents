@@ -138,6 +138,8 @@
     const tbody = document.createElement('tbody');
 
     const featureState = new Map();
+    // Keep a map of per-row painters to update UI when state changes remotely
+    const painters = new Map();
 
     strings.features.forEach(f => {
       // If server-driven single flag controls banner visibility, keep per-feature controls but default from server state later
@@ -156,76 +158,36 @@
       tdRelease.textContent = formatRelease(f);
 
       const tdActions = document.createElement('td');
-      const actions = document.createElement('div');
-      actions.className = 'nfb-actions';
-      const btnEnable = document.createElement('button');
-      btnEnable.className = 'nfb-btn';
-      btnEnable.textContent = strings.modal.buttons.enable;
-      const btnDisable = document.createElement('button');
-      btnDisable.className = 'nfb-btn';
-      btnDisable.textContent = strings.modal.buttons.disable;
+          const chk = document.createElement('input');
+          chk.type = 'checkbox';
+          chk.className = 'nfb-toggle';
+          chk.setAttribute('aria-label', `Enable ${f.name}`);
+          function repaint() {
+            const enabled = !!featureState.get(f.id);
+            chk.checked = enabled;
+          }
+          chk.addEventListener('change', async (e) => {
+            const enabled = !!e.target.checked;
+            featureState.set(f.id, enabled);
+            repaint();
+            const msg = (enabled ? (strings.modal.notifications.toggledOn || 'Enabled: {{name}}') : (strings.modal.notifications.toggledOff || 'Disabled: {{name}}')).replace('{{name}}', f.name);
+            notify(msg);
+            persistFeatureToggle(f.id, enabled);
+            // Also toggle the master banner flag for consistency
+            persistFeatureToggle('newFeatureBanner', enabled);
+          });
+          tdActions.appendChild(chk);
 
-      function updateActionButtons() {
-        const enabled = !!featureState.get(f.id);
-        // Reset classes to a known baseline
-        ['nfb-btn-active','nfb-btn-inactive'].forEach(c => {
-          btnEnable.classList.remove(c);
-          btnDisable.classList.remove(c);
+          tr.appendChild(tdName);
+          tr.appendChild(tdStatus);
+          tr.appendChild(tdRelease);
+          tr.appendChild(tdActions);
+          tbody.appendChild(tr);
+
+          repaint();
+          // Register painter for remote updates
+          painters.set(f.id, repaint);
         });
-        // Apply mutually exclusive visual states
-        if (enabled) {
-          btnEnable.classList.add('nfb-btn-active');
-          btnDisable.classList.add('nfb-btn-inactive');
-        } else {
-          btnDisable.classList.add('nfb-btn-active');
-          btnEnable.classList.add('nfb-btn-inactive');
-        }
-        // Accessibility pressed state
-        btnEnable.setAttribute('aria-pressed', String(enabled));
-        btnDisable.setAttribute('aria-pressed', String(!enabled));
-        // Data attributes for quick inspection
-        btnEnable.setAttribute('data-state', enabled ? 'active' : 'inactive');
-        btnDisable.setAttribute('data-state', enabled ? 'inactive' : 'active');
-      }
-
-      const enableHandler = async (e) => {
-        try { e.preventDefault(); } catch (_) {}
-        featureState.set(f.id, true);
-        updateActionButtons();
-        const msg = (strings.modal.notifications.toggledOn || 'Enabled: {{name}}').replace('{{name}}', f.name);
-        notify(msg);
-        persistFeatureToggle(f.id, true);
-        // Also toggle the master banner flag for consistency
-        persistFeatureToggle('newFeatureBanner', true);
-      };
-      const disableHandler = async (e) => {
-        try { e.preventDefault(); } catch (_) {}
-        featureState.set(f.id, false);
-        updateActionButtons();
-        const msg = (strings.modal.notifications.toggledOff || 'Disabled: {{name}}').replace('{{name}}', f.name);
-        notify(msg);
-        persistFeatureToggle(f.id, false);
-        // Also toggle the master banner flag for consistency
-        persistFeatureToggle('newFeatureBanner', false);
-      };
-      // Attach robust event listeners to survive capture-phase stoppers
-      btnEnable.addEventListener('pointerdown', enableHandler, { capture: true });
-      btnEnable.addEventListener('click', enableHandler, false);
-      btnDisable.addEventListener('pointerdown', disableHandler, { capture: true });
-      btnDisable.addEventListener('click', disableHandler, false);
-
-      actions.appendChild(btnEnable);
-      actions.appendChild(btnDisable);
-      tdActions.appendChild(actions);
-
-      tr.appendChild(tdName);
-      tr.appendChild(tdStatus);
-      tr.appendChild(tdRelease);
-      tr.appendChild(tdActions);
-      tbody.appendChild(tr);
-
-      updateActionButtons();
-    });
 
     table.appendChild(tbody);
 
@@ -236,6 +198,17 @@
     document.body.appendChild(backdrop);
     document.body.appendChild(modal);
     log('modal-dom-ready', { hasBackdrop: !!document.getElementById('nfbBackdrop'), hasModal: !!document.getElementById('nfbModal') });
+    // Expose repaint helper to sync UI with server-driven events
+    window.__nfbRepaint = function repaintFromState(map) {
+      try {
+        if (!map) return;
+        map.forEach((val, id) => {
+          if (typeof val === 'boolean') featureState.set(id, !!val);
+          const painter = painters.get(id);
+          if (typeof painter === 'function') painter();
+        });
+      } catch (_) {}
+    };
 
     function showModal() {
       backdrop.style.display = 'block';
@@ -312,8 +285,19 @@
           serverState.forEach((val, id) => {
             if (featureState.has(id)) featureState.set(id, !!val);
           });
+          // repaint buttons if modal is already in DOM
+          if (typeof window.__nfbRepaint === 'function') window.__nfbRepaint(serverState);
         }
       } catch (_) {}
+      // Ensure defaults to enabled if server did not provide a value
+      try {
+        const assumed = new Map();
+        strings.features.forEach(f => {
+          if (!featureState.has(f.id)) featureState.set(f.id, true);
+          assumed.set(f.id, !!featureState.get(f.id));
+        });
+        if (typeof window.__nfbRepaint === 'function') window.__nfbRepaint(assumed);
+      } catch(_) {}
       // Ensure clicks inside modal do not leak to document-level listeners that may close it
       const modalEl = document.getElementById('nfbModal');
       if (modalEl) {
@@ -339,16 +323,9 @@
             const data = JSON.parse(evt.data);
             if (data && data.type === 'feature-toggled') {
               const { id, enabled } = data;
-              if (featureState.has(id)) {
-                featureState.set(id, !!enabled);
-                // Re-paint buttons if modal is open
-                const modal = document.getElementById('nfbModal');
-                if (modal && getComputedStyle(modal).display !== 'none') {
-                  // trigger a quick repaint by toggling a known feature's button
-                  const btns = modal.querySelectorAll('.nfb-btn');
-                  btns.forEach(b => { /* no-op repaint; handlers update on click only */ });
-                }
-              }
+              const map = new Map(); map.set(id, !!enabled);
+              if (featureState.has(id)) featureState.set(id, !!enabled);
+              if (typeof window.__nfbRepaint === 'function') window.__nfbRepaint(map);
             }
           } catch (_) {}
         };
