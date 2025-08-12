@@ -837,6 +837,12 @@
                 <button id="btnReplaceCurrent" type="button">⬆️ Replace default document</button>
                 <input id="inputReplaceCurrent" type="file" accept=".docx,application/vnd.openxmlformats-officedocument.wordprocessingml.document" style="display:none;" />
             </div>
+            <!-- Word Document Actions Dropdown (for state-matrix actions like Approval details) -->
+            <div style="margin:6px 0;">
+                <select id="docActionsSelect" class="user-select">
+                    <option value="">Document actions…</option>
+                </select>
+            </div>
 
             <!-- Approvals summary pill and details trigger -->
             <div id="approvalsSummaryRowWord" style="display:flex; align-items:center; gap:8px; margin: 6px 0 12px 0;">
@@ -2199,11 +2205,8 @@
                     try {
                         await fetchDocumentStatus();
                         await updateUIFromStateMatrix('word', getCurrentUser, getCurrentUserRole, currentDocumentState);
-                        if (window.refreshActionsDropdownFromMatrix && window.__lastStateMatrix) {
-                            window.refreshActionsDropdownFromMatrix('docActionsSelect', window.__lastStateMatrix);
-                        } else {
-                            populateDocumentActions();
-                        }
+                        try { if (window.refreshActionsDropdownFromMatrix && window.__lastStateMatrix) window.refreshActionsDropdownFromMatrix('docActionsSelect', window.__lastStateMatrix); } catch(_) {}
+                        try { populateDocumentActions(); } catch(_) {}
                         if (window.updateQuickActionsVisibility) updateQuickActionsVisibility();
                     } catch(_) {}
                 } else {
@@ -3721,9 +3724,12 @@ window.__forceOpenApprovalsTest = function() {
                     console.log('   - Use "View Latest" button for manual document loading');
                     console.log('   - This prevents the multiple-call pattern that causes GeneralException');
                     
-                    fetchDocumentStatus();
-                    // Initial UI sync from state matrix
-                    setTimeout(() => updateUIFromStateMatrix('word', getCurrentUser, getCurrentUserRole, currentDocumentState), 100);
+                        fetchDocumentStatus();
+                        // Initial UI sync from state matrix
+                        setTimeout(async () => {
+                            await updateUIFromStateMatrix('word', getCurrentUser, getCurrentUserRole, currentDocumentState);
+                            try { if (window.refreshActionsDropdownFromMatrix && window.__lastStateMatrix) window.refreshActionsDropdownFromMatrix('docActionsSelect', window.__lastStateMatrix); } catch(_) {}
+                        }, 150);
                     
                     if (!window.__insertIsolation) {
                         // Auto attach to existing open document without modifying content
