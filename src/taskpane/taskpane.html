@@ -3625,8 +3625,10 @@
                   `<th>${uiCfg.columns?.actions||'Actions'}</th>`+
                   `</tr></thead><tbody id="usersTableBodyWord"></tbody></table>`+
                   `<div class="nfb-footer"><span></span><button class="nfb-btn" id="usersModalCloseWord">Close</button></div>`;
-
-                const tbody = document.getElementById('usersTableBodyWord');
+                const tbody = modal.querySelector('#usersTableBodyWord');
+                if (!tbody) {
+                    console.warn('Approvals modal: tbody not found');
+                }
                 users.forEach(u => {
                     const row = matrix[u.id] || { status:'no', showButtons:true, approveEnabled:true, rejectEnabled:true };
                     const status = approvals.find(a => a.userId===u.id)?.status || row.status || 'no';
@@ -3643,7 +3645,7 @@
                         const btnR=document.createElement('button'); btnR.className='nfb-btn'; btnR.textContent='Reject'; btnR.disabled=(status==='rejected'||!row.rejectEnabled); btnR.onclick=()=>handleApprovalAction(u.id,'reject');
                         const wrap=document.createElement('div'); wrap.className='nfb-actions'; wrap.append(btnA,btnR); tdActions.appendChild(wrap);
                     } else { tdActions.textContent='No actions'; tdActions.style.opacity='.6'; }
-                    tr.innerHTML=`<td>${u.name}</td><td>${u.role}</td>`; tr.append(tdStatus, tdActions); tbody.appendChild(tr);
+                    tr.innerHTML=`<td>${u.name}</td><td>${u.role}</td>`; tr.append(tdStatus, tdActions); if (tbody) tbody.appendChild(tr);
                 });
 
                 // Open with shared behavior
