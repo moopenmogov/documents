@@ -1063,10 +1063,10 @@
                     if (!document.getElementById(styleId)) {
                         const st = document.createElement('style');
                         st.id = styleId;
-                        st.textContent = `
-                            #approvalsBackdropWord{position:fixed;inset:0;background:rgba(0,0,0,.35);z-index:2147483646;display:block}
+                    st.textContent = `
+                            #approvalsBackdropWord{position:fixed;inset:0;background:rgba(0,0,0,.35);z-index:9999999998;display:block;pointer-events:auto}
                             #approvalsModalWord{position:fixed;top:50%;left:50%;transform:translate(-50%,-50%);background:#fff;border-radius:10px;
-                              width:min(700px,92vw);max-height:80vh;overflow:auto;padding:16px;box-shadow:0 8px 24px rgba(0,0,0,.25);z-index:2147483647}
+                              width:min(700px,92vw);max-height:80vh;overflow:auto;padding:16px;box-shadow:0 8px 24px rgba(0,0,0,.25);z-index:9999999999;pointer-events:auto;isolation:isolate}
                             #approvalsModalWord .title{font-size:18px;font-weight:700;margin:0 0 6px}
                             #approvalsModalWord .sub{font-size:12px;color:#6c757d;margin:0 0 12px}
                             #approvalsModalWord table{width:100%;border-collapse:collapse}
@@ -1077,7 +1077,11 @@
                         document.head.appendChild(st);
                     }
 
-                    // Create dedicated backdrop and modal
+                // Ensure any other global backdrops are hidden (defensive)
+                try { const nfb = document.getElementById('nfbBackdrop'); if (nfb) nfb.style.display = 'none'; } catch(_) {}
+                try { const nfbm = document.getElementById('nfbModal'); if (nfbm) nfbm.style.display = 'none'; } catch(_) {}
+
+                // Create dedicated backdrop and modal
                     let backdrop = document.getElementById('approvalsBackdropWord');
                     if (!backdrop) { backdrop = document.createElement('div'); backdrop.id='approvalsBackdropWord'; document.body.appendChild(backdrop); }
                     let modal = document.getElementById('approvalsModalWord');
