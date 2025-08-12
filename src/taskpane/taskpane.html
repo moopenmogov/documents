@@ -1063,10 +1063,10 @@
                     if (!document.getElementById(styleId)) {
                         const st = document.createElement('style');
                         st.id = styleId;
-                    st.textContent = `
-                            #approvalsBackdropWord{position:fixed;inset:0;background:rgba(0,0,0,.35);z-index:9999999998;display:block;pointer-events:auto}
+                        st.textContent = `
+                            #approvalsBackdropWord{position:fixed;inset:0;background:rgba(0,0,0,.35);z-index:2147483646;display:block;pointer-events:none}
                             #approvalsModalWord{position:fixed;top:50%;left:50%;transform:translate(-50%,-50%);background:#fff;border-radius:10px;
-                              width:min(700px,92vw);max-height:80vh;overflow:auto;padding:16px;box-shadow:0 8px 24px rgba(0,0,0,.25);z-index:9999999999;pointer-events:auto;isolation:isolate}
+                              width:min(700px,92vw);max-height:80vh;overflow:auto;padding:16px;box-shadow:0 8px 24px rgba(0,0,0,.25);z-index:2147483647;pointer-events:auto}
                             #approvalsModalWord .title{font-size:18px;font-weight:700;margin:0 0 6px}
                             #approvalsModalWord .sub{font-size:12px;color:#6c757d;margin:0 0 12px}
                             #approvalsModalWord table{width:100%;border-collapse:collapse}
@@ -1078,8 +1078,15 @@
                     }
 
                 // Ensure any other global backdrops are hidden (defensive)
-                try { const nfb = document.getElementById('nfbBackdrop'); if (nfb) nfb.style.display = 'none'; } catch(_) {}
-                try { const nfbm = document.getElementById('nfbModal'); if (nfbm) nfbm.style.display = 'none'; } catch(_) {}
+                try {
+                    let kill = document.getElementById('approvals-modal-nfb-kill-word');
+                    if (!kill) {
+                        kill = document.createElement('style');
+                        kill.id = 'approvals-modal-nfb-kill-word';
+                        kill.textContent = `#nfbBackdrop{display:none!important} #nfbModal{display:none!important}`;
+                        document.head.appendChild(kill);
+                    }
+                } catch(_) {}
 
                 // Create dedicated backdrop and modal
                     let backdrop = document.getElementById('approvalsBackdropWord');
@@ -3721,10 +3728,11 @@
 
                 // Open + close handlers
                 backdrop.style.display='block'; modal.style.display='block';
-                const close=()=>{ try{ modal.style.display='none'; backdrop.style.display='none'; }catch(_){} };
+                const close=()=>{ try{ modal.style.display='none'; backdrop.style.display='none'; document.getElementById('approvals-modal-nfb-kill-word')?.remove(); }catch(_){} };
                 // Close only when clicking backdrop; never close on clicks inside the modal
                 modal.querySelector('#approvalsCloseWord').onclick = close;
-                backdrop.onclick = (ev) => { if (ev.target === backdrop) close(); };
+                // Disable backdrop click-to-close to avoid external capture listeners
+                backdrop.onclick = null;
                 // Swallow events inside modal to avoid global/capture listeners closing it
                 const swallow = (ev) => { ev.stopPropagation(); };
                 ['click','mousedown','mouseup','pointerdown','pointerup','touchstart','touchend'].forEach(evt => {
