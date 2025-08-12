@@ -20,6 +20,49 @@
             box-sizing: border-box;
         }
         
+        // Deep logger for Office RichApi errors
+        function logRichApiError(error, label) {
+            try {
+                const seen = new WeakSet();
+                const safe = (obj) => {
+                    try {
+                        return JSON.parse(JSON.stringify(obj, (k, v) => {
+                            if (typeof v === 'object' && v !== null) {
+                                if (seen.has(v)) return '[Circular]';
+                                seen.add(v);
+                            }
+                            return v;
+                        }));
+                    } catch (_) { return obj; }
+                };
+                const tag = label || 'RichApi Error';
+                console.group(tag);
+                console.error(error);
+                if (error && typeof error === 'object') {
+                    try { console.log('name:', error.name); } catch(_) {}
+                    try { console.log('code:', error.code); } catch(_) {}
+                    try { console.log('message:', error.message); } catch(_) {}
+                    try { console.log('stack:', error.stack); } catch(_) {}
+                    try { console.log('traceMessages:', error.traceMessages || null); } catch(_) {}
+                    try { console.log('debugInfo:', safe(error.debugInfo) || null); } catch(_) {}
+                    let inner = error.innerError;
+                    let depth = 0;
+                    while (inner) {
+                        console.group(`innerError[${depth}]`);
+                        try { console.log('code:', inner.code); } catch(_) {}
+                        try { console.log('message:', inner.message); } catch(_) {}
+                        try { console.log('stack:', inner.stack); } catch(_) {}
+                        try { console.log('traceMessages:', inner.traceMessages || null); } catch(_) {}
+                        try { console.log('debugInfo:', safe(inner.debugInfo) || null); } catch(_) {}
+                        console.groupEnd();
+                        inner = inner.innerError;
+                        depth++;
+                    }
+                }
+                console.groupEnd();
+            } catch (_) {}
+        }
+
         body.read-only-mode {
             border: 8px solid #f8f9fa;
         }
@@ -783,7 +826,7 @@
                 <select id="docActionsSelect" class="user-select" onchange="executeDocumentAction(this.value)">
                     <option value="">Document actions...</option>
                 </select>
-                <button id="viewLatestBtn" class="btn-secondary" onclick="(window.viewLatestSafe||window.cleanViewLatest||openLatestExternal)()">👀 View Latest</button>
+                <button id="viewLatestBtn" class="btn-secondary" onclick="window.viewLatestSafe && window.viewLatestSafe()">👀 View Latest</button>
             </div>
         </div>
         
@@ -975,6 +1018,452 @@
     </div>
     
     <script>
+    // Enable extended error logging from Office.js runtime (best-effort)
+    try {
+        if (window.OfficeExtension && OfficeExtension.config) {
+            OfficeExtension.config.extendedErrorLogging = true;
+            console.log('🧭 OfficeExtension: extendedErrorLogging enabled');
+        }
+    } catch (_) {}
+
+    // Catch any uncaught errors/rejections so nothing is lost
+    try {
+        window.addEventListener('unhandledrejection', (ev) => {
+            const reason = ev && (ev.reason || ev.detail || ev);
+            console.warn('⚠️ Unhandled promise rejection');
+            try { logRichApiError(reason, 'unhandledrejection'); } catch(_) { console.warn(reason); }
+        });
+        window.addEventListener('error', (ev) => {
+            const err = (ev && (ev.error || ev.message)) || ev;
+            console.warn('⚠️ Unhandled window error');
+            try { logRichApiError(err, 'window.error'); } catch(_) { console.warn(err); }
+        });
+    } catch (_) {}
+
+    // --- Self Test: Insert local DOCX via file picker ---
+    (function setupSelfTestInsertDocx() {
+        try {
+            function ensureBase64FromArrayBuffer(buffer) {
+                try {
+                    if (typeof window.arrayBufferToBase64 === 'function') {
+                        return window.arrayBufferToBase64(buffer);
+                    }
+                    let binary = '';
+                    const bytes = new Uint8Array(buffer);
+                    const len = bytes.byteLength;
+                    for (let i = 0; i < len; i++) {
+                        binary += String.fromCharCode(bytes[i]);
+                    }
+                    return btoa(binary);
+                } catch (e) {
+                    console.warn('arrayBuffer->base64 failed, retrying via Blob/DataURL', e);
+                    return new Promise((resolve, reject) => {
+                        try {
+                            const blob = new Blob([buffer], { type: 'application/vnd.openxmlformats-officedocument.wordprocessingml.document' });
+                            const fr = new FileReader();
+                            fr.onload = () => {
+                                const dataUrl = fr.result || '';
+                                const comma = (dataUrl || '').indexOf(',');
+                                if (comma >= 0) return resolve(dataUrl.slice(comma + 1));
+                                return resolve(dataUrl);
+                            };
+                            fr.onerror = (err) => reject(err);
+                            fr.readAsDataURL(blob);
+                        } catch (err) { reject(err); }
+                    });
+                }
+            }
+
+            async function insertDocxBase64Normalized(base64) {
+                const maybeAwait = (v) => (v && typeof v.then === 'function' ? v : Promise.resolve(v));
+                const b64 = await maybeAwait(base64);
+                // quick PK check
+                try {
+                    const d = atob(b64);
+                    if (!(d.charCodeAt(0) === 80 && d.charCodeAt(1) === 75)) {
+                        throw new Error('Selected file is not a valid .docx (PK signature missing)');
+                    }
+                } catch (_) {
+                    // continue; some environments may fail atob on large inputs, Word will still validate
+                }
+                await Word.run(async (context) => {
+                    if (typeof context.document.insertFileFromBase64 !== 'function') {
+                        throw new Error('insertFileFromBase64 not supported');
+                    }
+                    context.document.insertFileFromBase64(b64, Word.InsertLocation.replace);
+                    await context.sync();
+                });
+            }
+
+            // Expose helpers globally so other loaders can reuse the exact same successful path
+            try {
+                window.ensureBase64FromArrayBuffer = ensureBase64FromArrayBuffer;
+                window.insertDocxBase64Normalized = insertDocxBase64Normalized;
+            } catch (_) {}
+
+            function createUI() {
+                const wrapper = document.createElement('div');
+                wrapper.id = 'self-test-insert-docx-wrapper';
+                wrapper.style.marginTop = '8px';
+                wrapper.style.padding = '8px';
+                wrapper.style.borderTop = '1px solid #eee';
+
+                const btn = document.createElement('button');
+                btn.id = 'selfTestInsertDocxBtn';
+                btn.type = 'button';
+                btn.textContent = '🧪 Self Test: Insert DOCX';
+                btn.style.padding = '6px 10px';
+                btn.style.fontSize = '12px';
+
+                const hint = document.createElement('div');
+                hint.textContent = 'Pick a local .docx (e.g., Contract of the Future.docx) to insert in-place.';
+                hint.style.fontSize = '11px';
+                hint.style.color = '#555';
+                hint.style.marginTop = '4px';
+
+                const input = document.createElement('input');
+                input.type = 'file';
+                input.accept = '.docx,application/vnd.openxmlformats-officedocument.wordprocessingml.document';
+                input.style.display = 'none';
+                input.id = 'selfTestFileInputDocx';
+
+                btn.addEventListener('click', () => input.click());
+                input.addEventListener('change', async () => {
+                    const file = input.files && input.files[0];
+                    if (!file) return;
+                    if (window.__documentInsertInProgress) {
+                        console.log('⚠️ SelfTest: insert already in progress');
+                        return;
+                    }
+                    try {
+                        window.__documentInsertInProgress = true;
+                        if (typeof showStatus === 'function') {
+                            showStatus('documentStatus', `👀 Loading ${file.name}...`, 'info');
+                        }
+                        const buffer = await file.arrayBuffer();
+                        const base64 = await ensureBase64FromArrayBuffer(buffer);
+                        await insertDocxBase64Normalized(base64);
+                        if (typeof showStatus === 'function') {
+                            showStatus('documentStatus', `✅ Inserted: ${file.name}`, 'success');
+                        }
+                    } catch (e) {
+                        console.error('🧪 SelfTest insert error:', e);
+                        try { logRichApiError(e, 'SelfTest insert'); } catch(_) {}
+                        if (typeof showStatus === 'function') {
+                            showStatus('documentStatus', `❌ Self Test failed: ${e && e.message ? e.message : e}`, 'error');
+                        }
+                    } finally {
+                        window.__documentInsertInProgress = false;
+                        input.value = '';
+                    }
+                });
+
+                wrapper.appendChild(btn);
+                wrapper.appendChild(hint);
+                wrapper.appendChild(input);
+
+                // Prefer to place right after the View Latest button
+                const viewBtn = document.getElementById('viewLatestBtn');
+                if (viewBtn && viewBtn.parentElement) {
+                    console.log('🧪 Adding Self Test button next to View Latest');
+                    viewBtn.parentElement.insertBefore(wrapper, viewBtn.nextSibling);
+                    return;
+                }
+                // Otherwise attach near existing actions area; fallback to body
+                const targets = [
+                    document.getElementById('documentActions'),
+                    document.getElementById('actions'),
+                    document.getElementById('app'),
+                    document.body
+                ];
+                const host = targets.find(Boolean) || document.body;
+                console.log('🧪 Adding Self Test button to fallback host');
+                host.appendChild(wrapper);
+            }
+
+            if (document.readyState === 'loading') {
+                document.addEventListener('DOMContentLoaded', createUI);
+            } else {
+                createUI();
+            }
+        } catch (e) {
+            console.warn('Failed to set up Self Test Insert DOCX UI', e);
+        }
+    })();
+
+    // --- Server Raw Loader: Use the same insert path as Self Test but fetch from API ---
+    (function setupServerRawLoader() {
+        try {
+            async function loadLatestServerRaw() {
+                if (window.__documentInsertInProgress) {
+                    console.log('⚠️ ServerRaw: insert already in progress');
+                    return;
+                }
+                try {
+                    window.__documentInsertInProgress = true;
+                    const getDoc = (typeof getCurrentOrDefaultDocument === 'function') ? getCurrentOrDefaultDocument : null;
+                    const current = getDoc ? await getDoc() : null;
+                    if (!current || !current.id) {
+                        showStatus('documentStatus', '⚠️ No document available', 'warning');
+                        return;
+                    }
+                    showStatus('documentStatus', `👀 Loading ${current.filename || 'latest'}...`, 'info');
+                    const baseUrl = `http://localhost:3001/api/document/${encodeURIComponent(current.id)}`;
+
+                    // Prefer .docx endpoint with full headers; fall back to raw if needed
+                    let chosenUrl = `${baseUrl}.docx`;
+                    let resp = await fetch(chosenUrl, { cache: 'no-store', headers: { 'Accept': 'application/vnd.openxmlformats-officedocument.wordprocessingml.document' } });
+                    if (!resp.ok) {
+                        console.log(`ℹ️ .docx endpoint returned ${resp.status}; retrying without suffix`);
+                        chosenUrl = baseUrl;
+                        resp = await fetch(chosenUrl, { cache: 'no-store' });
+                    }
+                    if (!resp.ok) throw new Error(`Fetch failed: ${resp.status}`);
+
+                    const contentType = resp.headers.get('content-type') || '';
+                    const contentLength = resp.headers.get('content-length') || 'unknown';
+                    console.log(`🔎 ServerRaw: headers content-type='${contentType}', content-length='${contentLength}', url='${chosenUrl}'`);
+
+                    const buffer = await resp.arrayBuffer();
+                    const byteLen = buffer.byteLength || 0;
+                    console.log(`🔎 ServerRaw: fetched ${byteLen} bytes`);
+
+                    // Quick binary PK signature check before base64
+                    try {
+                        const u8 = new Uint8Array(buffer);
+                        const pkOk = u8.length >= 2 && u8[0] === 0x50 && u8[1] === 0x4B;
+                        if (!pkOk) {
+                            console.warn('⚠️ ServerRaw: PK signature missing in binary; attempting to read as text to inspect error');
+                            // Try to decode a small portion as text for diagnostics
+                            const slice = u8.subarray(0, Math.min(256, u8.length));
+                            const textProbe = new TextDecoder('utf-8', { fatal: false }).decode(slice);
+                            console.warn('ℹ️ First bytes (as text):', textProbe);
+                        }
+                    } catch (_) {}
+
+                    const base64 = (typeof window.ensureBase64FromArrayBuffer === 'function')
+                        ? await window.ensureBase64FromArrayBuffer(buffer)
+                        : (typeof arrayBufferToBase64 === 'function' ? arrayBufferToBase64(buffer) : null);
+                    if (!base64) throw new Error('Base64 conversion failed');
+                    // Try multiple insert paths mirroring cleanViewLatest to maximize chances
+                    const tryInsert = async (fn, label) => {
+                        try {
+                            await fn();
+                            console.log(`✅ ServerRaw insert succeeded via ${label}`);
+                            showStatus('documentStatus', `✅ Inserted: ${current.filename || 'document'}`, 'success');
+                            return true;
+                        } catch (err) {
+                            console.log(`ℹ️ ServerRaw insert failed via ${label}:`, err?.message || err);
+                            try { logRichApiError(err, `ServerRaw ${label}`); } catch(_) {}
+                            return false;
+                        }
+                    };
+
+                    // A. exact working path from Self Test
+                    const pathA = async () => (typeof window.insertDocxBase64Normalized === 'function')
+                        ? window.insertDocxBase64Normalized(base64)
+                        : insertBase64IntoWord(base64, current.filename);
+                    if (await tryInsert(pathA, 'normalized(document.replace)')) return;
+
+                    // B. body.replace
+                    const pathB = async () => Word.run(async (context) => {
+                        context.document.body.insertFileFromBase64(base64, Word.InsertLocation.replace);
+                        await context.sync();
+                    });
+                    if (await tryInsert(pathB, 'body.replace')) return;
+
+                    // C. selection.replace
+                    const pathC = async () => Word.run(async (context) => {
+                        const sel = context.document.getSelection();
+                        sel.insertFileFromBase64(base64, Word.InsertLocation.replace);
+                        await context.sync();
+                    });
+                    if (await tryInsert(pathC, 'selection.replace')) return;
+
+                    // D. Open as new document (diagnostic fallback)
+                    const pathD = async () => Word.run(async (context) => {
+                        if (typeof context.application.createDocument !== 'function') throw new Error('createDocument not available');
+                        const newDoc = context.application.createDocument(base64);
+                        newDoc.open();
+                        await context.sync();
+                    });
+                    if (await tryInsert(pathD, 'application.createDocument(base64).open')) return;
+
+                    throw new Error('insertFileFromBase64 failed in all ServerRaw modes');
+                } catch (e) {
+                    console.error('ServerRaw load error:', e);
+                    try { logRichApiError(e, 'ServerRaw insert'); } catch(_) {}
+                    showStatus('documentStatus', `❌ Server/raw load failed: ${e && e.message ? e.message : e}`, 'error');
+                } finally {
+                    window.__documentInsertInProgress = false;
+                }
+            }
+
+            function createUI() {
+                const btnRaw = document.createElement('button');
+                btnRaw.id = 'loadLatestServerRawBtn';
+                btnRaw.type = 'button';
+                btnRaw.textContent = '🔗 Load Latest (server/raw)';
+                btnRaw.style.padding = '6px 10px';
+                btnRaw.style.fontSize = '12px';
+                btnRaw.addEventListener('click', () => loadLatestServerRaw());
+
+                async function loadLatestServerBase64() {
+                    if (window.__documentInsertInProgress) return;
+                    try {
+                        window.__documentInsertInProgress = true;
+                        const resp = await fetch('http://localhost:3001/api/get-updated-docx', { cache: 'no-store' });
+                        if (!resp.ok) throw new Error(`Fetch failed: ${resp.status}`);
+                        const data = await resp.json();
+                        const b64 = data && data.docx;
+                        if (!b64) throw new Error('No base64 docx in response');
+                        console.log(`🔎 ServerBase64: got ${b64.length} chars (~${Math.round(b64.length*3/4/1024)}KB) for ${data.filename}`);
+
+                        // Quick PK signature check by decoding first few base64 blocks
+                        try {
+                            const probeLen = Math.min(((8 + 3) & ~3), b64.length); // nearest >=8 and multiple of 4
+                            const headBytes = atob(b64.slice(0, probeLen));
+                            const pkOk = headBytes.length >= 2 && headBytes.charCodeAt(0) === 0x50 && headBytes.charCodeAt(1) === 0x4B;
+                            console.log(`🔎 ServerBase64: PK signature ${pkOk ? '✅' : '❌'}`);
+                        } catch (e) {
+                            console.log('ℹ️ ServerBase64: PK probe skipped:', e?.message || e);
+                        }
+
+                        const tryInsert = async (fn, label) => {
+                            try {
+                                await fn();
+                                console.log(`✅ ServerBase64 insert succeeded via ${label}`);
+                                showStatus('documentStatus', `✅ Inserted: ${data.filename || 'document'}`, 'success');
+                                return true;
+                            } catch (err) {
+                                console.log(`ℹ️ ServerBase64 insert failed via ${label}:`, err?.message || err);
+                                try { logRichApiError(err, `ServerBase64 ${label}`); } catch(_) {}
+                                return false;
+                            }
+                        };
+
+                        // A. exact path used in self-test
+                        const pathA = async () => (typeof window.insertDocxBase64Normalized === 'function')
+                            ? window.insertDocxBase64Normalized(b64)
+                            : insertBase64IntoWord(b64, data.filename);
+                        if (await tryInsert(pathA, 'normalized(document.replace)')) return;
+
+                        // B. body.replace
+                        const pathB = async () => Word.run(async (context) => {
+                            context.document.body.insertFileFromBase64(b64, Word.InsertLocation.replace);
+                            await context.sync();
+                        });
+                        if (await tryInsert(pathB, 'body.replace')) return;
+
+                        // C. selection.replace
+                        const pathC = async () => Word.run(async (context) => {
+                            const sel = context.document.getSelection();
+                            sel.insertFileFromBase64(b64, Word.InsertLocation.replace);
+                            await context.sync();
+                        });
+                        if (await tryInsert(pathC, 'selection.replace')) return;
+
+                        // D. Open as new document
+                        const pathD = async () => Word.run(async (context) => {
+                            if (typeof context.application.createDocument !== 'function') throw new Error('createDocument not available');
+                            const newDoc = context.application.createDocument(b64);
+                            newDoc.open();
+                            await context.sync();
+                        });
+                        if (await tryInsert(pathD, 'application.createDocument(base64).open')) return;
+
+                        throw new Error('insertFileFromBase64 failed in all ServerBase64 modes');
+                    } catch (e) {
+                        console.error('ServerBase64 load error:', e);
+                        try { logRichApiError(e, 'ServerBase64 insert'); } catch(_) {}
+                        showStatus('documentStatus', `❌ Server/base64 load failed: ${e && e.message ? e.message : e}`, 'error');
+                    } finally {
+                        window.__documentInsertInProgress = false;
+                    }
+                }
+
+                const btnB64 = document.createElement('button');
+                btnB64.id = 'loadLatestServerBase64Btn';
+                btnB64.type = 'button';
+                btnB64.textContent = '🧬 Load Latest (server/base64)';
+                btnB64.style.padding = '6px 10px';
+                btnB64.style.fontSize = '12px';
+                btnB64.style.marginLeft = '6px';
+                btnB64.addEventListener('click', loadLatestServerBase64);
+
+                // Upload/Replace current document on the server
+                const btnReplace = document.createElement('button');
+                btnReplace.id = 'replaceCurrentDocBtn';
+                btnReplace.type = 'button';
+                btnReplace.textContent = '⬆️ Replace Current (upload)';
+                btnReplace.style.padding = '6px 10px';
+                btnReplace.style.fontSize = '12px';
+                btnReplace.style.marginLeft = '6px';
+
+                const inputReplace = document.createElement('input');
+                inputReplace.type = 'file';
+                inputReplace.accept = '.docx,application/vnd.openxmlformats-officedocument.wordprocessingml.document';
+                inputReplace.style.display = 'none';
+                inputReplace.id = 'replaceCurrentDocFileInput';
+
+                btnReplace.addEventListener('click', () => inputReplace.click());
+                inputReplace.addEventListener('change', async () => {
+                    const file = inputReplace.files && inputReplace.files[0];
+                    if (!file) return;
+                    try {
+                        showStatus('documentStatus', `⬆️ Uploading ${file.name}...`, 'info');
+                        // Server expects JSON with base64 docx, not multipart
+                        const buffer = await file.arrayBuffer();
+                        const base64 = (typeof window.ensureBase64FromArrayBuffer === 'function')
+                            ? await window.ensureBase64FromArrayBuffer(buffer)
+                            : arrayBufferToBase64(buffer);
+                        const resp = await fetch('http://localhost:3001/api/upload-docx', {
+                            method: 'POST',
+                            headers: { 'Content-Type': 'application/json' },
+                            body: JSON.stringify({ docx: base64, filename: file.name })
+                        });
+                        if (!resp.ok) throw new Error(`Upload failed: ${resp.status}`);
+                        const resJson = await resp.json().catch(() => ({}));
+                        showStatus('documentStatus', `✅ Replaced current with ${resJson.filename || file.name}`, 'success');
+                        // After replacement, immediately try loading via base64 path
+                        setTimeout(() => {
+                            try { loadLatestServerBase64(); } catch(_) {}
+                        }, 150);
+                    } catch (e) {
+                        console.error('Replace current upload error:', e);
+                        showStatus('documentStatus', `❌ Replace failed: ${e && e.message ? e.message : e}`, 'error');
+                    } finally {
+                        inputReplace.value = '';
+                    }
+                });
+
+                const viewBtn = document.getElementById('viewLatestBtn');
+                if (viewBtn && viewBtn.parentElement) {
+                    viewBtn.parentElement.insertBefore(btnRaw, viewBtn.nextSibling);
+                    viewBtn.parentElement.insertBefore(btnB64, btnRaw.nextSibling);
+                    viewBtn.parentElement.insertBefore(btnReplace, btnB64.nextSibling);
+                    viewBtn.parentElement.insertBefore(inputReplace, btnReplace.nextSibling);
+                    return;
+                }
+                const host = document.getElementById('documentActions') || document.body;
+                host.appendChild(btnRaw);
+                host.appendChild(btnB64);
+                host.appendChild(btnReplace);
+                host.appendChild(inputReplace);
+            }
+
+            if (document.readyState === 'loading') {
+                document.addEventListener('DOMContentLoaded', createUI);
+            } else {
+                createUI();
+            }
+
+            // Expose for debug
+            window.loadLatestServerRaw = loadLatestServerRaw;
+        } catch (e) {
+            console.warn('Failed to set up Server Raw loader', e);
+        }
+    })();
         // Notification system variables
         let notificationHistory = [];
         let hasUnreadNotifications = false;
@@ -1919,6 +2408,7 @@
         window.__pureInsertMode = window.__pureInsertMode !== undefined ? window.__pureInsertMode : true; // Do not modify the document content before/after insert attempts
         window.__allowPreInsertStyleReset = window.__allowPreInsertStyleReset || false; // opt-in test; default off
         window.__baselineStylesJson = window.__baselineStylesJson || null;
+        window.__insertIsolation = window.__insertIsolation !== undefined ? window.__insertIsolation : true; // minimize background Word.run activity
         
         // Disable HMR/live reload during pure insert testing to reduce WebView churn
         try { if (window.__pureInsertMode && typeof module !== 'undefined' && module.hot && typeof module.hot.decline === 'function') { module.hot.decline(); console.log('🔕 HMR disabled for pure insert testing'); } } catch(_) {}
@@ -2640,13 +3130,13 @@
                 switch (actionId) {
                 case 'viewLatest':
                     try { addNotification('👀 View Latest invoked'); } catch(_) {}
-                    if (typeof window.viewLatestSafe === 'function') {
+                    // In-place insert only
+                    if (window.viewLatestSafe) {
                         window.viewLatestSafe();
-                    } else if (typeof window.cleanViewLatest === 'function') {
+                    } else if (window.cleanViewLatest) {
                         window.cleanViewLatest();
                     } else {
-                        // As last resort, open via Word protocol
-                        openLatestExternal();
+                        showStatus('documentStatus', '❌ View Latest not available', 'error');
                     }
                     break;
                 case 'openWeb':
@@ -2881,23 +3371,31 @@
             if (info.host === Office.HostType.Word) {
                 try { OfficeExtension.config.extendedErrorLogging = true; } catch (e) {}
                 console.log('OpenGov Contract Redlining add-in ready');
-                console.log('Connecting to SSE...');
-                connectSSE();
+                if (!window.__insertIsolation) {
+                    console.log('Connecting to SSE...');
+                    connectSSE();
+                } else {
+                    console.log('⛔ Insert isolation ON: skipping SSE connect');
+                }
 
                 // Capture baseline styles once for optional reset (does not touch source file)
-                (async () => {
-                    try {
-                        await Word.run(async (context) => {
-                            const styles = context.document.getStyles();
-                            styles.load('items');
-                            await context.sync();
-                            window.__baselineStylesJson = JSON.stringify(styles.items || []);
-                            console.log('🎯 Captured baseline styles snapshot');
-                        });
-                    } catch (e) {
-                        console.log('ℹ️ Baseline styles capture skipped:', e?.message || e);
-                    }
-                })();
+                if (!window.__insertIsolation) {
+                    (async () => {
+                        try {
+                            await Word.run(async (context) => {
+                                const styles = context.document.getStyles();
+                                styles.load('items');
+                                await context.sync();
+                                window.__baselineStylesJson = JSON.stringify(styles.items || []);
+                                console.log('🎯 Captured baseline styles snapshot');
+                            });
+                        } catch (e) {
+                            console.log('ℹ️ Baseline styles capture skipped:', e?.message || e);
+                        }
+                    })();
+                } else {
+                    console.log('⛔ Insert isolation ON: skipping baseline styles capture');
+                }
 
                 // Initialize systems
                 setTimeout(async () => {
@@ -2912,8 +3410,12 @@
                     // Initial UI sync from state matrix
                     setTimeout(() => updateUIFromStateMatrix('word', getCurrentUser, getCurrentUserRole, currentDocumentState), 100);
                     
-                    // Auto attach to existing open document without modifying content
-                    setTimeout(() => autoAttachToOpenDocument(), 800);
+                    if (!window.__insertIsolation) {
+                        // Auto attach to existing open document without modifying content
+                        setTimeout(() => autoAttachToOpenDocument(), 800);
+                    } else {
+                        console.log('⛔ Insert isolation ON: skipping auto-attach');
+                    }
                     
                     // Refresh approvals when users are loaded
                     setTimeout(() => loadApprovalsSection(), 2000);
@@ -3643,7 +4145,7 @@
             }
         }
 
-        // Fresh minimal View Latest loader (no pre-writes, single call)
+        // Fresh minimal View Latest loader: prefer server/base64 → raw bytes → open-as-new
         window.cleanViewLatest = async function() {
             if (window.__documentInsertInProgress) {
                 console.log('⚠️ cleanViewLatest: insert already in progress');
@@ -3656,52 +4158,86 @@
                     showStatus('documentStatus', '⚠️ No document available', 'warning');
                     throw new Error('No document available');
                 }
-                const url = `http://localhost:3001/api/document/${encodeURIComponent(current.id)}`;
-                const resp = await fetch(url, { cache: 'no-store' });
-                if (!resp.ok) throw new Error('Download failed');
-                const buf = await resp.arrayBuffer();
-                const b64 = arrayBufferToBase64(buf);
-                // quick validation (PK signature)
+                // Step A: try server/base64 endpoint directly
                 try {
-                    const d = atob(b64);
-                    if (!(d.charCodeAt(0) === 80 && d.charCodeAt(1) === 75)) throw new Error('Invalid DOCX');
-                } catch (e) {
-                    throw new Error('Invalid base64 content');
-                }
-                // One-shot insert
-                await Word.run(async (context) => {
-                    if (typeof context.document.insertFileFromBase64 !== 'function') {
-                        throw new Error('insertFileFromBase64 not supported');
+                    const respJson = await fetch('http://localhost:3001/api/get-updated-docx', { cache: 'no-store' });
+                    if (respJson.ok) {
+                        const data = await respJson.json();
+                        const b64FromServer = data && data.docx;
+                        if (b64FromServer && typeof window.insertDocxBase64Normalized === 'function') {
+                            await window.insertDocxBase64Normalized(b64FromServer);
+                            showStatus('documentStatus', '✅ Loaded latest (server/base64)', 'success');
+                            return;
+                        }
                     }
-                    context.document.insertFileFromBase64(b64, Word.InsertLocation.replace);
-                    await context.sync();
-                });
-                showStatus('documentStatus', '✅ Loaded latest document', 'success');
+                } catch (eA) {
+                    console.warn('cleanViewLatest: server/base64 failed →', eA?.message || eA);
+                    try { logRichApiError(eA, 'cleanViewLatest A server/base64'); } catch(_) {}
+                }
+
+                // Step B: try raw bytes endpoint, then convert to base64
+                try {
+                    const baseUrl = `http://localhost:3001/api/document/${encodeURIComponent(current.id)}`;
+                    let url = `${baseUrl}.docx`;
+                    let resp = await fetch(url, { cache: 'no-store' });
+                    if (!resp.ok) { url = baseUrl; resp = await fetch(url, { cache: 'no-store' }); }
+                    if (!resp.ok) throw new Error('Download failed');
+                    const buf = await resp.arrayBuffer();
+                    const b64 = arrayBufferToBase64(buf);
+                    await Word.run(async (context) => {
+                        context.document.insertFileFromBase64(b64, Word.InsertLocation.replace);
+                        await context.sync();
+                    });
+                    showStatus('documentStatus', '✅ Loaded latest (server/raw→b64)', 'success');
+                    return;
+                } catch (eB) {
+                    console.warn('cleanViewLatest: server/raw failed →', eB?.message || eB);
+                    try { logRichApiError(eB, 'cleanViewLatest B server/raw'); } catch(_) {}
+                }
+
+                // Step C: fallback open-as-new via base64 if available
+                try {
+                    const respJson2 = await fetch('http://localhost:3001/api/get-updated-docx', { cache: 'no-store' });
+                    if (respJson2.ok) {
+                        const data2 = await respJson2.json();
+                        const b64Data = data2 && data2.docx;
+                        await Word.run(async (ctx) => {
+                            const newDoc = ctx.application.createDocument(b64Data);
+                            newDoc.open();
+                            await ctx.sync();
+                        });
+                        showStatus('documentStatus', '✅ Opened latest in a new document', 'success');
+                        return;
+                    }
+                } catch (eC) {
+                    console.warn('cleanViewLatest: open-as-new failed →', eC?.message || eC);
+                    try { logRichApiError(eC, 'cleanViewLatest C open-as-new'); } catch(_) {}
+                }
+
+                throw new Error('insertFileFromBase64 failed in all modes');
             } catch (e) {
                 console.error('cleanViewLatest error:', e);
+                try { console.error('cleanViewLatest debugInfo:', e && e.debugInfo ? e.debugInfo : null); } catch(_) {}
+                try { console.error('cleanViewLatest code:', e && e.code ? e.code : null); } catch(_) {}
+                try { logRichApiError(e, 'cleanViewLatest final'); } catch(_) {}
                 showStatus('documentStatus', `❌ View Latest failed: ${e.message}`, 'error');
-                try { await openLatestExternal(); } catch(_) {}
                 throw e;
             } finally {
                 window.__documentInsertInProgress = false;
             }
         };
 
-        // Safe wrapper: try in-app insert first, then fallback to protocol open
+        // Safe wrapper: try in-app insert only (no external fallback)
         window.viewLatestSafe = async function() {
             try { addNotification('👀 View Latest invoked'); } catch(_) {}
             try {
                 if (typeof window.cleanViewLatest === 'function') {
                     await window.cleanViewLatest();
-                    return;
+                } else {
+                    showStatus('documentStatus', '❌ View Latest not available', 'error');
                 }
-            } catch (_) {
-                // ignore and fallback
-            }
-            try {
-                await openLatestExternal();
             } catch (e) {
-                showStatus('documentStatus', `❌ Failed to open latest externally: ${e?.message || e}`, 'error');
+                showStatus('documentStatus', `❌ View Latest failed: ${e?.message || e}`, 'error');
             }
         };
     </script>
