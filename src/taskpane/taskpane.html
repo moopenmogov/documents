@@ -841,7 +841,7 @@
             <!-- Approvals summary pill and details trigger -->
             <div id="approvalsSummaryRowWord" style="display:flex; align-items:center; gap:8px; margin: 6px 0 12px 0;">
                 <span id="approvalsPillWord" style="display:inline-block; padding:4px 10px; border-radius:999px; background:#e9f5ee; color:#0f5132; font-weight:600; font-size:12px;">—/— approved</span>
-                <button id="btnApprovalsDetailsWord" type="button" style="padding:4px 10px; font-size:12px;">Approval details</button>
+                <button id="btnApprovalsDetailsWord" type="button" style="padding:4px 10px; font-size:12px;" onclick="window.openApprovalsModalWord && window.openApprovalsModalWord()">Approval details</button>
             </div>
         </div>
         
@@ -3476,21 +3476,13 @@
                 }
 
 // Wire Approval Details button for Word (open modal)
-(function wireApprovalsModalWord(){
-    function open() {
+// Expose an opener globally and wire after Office.onReady
+window.openApprovalsModalWord = function() {
+    try {
         const m = document.getElementById('approvalsModalWord');
-        if (m) { m.style.display = 'flex'; }
-    }
-    if (document.readyState === 'loading') {
-        document.addEventListener('DOMContentLoaded', () => {
-            const b = document.getElementById('btnApprovalsDetailsWord');
-            if (b) b.onclick = open;
-        });
-    } else {
-        const b = document.getElementById('btnApprovalsDetailsWord');
-        if (b) b.onclick = open;
-    }
-})();
+        if (m) m.style.display = 'flex';
+    } catch(_) {}
+};
                 
                 // Warn if acting on behalf of someone else and current user is editor
                 try {
