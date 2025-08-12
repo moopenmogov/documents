@@ -1872,7 +1872,8 @@
                     showStatus('documentStatus', 'ℹ️ No document available', 'info');
                     return;
                 }
-                const docUrl = `http://localhost:3001/api/document/${encodeURIComponent(current.id)}`;
+                // Prefer the .docx suffixed endpoint with full headers
+                const docUrl = `http://localhost:3001/api/document/${encodeURIComponent(current.id)}.docx`;
                 const wordUrl = `ms-word:ofe|u|${encodeURI(docUrl)}`;
                 // Use protocol directly; no http fallback to avoid downloads
                 window.location.assign(wordUrl);
@@ -3653,7 +3654,7 @@
                 const current = await getCurrentOrDefaultDocument();
                 if (!current || !current.id) {
                     showStatus('documentStatus', '⚠️ No document available', 'warning');
-                    return;
+                    throw new Error('No document available');
                 }
                 const url = `http://localhost:3001/api/document/${encodeURIComponent(current.id)}`;
                 const resp = await fetch(url, { cache: 'no-store' });
@@ -3679,6 +3680,8 @@
             } catch (e) {
                 console.error('cleanViewLatest error:', e);
                 showStatus('documentStatus', `❌ View Latest failed: ${e.message}`, 'error');
+                try { await openLatestExternal(); } catch(_) {}
+                throw e;
             } finally {
                 window.__documentInsertInProgress = false;
             }
@@ -3686,6 +3689,7 @@
 
         // Safe wrapper: try in-app insert first, then fallback to protocol open
         window.viewLatestSafe = async function() {
+            try { addNotification('👀 View Latest invoked'); } catch(_) {}
             try {
                 if (typeof window.cleanViewLatest === 'function') {
                     await window.cleanViewLatest();

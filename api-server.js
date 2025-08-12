@@ -579,6 +579,52 @@ app.get('/api/default-document', (req, res) => {
     return res.json(currentDocument);
 });
 
+// Direct .docx endpoint with stable extension for Word protocol (supports GET and HEAD)
+app.get('/api/document/:documentId.docx', (req, res) => {
+    try {
+        if (!currentDocument.filePath || !fs.existsSync(currentDocument.filePath)) {
+            return res.status(404).json({ error: 'Document not found' });
+        }
+
+        const stat = fs.statSync(currentDocument.filePath);
+        res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.wordprocessingml.document');
+        res.setHeader('Content-Disposition', `inline; filename="${currentDocument.filename || 'document.docx'}"`);
+        res.setHeader('Content-Length', stat.size);
+        res.setHeader('Accept-Ranges', 'bytes');
+        res.setHeader('Cache-Control', 'no-cache');
+        res.setHeader('X-Content-Type-Options', 'nosniff');
+
+        if (req.method === 'HEAD') {
+            return res.status(200).end();
+        }
+
+        const fileStream = fs.createReadStream(currentDocument.filePath);
+        fileStream.pipe(res);
+    } catch (error) {
+        console.error('❌ Document serve (.docx) error:', error);
+        res.status(500).json({ error: error.message });
+    }
+});
+
+// Also respond to HEAD for the .docx endpoint (some clients probe before fetching)
+app.head('/api/document/:documentId.docx', (req, res) => {
+    try {
+        if (!currentDocument.filePath || !fs.existsSync(currentDocument.filePath)) {
+            return res.status(404).end();
+        }
+        const stat = fs.statSync(currentDocument.filePath);
+        res.setHeader('Content-Type', 'application/vnd.openxmlformats-officedocument.wordprocessingml.document');
+        res.setHeader('Content-Disposition', `inline; filename="${currentDocument.filename || 'document.docx'}"`);
+        res.setHeader('Content-Length', stat.size);
+        res.setHeader('Accept-Ranges', 'bytes');
+        res.setHeader('Cache-Control', 'no-cache');
+        res.setHeader('X-Content-Type-Options', 'nosniff');
+        return res.status(200).end();
+    } catch (_) {
+        return res.status(500).end();
+    }
+});
+
 // Update document from web viewer (placeholder for future bidirectional sync)
 app.post('/api/update-document', upload.single('docx'), (req, res) => {
     try {
