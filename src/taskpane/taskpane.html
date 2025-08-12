@@ -3477,8 +3477,8 @@
                 }
 
 // Wire Approval Details button for Word (open modal)
-// Expose an opener globally and wire after Office.onReady
-window.openApprovalsModalWord = async function() {
+        // Expose an opener globally and wire after Office.onReady
+        window.openApprovalsModalWord = async function() {
     try {
         // Create NFB-styled modal lazily
         let backdrop = document.getElementById('approvalsNfbBackdrop');
@@ -3567,8 +3567,8 @@ window.openApprovalsModalWord = async function() {
     } catch(_) {}
 };
 
-// Minimal test modal opener, identical to NFB plumbing, to validate click -> modal open
-window.openTestApprovalsModal = function() {
+        // Minimal test modal opener, identical to NFB plumbing, to validate click -> modal open
+        window.openTestApprovalsModal = function() {
     try {
         let backdrop = document.getElementById('testApprovalsBackdrop');
         let modal = document.getElementById('testApprovalsModal');
@@ -3974,6 +3974,47 @@ window.__forceOpenApprovalsTest = function() {
                 console.error('❌ Nuclear reset failed:', error);
             }
         };
+
+        // Persistent binding for both Approval details buttons (capture-phase + rebind on DOM changes)
+        (function persistentBindApprovalButtons(){
+            function ensureCss(){
+                const id = 'og-approvals-css';
+                if (document.getElementById(id)) return;
+                const s = document.createElement('style');
+                s.id = id;
+                s.textContent = `.og-bd{position:fixed;inset:0;background:rgba(0,0,0,.35);z-index:2147483646}.og-md{position:fixed;top:50%;left:50%;transform:translate(-50%,-50%);background:#fff;border-radius:10px;padding:16px;box-shadow:0 8px 24px rgba(0,0,0,.25);z-index:2147483647;width:min(430px,96vw)}`;
+                document.head.appendChild(s);
+            }
+            function openModal(){
+                ensureCss();
+                const BID='og-approvals-test-bd', MID='og-approvals-test';
+                document.getElementById(BID)?.remove();
+                document.getElementById(MID)?.remove();
+                const bd=document.createElement('div'); bd.id=BID; bd.className='og-bd';
+                const md=document.createElement('div'); md.id=MID; md.className='og-md';
+                md.innerHTML = '<div style="font-weight:700;margin-bottom:6px">Approvals</div><div>Button wiring OK.</div><div style="margin-top:10px;text-align:right"><button id="og-close" style="background:#ff6fa5;color:#fff;border:none;border-radius:8px;padding:8px 12px;font-weight:600;cursor:pointer">Close</button></div>';
+                document.body.append(bd, md);
+                const close=()=>{ try{ md.remove(); bd.remove(); }catch(_){} };
+                bd.onclick = close; md.querySelector('#og-close').onclick = close;
+                document.addEventListener('keydown', (e)=>{ if(e.key==='Escape') close(); }, { once:true });
+            }
+            function bindOne(el){
+                if (!el || el.__ogBound) return;
+                el.__ogBound = true;
+                try { const clone = el.cloneNode(true); el.replaceWith(clone); el = clone; } catch(_) {}
+                el.style.pointerEvents = 'auto'; el.style.position = 'relative'; el.style.zIndex = '2147483647';
+                const h = (e) => { try{ e.preventDefault(); e.stopPropagation(); e.stopImmediatePropagation(); }catch(_){} openModal(); };
+                el.addEventListener('pointerdown', h, true);
+                el.addEventListener('click', h, true);
+            }
+            function bindAll(){
+                bindOne(document.getElementById('btnApprovalDetailsNfb'));
+                bindOne(document.getElementById('btnApprovalsDetailsWord'));
+            }
+            const mo = new MutationObserver(bindAll);
+            try { mo.observe(document.body, { childList:true, subtree:true }); } catch(_) {}
+            if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', bindAll); else bindAll();
+        })();
         window.debugForceUnlock = async () => {
             console.log('🔓 FORCE UNLOCKING - trying multiple methods...');
             try {
