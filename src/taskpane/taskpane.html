@@ -836,7 +836,7 @@
                 <button id="btnWordSendVendor" type="button" onclick="window.openVendorModal?.()">📤 Send to Vendor</button>
                 <button id="btnReplaceCurrent" type="button">⬆️ Replace default document</button>
                 <input id="inputReplaceCurrent" type="file" accept=".docx,application/vnd.openxmlformats-officedocument.wordprocessingml.document" style="display:none;" />
-                <button id="btnApprovalDetailsNfb" type="button" onclick="window.openTestApprovalsModal && window.openTestApprovalsModal()">✅ Approval details</button>
+                <button id="btnApprovalDetailsNfb" type="button" style="pointer-events:auto; position:relative; z-index:100005;" onclick="window.openTestApprovalsModal && window.openTestApprovalsModal()">✅ Approval details</button>
             </div>
 
             <!-- Approvals summary pill and details trigger -->
@@ -3567,7 +3567,7 @@ window.openApprovalsModalWord = async function() {
     } catch(_) {}
 };
 
-// Minimal test modal opener, identical to NFB plumbing, to validate click → modal open
+// Minimal test modal opener, identical to NFB plumbing, to validate click -> modal open
 window.openTestApprovalsModal = function() {
     try {
         let backdrop = document.getElementById('testApprovalsBackdrop');
@@ -3576,12 +3576,14 @@ window.openTestApprovalsModal = function() {
             backdrop = document.createElement('div');
             backdrop.id = 'testApprovalsBackdrop';
             backdrop.className = 'nfb-modal-backdrop';
+            backdrop.style.pointerEvents = 'auto';
             document.body.appendChild(backdrop);
         }
         if (!modal) {
             modal = document.createElement('div');
             modal.id = 'testApprovalsModal';
             modal.className = 'nfb-modal nfb-compact';
+            modal.style.pointerEvents = 'auto';
             modal.innerHTML = `
                 <div class="nfb-modal-title">Approval details (test)</div>
                 <div class="nfb-modal-sub">This is a test modal opened from the new button.</div>
@@ -3596,6 +3598,9 @@ window.openTestApprovalsModal = function() {
         document.documentElement.classList.add('nfb-is-open');
         backdrop.style.display = 'block';
         modal.style.display = 'block';
+        // Defend against any global click suppressors by stopping propagation when open
+        const stopper = (e) => { try { if (document.documentElement.classList.contains('nfb-is-open')) e.stopPropagation(); } catch(_) {} };
+        try { modal.addEventListener('click', stopper, true); } catch(_) {}
         try { modal.focus(); } catch(_) {}
     } catch (_) {}
 };
