@@ -17,7 +17,8 @@ function applyStateMatrixToUI(config) {
         checkinBtn: config.buttons.checkedInBtns,
         cancelBtn: config.buttons.checkedInBtns,
         viewOnlyBtn: config.buttons.viewOnlyBtn,
-        replaceDefaultBtn: config.buttons.replaceDefaultBtn
+        replaceDefaultBtn: config.buttons.replaceDefaultBtn,
+        approvalsBtn: true // Always show approvals via matrix
     };
     
     Object.entries(buttonMap).forEach(([buttonId, shouldShow]) => {
@@ -39,7 +40,8 @@ function applyStateMatrixToUI(config) {
         config.buttons?.checkedInBtns ||
         config.buttons?.sendVendorBtn ||
         config.buttons?.viewOnlyBtn ||
-        config.buttons?.replaceDefaultBtn
+        config.buttons?.replaceDefaultBtn ||
+        true /* approvals always */
     );
     const docToggle = document.getElementById('docActionsToggle');
     const docMenu = document.getElementById('docActionsMenu');
@@ -190,6 +192,7 @@ window.refreshActionsDropdownFromMatrix = function(selectId, config) {
     add('saveProgressBtn', 'Save Progress', window.saveProgress, !!b.checkedInBtns);
     add('overrideBtn', 'Override Check-out', window.overrideCheckout, !!b.overrideBtn);
     add('sendVendorBtn', 'Send to Vendor', window.openVendorModal, !!b.sendVendorBtn);
+    add('approvalsBtn', 'Approval details', (window.openUsersModalWord||window.openUsersModal||window.openUsersModalWeb||window.openUsersModalWord)|| (()=>{}), true);
     add('replaceDefaultBtn', '⬆️ Replace default document', () => { try { document.getElementById('fileInput').click(); } catch(_) {} }, !!b.replaceDefaultBtn);
     actions.forEach(a => { const opt = document.createElement('option'); opt.value = a.id; opt.textContent = a.label; select.appendChild(opt); });
     const wrapper = select.parentElement || select;
