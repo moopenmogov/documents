@@ -3676,7 +3676,7 @@
                 let backdrop = document.getElementById('approvalsBackdropWord');
                 if (!backdrop) { backdrop = document.createElement('div'); backdrop.id='approvalsBackdropWord'; document.body.appendChild(backdrop); }
                 let modal = document.getElementById('approvalsModalWord');
-                if (!modal) { modal = document.createElement('div'); modal.id='approvalsModalWord'; document.body.appendChild(modal); }
+                if (!modal) { modal = document.createElement('div'); modal.id='approvalsModalWord'; modal.setAttribute('tabindex','-1'); document.body.appendChild(modal); }
 
                 // Fetch approvals data
                 const currentUser = window.getCurrentUser ? window.getCurrentUser() : null;
@@ -3718,7 +3718,14 @@
                 // Open + close handlers
                 backdrop.style.display='block'; modal.style.display='block';
                 const close=()=>{ try{ modal.style.display='none'; backdrop.style.display='none'; }catch(_){} };
-                modal.querySelector('#approvalsCloseWord').onclick = close; backdrop.onclick = close;
+                // Close only when clicking backdrop; never close on clicks inside the modal
+                modal.querySelector('#approvalsCloseWord').onclick = close;
+                backdrop.onclick = (ev) => { if (ev.target === backdrop) close(); };
+                // Swallow events inside modal to avoid global/capture listeners closing it
+                const swallow = (ev) => { ev.stopPropagation(); };
+                ['click','mousedown','mouseup','pointerdown','pointerup','touchstart','touchend'].forEach(evt => {
+                    modal.addEventListener(evt, swallow, true);
+                });
                 try{ modal.focus(); }catch(_){}
             } catch (e) { console.error('Users modal (Word) error:', e); }
         };
