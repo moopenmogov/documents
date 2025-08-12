@@ -192,7 +192,19 @@ window.refreshActionsDropdownFromMatrix = function(selectId, config) {
     add('saveProgressBtn', 'Save Progress', window.saveProgress, !!b.checkedInBtns);
     add('overrideBtn', 'Override Check-out', window.overrideCheckout, !!b.overrideBtn);
     add('sendVendorBtn', 'Send to Vendor', window.openVendorModal, !!b.sendVendorBtn);
-    add('approvalsBtn', 'Approval details', (window.openUsersModalWord||window.openUsersModal||window.openUsersModalWeb||window.openUsersModalWord)|| (()=>{}), true);
+    add(
+        'approvalsBtn',
+        'Approval details',
+        () => {
+            const fn = (window.openUsersModalWord || window.openUsersModal || window.openUsersModalWeb);
+            if (typeof fn === 'function') {
+                try { fn(); } catch (e) { console.error('Approvals open error:', e); }
+            } else {
+                console.warn('Approvals opener not available');
+            }
+        },
+        true
+    );
     add('replaceDefaultBtn', '⬆️ Replace default document', () => { try { document.getElementById('fileInput').click(); } catch(_) {} }, !!b.replaceDefaultBtn);
     actions.forEach(a => { const opt = document.createElement('option'); opt.value = a.id; opt.textContent = a.label; select.appendChild(opt); });
     const wrapper = select.parentElement || select;
