@@ -779,10 +779,11 @@
             </div>
             
             <!-- Document Actions Dropdown -->
-            <div class="user-switcher" style="margin-top: 8px;">
+            <div class="user-switcher" style="margin-top: 8px; display: flex; gap: 8px; align-items: center;">
                 <select id="docActionsSelect" class="user-select" onchange="executeDocumentAction(this.value)">
                     <option value="">Document actions...</option>
                 </select>
+                <button id="viewLatestBtn" class="btn-secondary" onclick="(window.viewLatestSafe||window.cleanViewLatest||openLatestExternal)()">👀 View Latest</button>
             </div>
         </div>
         
