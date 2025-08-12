@@ -834,7 +834,7 @@
                 <button id="btnWordCancel" type="button" onclick="window.cancelCheckout?.()">❌ Cancel</button>
                 <button id="btnWordOverride" type="button" onclick="window.overrideCheckout?.()">🔄 Override</button>
                 <button id="btnWordSendVendor" type="button" onclick="window.openVendorModal?.()">📤 Send to Vendor</button>
-                <button id="btnReplaceCurrent" type="button">⬆️ Replace Current (upload)</button>
+                <button id="btnReplaceCurrent" type="button">⬆️ Replace default document</button>
                 <input id="inputReplaceCurrent" type="file" accept=".docx,application/vnd.openxmlformats-officedocument.wordprocessingml.document" style="display:none;" />
             </div>
         </div>
@@ -1320,7 +1320,7 @@
                 const btnReplace = document.createElement('button');
                 btnReplace.id = 'replaceCurrentDocBtn';
                 btnReplace.type = 'button';
-                btnReplace.textContent = '⬆️ Replace Current (upload)';
+                btnReplace.textContent = '⬆️ Replace default document';
                 btnReplace.style.padding = '6px 10px';
                 btnReplace.style.fontSize = '12px';
                 btnReplace.style.marginLeft = '6px';
