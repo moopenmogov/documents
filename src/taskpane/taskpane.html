@@ -994,7 +994,9 @@
         
         function connectSSE() {
             try {
-                eventSource = new EventSource('http://localhost:3001/api/events');
+                const clientId = 'word-' + Date.now() + '-' + Math.random().toString(36).slice(2);
+                window.__clientId = clientId;
+                eventSource = new EventSource(`http://localhost:3001/api/events?platform=word&clientId=${encodeURIComponent(clientId)}`);
                 
                 eventSource.onopen = function(event) {
                     console.log('SSE connection opened');
@@ -2633,9 +2635,13 @@
             if (actionsSelect) actionsSelect.value = '';
             
             // Execute the appropriate function
-            switch (actionId) {
+                switch (actionId) {
                 case 'viewLatest':
-                    viewReadOnly();
+                    if (typeof window.cleanViewLatest === 'function') {
+                        window.cleanViewLatest();
+                    } else {
+                        viewReadOnly();
+                    }
                     break;
                 case 'openWeb':
                     shareToWeb();
