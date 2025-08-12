@@ -836,7 +836,7 @@
                 <button id="btnWordSendVendor" type="button" onclick="window.openVendorModal?.()">📤 Send to Vendor</button>
                 <button id="btnReplaceCurrent" type="button">⬆️ Replace default document</button>
                 <input id="inputReplaceCurrent" type="file" accept=".docx,application/vnd.openxmlformats-officedocument.wordprocessingml.document" style="display:none;" />
-                <button id="btnApprovalDetailsNfb" type="button" style="pointer-events:auto; position:relative; z-index:100005;" onclick="window.openTestApprovalsModal && window.openTestApprovalsModal()">✅ Approval details</button>
+                <button id="btnApprovalDetailsNfb" type="button" style="pointer-events:auto; position:relative; z-index:100005;" onclick="window.__forceOpenApprovalsTest && window.__forceOpenApprovalsTest()">✅ Approval details</button>
             </div>
 
             <!-- Approvals summary pill and details trigger -->
@@ -3603,6 +3603,19 @@ window.openTestApprovalsModal = function() {
         try { modal.addEventListener('click', stopper, true); } catch(_) {}
         try { modal.focus(); } catch(_) {}
     } catch (_) {}
+};
+
+// Absolute fallback: force-open test modal via global with zero dependencies
+window.__forceOpenApprovalsTest = function() {
+    try {
+        const b = document.createElement('div');
+        b.style.position = 'fixed'; b.style.inset = '0'; b.style.background = 'rgba(0,0,0,.35)'; b.style.zIndex = '2147483646'; b.id='forceBackdrop';
+        const m = document.createElement('div');
+        m.style.position = 'fixed'; m.style.top = '50%'; m.style.left = '50%'; m.style.transform = 'translate(-50%,-50%)'; m.style.background='#fff'; m.style.padding='16px'; m.style.borderRadius='10px'; m.style.boxShadow='0 8px 24px rgba(0,0,0,.25)'; m.style.zIndex='2147483647'; m.id='forceModal';
+        m.innerHTML = '<div style="font-weight:700;margin-bottom:6px">Test modal (force)</div><div>This bypasses all dependencies.</div><div style="margin-top:10px;text-align:right"><button id="forceClose">Close</button></div>';
+        document.body.appendChild(b); document.body.appendChild(m);
+        document.getElementById('forceClose').onclick = () => { try { m.remove(); b.remove(); } catch(_) {} };
+    } catch(_) {}
 };
                 
                 // Warn if acting on behalf of someone else and current user is editor
