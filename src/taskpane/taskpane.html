@@ -3393,13 +3393,14 @@
         // Load approvals from state machine and API
         async function loadApprovalsSection() {
             const approvalsList = document.getElementById('approvalsList');
-            if (!approvalsList) return;
             
             try {
                 // Get current user and document ID
                 const currentUser = window.getCurrentUser ? window.getCurrentUser() : null;
                 if (!currentUser) {
-                    approvalsList.innerHTML = '<tr><td colspan="4" style="color:#6c757d; font-size:12px; padding:6px;">User not loaded</td></tr>';
+                    if (approvalsList) approvalsList.innerHTML = '<tr><td colspan="4" style="color:#6c757d; font-size:12px; padding:6px;">User not loaded</td></tr>';
+                    // Still try to update the pill to a safe default
+                    try { const pill = document.getElementById('approvalsPillWord'); if (pill) pill.textContent = '0/0 approved'; } catch(_) {}
                     return;
                 }
                 
@@ -3410,7 +3411,9 @@
                 const data = await response.json();
                 
                 if (!data.success) {
-                    approvalsList.innerHTML = '<tr><td colspan="4" style="color:#dc3545; font-size:12px; padding:6px;">Failed to load approvals</td></tr>';
+                    if (approvalsList) approvalsList.innerHTML = '<tr><td colspan="4" style="color:#dc3545; font-size:12px; padding:6px;">Failed to load approvals</td></tr>';
+                    // Show safe default in pill
+                    try { const pill = document.getElementById('approvalsPillWord'); if (pill) pill.textContent = '0/0 approved'; } catch(_) {}
                     return;
                 }
                 
@@ -3442,10 +3445,10 @@
                 } catch(_) {}
                 
                 // Clear and populate
-                approvalsList.innerHTML = '';
+                if (approvalsList) approvalsList.innerHTML = '';
                 
                 if (!users.length) {
-                    approvalsList.innerHTML = '<tr><td colspan="4" style="color:#6c757d; font-size:12px; padding:6px;">No users available</td></tr>';
+                    if (approvalsList) approvalsList.innerHTML = '<tr><td colspan="4" style="color:#6c757d; font-size:12px; padding:6px;">No users available</td></tr>';
                     return;
                 }
                 
@@ -3482,14 +3485,14 @@
                             ` : `<span style=\"opacity:.6; font-size:12px;\">No actions</span>`}
                         </td>
                     `;
-                    approvalsList.appendChild(tr);
+                    if (approvalsList) approvalsList.appendChild(tr);
                 });
                 
                 console.log('✅ Approvals loaded from API:', users.length, 'users');
                 
             } catch (error) {
                 console.error('❌ Failed to load approvals:', error);
-                approvalsList.innerHTML = '<tr><td colspan="4" style="color:#dc3545; font-size:12px; padding:6px;">Error loading approvals</td></tr>';
+                if (approvalsList) approvalsList.innerHTML = '<tr><td colspan="4" style="color:#dc3545; font-size:12px; padding:6px;">Error loading approvals</td></tr>';
             }
         }
         
