@@ -173,7 +173,7 @@ window.refreshActionsDropdownFromMatrix = function(selectId, config) {
     const add = (id, label, fn, include) => { if (include && typeof fn === 'function') actions.push({ id, label, fn }); };
     const b = config.buttons;
     const hasDoc = !!config.checkoutStatus?.show;
-    add('viewOnlyBtn', 'View Latest', window.cleanViewLatest || window.viewReadOnly, hasDoc && (b.viewOnlyBtn !== false));
+    add('viewOnlyBtn', 'View Latest', window.viewLatestSafe || window.cleanViewLatest || window.viewReadOnly, hasDoc && (b.viewOnlyBtn !== false));
     add('shareToWebBtn', 'Open in Web', window.shareToWeb, true);
     add('checkoutBtn', 'Check-out Document', window.checkoutDocument, !!b.checkoutBtn);
     add('checkinBtn', 'Save & Check-in', window.checkinDocument, !!b.checkedInBtns);

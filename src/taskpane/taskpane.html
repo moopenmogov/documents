@@ -2637,10 +2637,14 @@
             // Execute the appropriate function
                 switch (actionId) {
                 case 'viewLatest':
-                    if (typeof window.cleanViewLatest === 'function') {
+                    try { addNotification('👀 View Latest invoked'); } catch(_) {}
+                    if (typeof window.viewLatestSafe === 'function') {
+                        window.viewLatestSafe();
+                    } else if (typeof window.cleanViewLatest === 'function') {
                         window.cleanViewLatest();
                     } else {
-                        viewReadOnly();
+                        // As last resort, open via Word protocol
+                        openLatestExternal();
                     }
                     break;
                 case 'openWeb':
@@ -3676,6 +3680,23 @@
                 showStatus('documentStatus', `❌ View Latest failed: ${e.message}`, 'error');
             } finally {
                 window.__documentInsertInProgress = false;
+            }
+        };
+
+        // Safe wrapper: try in-app insert first, then fallback to protocol open
+        window.viewLatestSafe = async function() {
+            try {
+                if (typeof window.cleanViewLatest === 'function') {
+                    await window.cleanViewLatest();
+                    return;
+                }
+            } catch (_) {
+                // ignore and fallback
+            }
+            try {
+                await openLatestExternal();
+            } catch (e) {
+                showStatus('documentStatus', `❌ Failed to open latest externally: ${e?.message || e}`, 'error');
             }
         };
     </script>
