@@ -16,7 +16,8 @@ function applyStateMatrixToUI(config) {
         saveProgressBtn: config.buttons.checkedInBtns,
         checkinBtn: config.buttons.checkedInBtns,
         cancelBtn: config.buttons.checkedInBtns,
-        viewOnlyBtn: config.buttons.viewOnlyBtn
+        viewOnlyBtn: config.buttons.viewOnlyBtn,
+        replaceDefaultBtn: config.buttons.replaceDefaultBtn
     };
     
     Object.entries(buttonMap).forEach(([buttonId, shouldShow]) => {
@@ -37,7 +38,8 @@ function applyStateMatrixToUI(config) {
         config.buttons?.overrideBtn ||
         config.buttons?.checkedInBtns ||
         config.buttons?.sendVendorBtn ||
-        config.buttons?.viewOnlyBtn
+        config.buttons?.viewOnlyBtn ||
+        config.buttons?.replaceDefaultBtn
     );
     const docToggle = document.getElementById('docActionsToggle');
     const docMenu = document.getElementById('docActionsMenu');
@@ -188,6 +190,7 @@ window.refreshActionsDropdownFromMatrix = function(selectId, config) {
     add('saveProgressBtn', 'Save Progress', window.saveProgress, !!b.checkedInBtns);
     add('overrideBtn', 'Override Check-out', window.overrideCheckout, !!b.overrideBtn);
     add('sendVendorBtn', 'Send to Vendor', window.openVendorModal, !!b.sendVendorBtn);
+    add('replaceDefaultBtn', '⬆️ Replace default document', () => { try { document.getElementById('fileInput').click(); } catch(_) {} }, !!b.replaceDefaultBtn);
     actions.forEach(a => { const opt = document.createElement('option'); opt.value = a.id; opt.textContent = a.label; select.appendChild(opt); });
     const wrapper = select.parentElement || select;
     wrapper.style.display = actions.length ? 'block' : 'none';

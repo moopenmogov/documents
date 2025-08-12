@@ -1210,8 +1210,9 @@ function getStateMatrixConfig(userRole, platform, docState, currentUser) {
             checkoutBtn: false,
             overrideBtn: false, 
             sendVendorBtn: false,
-      checkedInBtns: false, // saveProgressBtn, checkinBtn, cancelBtn
-      viewOnlyBtn: true // View Latest is always available
+            checkedInBtns: false, // saveProgressBtn, checkinBtn, cancelBtn
+            viewOnlyBtn: true, // View Latest is always available
+            replaceDefaultBtn: true // Everyone can replace the default/current document
         },
         approvals: {
             canApproveSelf: userRole !== 'viewer',
