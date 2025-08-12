@@ -836,13 +836,12 @@
                 <button id="btnWordSendVendor" type="button" onclick="window.openVendorModal?.()">📤 Send to Vendor</button>
                 <button id="btnReplaceCurrent" type="button">⬆️ Replace default document</button>
                 <input id="inputReplaceCurrent" type="file" accept=".docx,application/vnd.openxmlformats-officedocument.wordprocessingml.document" style="display:none;" />
-                <button id="btnApprovalDetailsNfb" type="button" style="pointer-events:auto; position:relative; z-index:100005;" onclick="window.__forceOpenApprovalsTest && window.__forceOpenApprovalsTest()">✅ Approval details</button>
             </div>
 
             <!-- Approvals summary pill and details trigger -->
             <div id="approvalsSummaryRowWord" style="display:flex; align-items:center; gap:8px; margin: 6px 0 12px 0;">
                 <span id="approvalsPillWord" style="display:inline-block; padding:4px 10px; border-radius:999px; background:#e9f5ee; color:#0f5132; font-weight:600; font-size:12px;">—/— approved</span>
-                <button id="btnApprovalsDetailsWord" type="button" style="padding:4px 10px; font-size:12px; pointer-events:auto; position:relative; z-index:100005;" onclick="window.__forceOpenApprovalsTest && window.__forceOpenApprovalsTest()">Approval details</button>
+                <button id="btnApprovalsDetailsWord" type="button" style="padding:4px 10px; font-size:12px;">Approval details</button>
             </div>
         </div>
         
@@ -3976,6 +3975,7 @@ window.__forceOpenApprovalsTest = function() {
         };
 
         // Persistent binding for both Approval details buttons (capture-phase + rebind on DOM changes)
+        /* (DISABLED) persistentBindApprovalButtons
         (function persistentBindApprovalButtons(){
             function ensureCss(){
                 const id = 'og-approvals-css';
@@ -4015,6 +4015,7 @@ window.__forceOpenApprovalsTest = function() {
             try { mo.observe(document.body, { childList:true, subtree:true }); } catch(_) {}
             if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', bindAll); else bindAll();
         })();
+        */
         window.debugForceUnlock = async () => {
             console.log('🔓 FORCE UNLOCKING - trying multiple methods...');
             try {
