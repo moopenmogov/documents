@@ -3708,8 +3708,8 @@
                     const tdS=document.createElement('td'); tdS.appendChild(pill);
                     const tdA=document.createElement('td');
                     if (row.showButtons) {
-                        const a=document.createElement('button'); a.className='btn'; a.textContent='Approve'; a.disabled=(status==='approved'||!row.approveEnabled); a.onclick=()=>handleApprovalAction(u.id,'approve');
-                        const r=document.createElement('button'); r.className='btn'; r.textContent='Reject'; r.disabled=(status==='rejected'||!row.rejectEnabled); r.onclick=()=>handleApprovalAction(u.id,'reject');
+                        const a=document.createElement('button'); a.className='btn'; a.textContent='Approve'; a.disabled=!row.approveEnabled; a.onclick=()=>handleApprovalAction(u.id,'approve');
+                        const r=document.createElement('button'); r.className='btn'; r.textContent='Reject'; r.disabled=!row.rejectEnabled; r.onclick=()=>handleApprovalAction(u.id,'reject');
                         tdA.append(a,r);
                     } else { tdA.textContent='No actions'; tdA.style.opacity='.6'; }
                     tr.innerHTML=`<td>${u.name}</td><td>${u.role}</td>`; tr.append(tdS, tdA); tbody.appendChild(tr);
@@ -3766,7 +3766,7 @@ window.__forceOpenApprovalsTest = function() {
                 // Server-driven confirm: fetch matrix row for target to decide
                 let needsConfirm = false; let confirmText = '';
                 try {
-                    const matrixResp = await fetch(`http://localhost:3001/api/approval-matrix?actorPlatform=word&actorId=${currentUser.id}&documentId=${currentDocumentState?.currentDocument?.id || 'default-doc'}`);
+                    const matrixResp = await fetch(`http://localhost:3001/api/approval-matrix?actorPlatform=word&actorId=${encodeURIComponent(currentUser.id)}&documentId=${encodeURIComponent(currentDocumentState?.currentDocument?.id || 'default-doc')}`);
                     const mx = await matrixResp.json();
                     const row = mx && mx.matrix ? mx.matrix[userId] : null;
                     needsConfirm = !!(row && row.needsConfirm);

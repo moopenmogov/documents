@@ -1061,8 +1061,16 @@ app.post('/api/document/:documentId/approvals', (req, res) => {
 app.get('/api/approval-matrix', (req, res) => {
     const { actorPlatform, actorId, documentId } = req.query;
 
-    // Resolve actor
-    const actor = allUsers[actorId] || webUsers[actorId] || wordUsers[actorId];
+    // Resolve actor with platform preference (so Word uses Word roles, Web uses Web roles)
+    let actor = null;
+    try {
+        if (actorPlatform === 'word') {
+            actor = (wordUsers && wordUsers[actorId]) || (allUsers && allUsers[actorId]) || (webUsers && webUsers[actorId]);
+        } else if (actorPlatform === 'web') {
+            actor = (webUsers && webUsers[actorId]) || (allUsers && allUsers[actorId]) || (wordUsers && wordUsers[actorId]);
+        }
+        if (!actor) actor = (allUsers && allUsers[actorId]) || (webUsers && webUsers[actorId]) || (wordUsers && wordUsers[actorId]);
+    } catch (_) {}
     if (!actor) {
         return res.status(404).json({ success: false, error: 'Actor not found' });
     }
