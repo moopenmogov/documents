@@ -3763,13 +3763,25 @@ window.__forceOpenApprovalsTest = function() {
     } catch(_) {}
 };
                 
-                // Warn if acting on behalf of someone else and current user is editor
+                // Server-driven confirm: fetch matrix row for target to decide
+                let needsConfirm = false; let confirmText = '';
                 try {
-                    if (currentUser.role === 'editor' && currentUser.id !== userId) {
-                        const ok = window.confirm(`You are about to ${action} on behalf of another user. Continue?`);
-                        if (!ok) return;
+                    const matrixResp = await fetch(`http://localhost:3001/api/approval-matrix?actorPlatform=word&actorId=${currentUser.id}&documentId=${currentDocumentState?.currentDocument?.id || 'default-doc'}`);
+                    const mx = await matrixResp.json();
+                    const row = mx && mx.matrix ? mx.matrix[userId] : null;
+                    needsConfirm = !!(row && row.needsConfirm);
+                    if (needsConfirm) {
+                        const key = (row.confirmMessageKey || 'confirmActOnBehalf');
+                        const strings = (mx && mx.strings) || {};
+                        const tmpl = strings[key] || 'You are about to {action} on behalf of {targetName}. Continue?';
+                        const target = (mx.users || []).find(u => u.id === userId);
+                        confirmText = tmpl.replace('{action}', action).replace('{targetName}', target ? target.name : 'this user');
                     }
                 } catch(_) {}
+                if (needsConfirm) {
+                    const ok = window.confirm(confirmText || `You are about to ${action} on behalf of another user. Continue?`);
+                    if (!ok) return;
+                }
                 
                 const documentId = currentDocumentState?.currentDocument?.id || 'default-doc';
                 

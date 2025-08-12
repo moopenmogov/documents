@@ -1091,7 +1091,10 @@ app.get('/api/approval-matrix', (req, res) => {
             showButtons,
             approveEnabled,
             rejectEnabled,
-            status: approvalStatus
+            status: approvalStatus,
+            needsConfirm: actor.role === 'editor' && !isSelf,
+            confirmMessageKey: actor.role === 'editor' && !isSelf ? 'confirmActOnBehalf' : null,
+            confirmMessageParams: actor.role === 'editor' && !isSelf ? { actorName: actor.name, targetName: targetUser.name } : null
         };
     }
 
@@ -1105,7 +1108,11 @@ app.get('/api/approval-matrix', (req, res) => {
         totalUsers: users.length
     };
 
-    res.json({ success: true, users, matrix, approvals: approvalsArray, summary, actor: { id: actor.id, role: actor.role } });
+    // Strings bundle (can be localized later)
+    const strings = {
+        confirmActOnBehalf: 'You are about to {action} on behalf of {targetName}. Continue?'
+    };
+    res.json({ success: true, users, matrix, approvals: approvalsArray, summary, actor: { id: actor.id, role: actor.role }, strings });
 });
 
 // Update user permission for document

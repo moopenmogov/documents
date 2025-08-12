@@ -2774,13 +2774,19 @@
                             const currentStatus = btn.getAttribute('data-status');
                             const nextAction = explicitAction || (currentStatus === 'approved' ? 'reject' : 'approve');
                             // Warn if acting on behalf of someone else and current user is editor
+                            // Server-driven confirm: read matrix for confirmation rules and string
                             try {
                                 const actor = (window.currentUser && window.currentUser.id) ? window.currentUser : (getCurrentUser && getCurrentUser());
-                                const actorRole = actor && actor.role ? actor.role : (getCurrentUserRole && getCurrentUserRole());
-                                if (actorRole === 'editor' && actor && actor.id !== targetUserId) {
-                                    const target = (window.__lastUsersCache || []).find(u => u.id === targetUserId);
-                                    const targetName = target ? target.name : targetUserId;
-                                    const ok = window.confirm(`You are about to ${nextAction} on behalf of ${targetName}. Continue?`);
+                                const currentId = (window.currentDocumentState && window.currentDocumentState.currentDocument && window.currentDocumentState.currentDocument.id) || 'default-doc';
+                                const mxResp = await fetch(`http://localhost:3001/api/approval-matrix?actorPlatform=web&actorId=${encodeURIComponent(actor.id)}&documentId=${encodeURIComponent(currentId)}`);
+                                const mx = await mxResp.json();
+                                const row = mx && mx.matrix ? mx.matrix[targetUserId] : null;
+                                if (row && row.needsConfirm) {
+                                    const strings = (mx && mx.strings) || {};
+                                    const tmpl = strings[row.confirmMessageKey || 'confirmActOnBehalf'] || 'You are about to {action} on behalf of {targetName}. Continue?';
+                                    const target = (mx.users || []).find(u => u.id === targetUserId);
+                                    const ask = tmpl.replace('{action}', nextAction).replace('{targetName}', target ? target.name : 'this user');
+                                    const ok = window.confirm(ask);
                                     if (!ok) return;
                                 }
                             } catch(_) {}
