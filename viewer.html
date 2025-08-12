@@ -2091,6 +2091,7 @@
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({ 
                         source: 'web',
+                        userId: getCurrentUser()?.id,
                         docx: extractedContent?.data,
                         filename: currentDocumentState.currentDocument?.filename || 'web-checkin.docx'
                     })
@@ -2116,7 +2117,7 @@
                 const response = await fetch('http://localhost:3001/api/cancel-checkout', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ source: 'web' })
+                    body: JSON.stringify({ source: 'web', userId: getCurrentUser()?.id })
                 });
                 
                 if (response.ok) {

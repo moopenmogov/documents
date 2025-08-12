@@ -197,7 +197,7 @@
         .document-title-section {
             width: 100%;
             padding: 12px 15px;
-            border-bottom: 1px solid #dee2e6;
+            border-bottom: none; /* Remove inner divider to avoid double border */
         }
         
         .document-title {
@@ -822,28 +822,29 @@
             </div>
             
             <!-- Document Actions Dropdown -->
-            <div class="user-switcher" style="margin-top: 8px; display: flex; gap: 8px; align-items: center;">
-                <select id="docActionsSelect" class="user-select" onchange="executeDocumentAction(this.value)">
-                    <option value="">Document actions...</option>
-                </select>
-                <button id="viewLatestBtn" class="btn-secondary" onclick="window.viewLatestSafe && window.viewLatestSafe()">👀 View Latest</button>
+            <!-- Legacy action row removed; using unified toolbar below -->
+
+            <!-- Always-visible Word Action Toolbar (simple, reliable) -->
+            <div id="wordActionToolbar" style="margin: 10px 0; padding: 8px; border: 1px solid #eee; border-radius: 6px; background: #fafafa; display: flex; flex-wrap: wrap; gap: 8px; z-index: 10000;">
+                <button id="btnWordViewLatest" type="button">👀 View Latest</button>
+                <button id="btnWordOpenWeb" type="button" onclick="window.shareToWeb?.()">🌐 Open in Web</button>
+                <button id="btnWordCheckout" type="button" onclick="window.checkoutDocument?.()">🔒 Check out</button>
+                <button id="btnWordSaveProgress" type="button" onclick="window.saveProgress?.()">💾 Save progress</button>
+                <button id="btnWordCheckin" type="button" onclick="window.checkinDocument?.()">✅ Check in</button>
+                <button id="btnWordCancel" type="button" onclick="window.cancelCheckout?.()">❌ Cancel</button>
+                <button id="btnWordOverride" type="button" onclick="window.overrideCheckout?.()">🔄 Override</button>
+                <button id="btnWordSendVendor" type="button" onclick="window.openVendorModal?.()">📤 Send to Vendor</button>
+                <button id="btnReplaceCurrent" type="button">⬆️ Replace Current (upload)</button>
+                <input id="inputReplaceCurrent" type="file" accept=".docx,application/vnd.openxmlformats-officedocument.wordprocessingml.document" style="display:none;" />
             </div>
         </div>
         
 
         
-        <!-- New Features Banner -->
-        <div id="new-feature-banner" class="banner new-feature-banner" style="display: none;">
-            <div class="banner-content">
-                <div class="banner-text">
-                    <span class="banner-title">🎉 New Features Available!</span>
-                    <span class="banner-description">Enhanced collaboration tools and improved workflow</span>
-                </div>
-                <div class="banner-actions">
-                    <button id="btnEnable" class="btn-banner btn-enable">Enable</button>
-                    <button id="btnDisable" class="btn-banner btn-disable">Disable</button>
-                </div>
-            </div>
+        <!-- Checkout Status Banner (web parity) -->
+        <div class="center-column title-banner-column" style="flex: 1; text-align: center; margin-top: 8px;">
+            <div id="viewerMessage" class="viewer-message" style="display: none;"></div>
+            <div id="checkoutBanner" class="checkout-banner" style="display: none;"></div>
         </div>
         
         <div id="addin-controls-area">
@@ -860,19 +861,7 @@
                 </div>
             </div>
         
-            <!-- Checkout Status -->
-            <div id="checkoutStatus" class="checkout-status">
-                Available for check-out
-            </div>
-            
-            <!-- Viewer Message -->
-            <div id="viewerMessage" class="viewer-message" style="display: none;">
-                You can look but don't touch
-            </div>
-            
-            <!-- Legacy Banner (for remaining edge cases) -->
-            <div id="checkoutBanner" class="checkout-banner" style="display: none;">
-            </div>
+            <!-- Legacy banners removed to avoid duplicates; single banner is defined above -->
             
                         <!-- Individual buttons hidden - now using dropdown -->
             <div class="sync-section" style="display: none;">
@@ -1023,6 +1012,25 @@
         if (window.OfficeExtension && OfficeExtension.config) {
             OfficeExtension.config.extendedErrorLogging = true;
             console.log('🧭 OfficeExtension: extendedErrorLogging enabled');
+        }
+    } catch (_) {}
+
+    // Back-compat global stubs to prevent legacy calls from throwing
+    try {
+        if (typeof window.populateDocumentActions !== 'function') {
+            window.populateDocumentActions = function() {};
+        }
+        if (typeof window.refreshActionsDropdownFromMatrix !== 'function') {
+            window.refreshActionsDropdownFromMatrix = function() {};
+        }
+        if (typeof window.renderMatrixActionsDropdown !== 'function') {
+            window.renderMatrixActionsDropdown = function() {};
+        }
+        if (typeof window.renderMatrixActionsBar !== 'function') {
+            window.renderMatrixActionsBar = function() {};
+        }
+        if (typeof window.refreshActionsDropdown !== 'function') {
+            window.refreshActionsDropdown = function() {};
         }
     } catch (_) {}
 
@@ -1192,7 +1200,8 @@
     })();
 
     // --- Server Raw Loader: Use the same insert path as Self Test but fetch from API ---
-    (function setupServerRawLoader() {
+    /* Removed legacy server raw loader UI */
+    /* (function setupServerRawLoader() {
         try {
             async function loadLatestServerRaw() {
                 if (window.__documentInsertInProgress) {
@@ -1463,7 +1472,7 @@
         } catch (e) {
             console.warn('Failed to set up Server Raw loader', e);
         }
-    })();
+    })(); */
         // Notification system variables
         let notificationHistory = [];
         let hasUnreadNotifications = false;
@@ -1499,6 +1508,8 @@
                     
                     if (data.type === 'connected') {
                         showStatus('sseStatus', `📡 ${data.message}`, 'success');
+                        // On (re)connect, force a status+matrix refresh
+                        fetchDocumentStatus().then(() => updateUIFromStateMatrix('word', getCurrentUser, getCurrentUserRole, currentDocumentState));
                     } else if (data.type === 'notification') {
                         // Mirror web: show server-sent notifications
                         try { addNotification(data.message || 'Notification'); } catch(_) {}
@@ -1510,26 +1521,22 @@
                         setTimeout(() => updateUIFromStateMatrix('word', getCurrentUser, getCurrentUserRole, currentDocumentState), 100);
                     } else if (data.type === 'document-checked-out') {
                         showStatus('sseStatus', `📡 ${data.message}`, 'info');
-                        fetchDocumentStatus();
-                        setTimeout(() => updateUIFromStateMatrix('word', getCurrentUser, getCurrentUserRole, currentDocumentState), 50);
+                        fetchDocumentStatus().then(() => updateUIFromStateMatrix('word', getCurrentUser, getCurrentUserRole, currentDocumentState));
                         if (data.checkedOutBy !== 'word') {
                             loadDocumentContent();
                         }
                     } else if (data.type === 'document-checked-in') {
                         showStatus('sseStatus', `📡 ${data.message}`, 'info');
-                        fetchDocumentStatus();
-                        setTimeout(() => updateUIFromStateMatrix('word', getCurrentUser, getCurrentUserRole, currentDocumentState), 50);
+                        fetchDocumentStatus().then(() => updateUIFromStateMatrix('word', getCurrentUser, getCurrentUserRole, currentDocumentState));
                     } else if (data.type === 'document-saved') {
                         showStatus('sseStatus', `📡 ${data.message}`, 'info');
-                        setTimeout(() => updateUIFromStateMatrix('word', getCurrentUser, getCurrentUserRole, currentDocumentState), 50);
+                        fetchDocumentStatus().then(() => updateUIFromStateMatrix('word', getCurrentUser, getCurrentUserRole, currentDocumentState));
                     } else if (data.type === 'checkout-cancelled') {
                         showStatus('sseStatus', `📡 ${data.message}`, 'info');
-                        fetchDocumentStatus();
-                        setTimeout(() => updateUIFromStateMatrix('word', getCurrentUser, getCurrentUserRole, currentDocumentState), 50);
+                        fetchDocumentStatus().then(() => updateUIFromStateMatrix('word', getCurrentUser, getCurrentUserRole, currentDocumentState));
                     } else if (data.type === 'document-uploaded') {
                         showStatus('sseStatus', `📡 ${data.message}`, 'info');
-                        fetchDocumentStatus();
-                        setTimeout(() => updateUIFromStateMatrix('word', getCurrentUser, getCurrentUserRole, currentDocumentState), 50);
+                        fetchDocumentStatus().then(() => updateUIFromStateMatrix('word', getCurrentUser, getCurrentUserRole, currentDocumentState));
                     } else if (data.type === 'user-switched') {
                         console.log(`📡 WORD SSE: User switched event received:`, data);
                         if (data.platform === 'word') {
@@ -2252,6 +2259,7 @@
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({ 
                         source: 'word',
+                        userId: getCurrentUser()?.id,
                         docx: docx,
                         filename: 'word-progress-save.docx'
                     })
@@ -2259,6 +2267,17 @@
                 
                 if (response.ok) {
                     showStatus('documentStatus', '✅ Progress saved successfully', 'success');
+                    // Refresh matrix-driven UI immediately
+                    try {
+                        await fetchDocumentStatus();
+                        await updateUIFromStateMatrix('word', getCurrentUser, getCurrentUserRole, currentDocumentState);
+                        if (window.refreshActionsDropdownFromMatrix && window.__lastStateMatrix) {
+                            window.refreshActionsDropdownFromMatrix('docActionsSelect', window.__lastStateMatrix);
+                        } else {
+                            populateDocumentActions();
+                        }
+                        if (window.updateQuickActionsVisibility) updateQuickActionsVisibility();
+                    } catch(_) {}
                 } else {
                     const error = await response.json();
                     showStatus('documentStatus', `❌ ${error.error}`, 'error');
@@ -2285,6 +2304,7 @@
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({ 
                         source: 'word',
+                        userId: getCurrentUser()?.id,
                         docx: docx,
                         filename: 'word-checkin.docx'
                     })
@@ -2292,8 +2312,17 @@
                 
                 if (response.ok) {
                     showStatus('documentStatus', '✅ Document checked in successfully', 'success');
-                    
-                    // Re-enable user selection after successful checkinawait fetchDocumentStatus(); // Refresh UI (includes re-locking if needed)
+                    // Refresh matrix/UI state immediately
+                    try {
+                        await fetchDocumentStatus();
+                        await updateUIFromStateMatrix('word', getCurrentUser, getCurrentUserRole, currentDocumentState);
+                        if (window.refreshActionsDropdownFromMatrix && window.__lastStateMatrix) {
+                            window.refreshActionsDropdownFromMatrix('docActionsSelect', window.__lastStateMatrix);
+                        } else {
+                            populateDocumentActions();
+                        }
+                        if (window.updateQuickActionsVisibility) updateQuickActionsVisibility();
+                    } catch(_) {}
                 } else {
                     const error = await response.json();
                     showStatus('documentStatus', `❌ ${error.error}`, 'error');
@@ -2314,7 +2343,7 @@
                 const response = await fetch('http://localhost:3001/api/cancel-checkout', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ source: 'word' })
+                    body: JSON.stringify({ source: 'word', userId: getCurrentUser()?.id })
                 });
                 
                 if (response.ok) {
@@ -2350,7 +2379,17 @@
                 
                 if (response.ok) {
                     console.log('âœ… WORD: Override successful');
-                    await fetchDocumentStatus();
+                    // Refresh matrix/UI state immediately
+                    try {
+                        await fetchDocumentStatus();
+                        await updateUIFromStateMatrix('word', getCurrentUser, getCurrentUserRole, currentDocumentState);
+                        if (window.refreshActionsDropdownFromMatrix && window.__lastStateMatrix) {
+                            window.refreshActionsDropdownFromMatrix('docActionsSelect', window.__lastStateMatrix);
+                        } else {
+                            populateDocumentActions();
+                        }
+                        if (window.updateQuickActionsVisibility) updateQuickActionsVisibility();
+                    } catch(_) {}
                 } else {
                     console.error('âŒ WORD: Override failed:', response.status);
                 }
@@ -2419,7 +2458,8 @@
         window.__pureInsertMode = window.__pureInsertMode !== undefined ? window.__pureInsertMode : true; // Do not modify the document content before/after insert attempts
         window.__allowPreInsertStyleReset = window.__allowPreInsertStyleReset || false; // opt-in test; default off
         window.__baselineStylesJson = window.__baselineStylesJson || null;
-        window.__insertIsolation = window.__insertIsolation !== undefined ? window.__insertIsolation : true; // minimize background Word.run activity
+        // Default to live mode so SSE/matrix updates reflect immediately
+        window.__insertIsolation = window.__insertIsolation !== undefined ? window.__insertIsolation : false;
         
         // Disable HMR/live reload during pure insert testing to reduce WebView churn
         try { if (window.__pureInsertMode && typeof module !== 'undefined' && module.hot && typeof module.hot.decline === 'function') { module.hot.decline(); console.log('🔕 HMR disabled for pure insert testing'); } } catch(_) {}
@@ -3088,93 +3128,7 @@
             }
         }
         
-        // Populate document actions dropdown based on state matrix
-        function populateDocumentActions() {
-            const actionsSelect = document.getElementById('docActionsSelect');
-            if (!actionsSelect) return;
-            
-            // Clear existing options except placeholder
-            actionsSelect.innerHTML = '<option value="">Document actions...</option>';
-            
-            // Get available buttons from state matrix
-            const matrix = window.__lastStateMatrix || {};
-            const buttons = matrix.buttons || {};
-            const currentUser = window.getCurrentUser ? window.getCurrentUser() : null;
-            const userRole = currentUser ? currentUser.role : 'viewer';
-            
-            // Define all possible actions with their conditions
-            const possibleActions = [
-                { id: 'viewLatest', label: '👀 View Latest', icon: '👀', always: true },
-                { id: 'openWeb', label: '🌐 Open in Web', icon: '🌐', always: true },
-                { id: 'checkout', label: '🔒 Check-out Document', icon: '🔒', condition: buttons.checkout?.visible },
-                { id: 'checkin', label: '✅ Save & Check-in', icon: '✅', condition: buttons.checkin?.visible },
-                { id: 'saveProgress', label: '💾 Save Progress', icon: '💾', condition: buttons.saveProgress?.visible },
-                { id: 'cancel', label: '❌ Cancel Check-out', icon: '❌', condition: buttons.cancel?.visible },
-                { id: 'override', label: '🔄 Override Check-out', icon: '🔄', condition: buttons.override?.visible },
-                { id: 'sendVendor', label: '📤 Send to Vendor', icon: '📤', condition: buttons.sendVendor?.visible }
-            ];
-            
-            // Add available actions to dropdown
-            possibleActions.forEach(action => {
-                if (action.always || action.condition) {
-                    const option = document.createElement('option');
-                    option.value = action.id;
-                    option.textContent = action.label;
-                    actionsSelect.appendChild(option);
-                }
-            });
-            
-            console.log('📋 Document actions populated:', possibleActions.filter(a => a.always || a.condition).map(a => a.label));
-        }
-        
-        // Execute selected document action
-        function executeDocumentAction(actionId) {
-            if (!actionId) return;
-            
-            console.log('🎯 Executing document action:', actionId);
-            
-            // Reset dropdown to placeholder
-            const actionsSelect = document.getElementById('docActionsSelect');
-            if (actionsSelect) actionsSelect.value = '';
-            
-            // Execute the appropriate function
-                switch (actionId) {
-                case 'viewLatest':
-                    try { addNotification('👀 View Latest invoked'); } catch(_) {}
-                    // In-place insert only
-                    if (window.viewLatestSafe) {
-                        window.viewLatestSafe();
-                    } else if (window.cleanViewLatest) {
-                        window.cleanViewLatest();
-                    } else {
-                        showStatus('documentStatus', '❌ View Latest not available', 'error');
-                    }
-                    break;
-                case 'openWeb':
-                    shareToWeb();
-                    break;
-                case 'checkout':
-                    checkoutDocument();
-                    break;
-                case 'checkin':
-                    checkinDocument();
-                    break;
-                case 'saveProgress':
-                    saveProgress();
-                    break;
-                case 'cancel':
-                    cancelCheckout();
-                    break;
-                case 'override':
-                    overrideCheckout();
-                    break;
-                case 'sendVendor':
-                    openVendorModal();
-                    break;
-                default:
-                    console.log('❌ Unknown document action:', actionId);
-            }
-        }
+        // Removed legacy dropdown population/execute handlers
         
         // Load shared approvals UI config
         window.__approvalsUi = window.__approvalsUi || null;
@@ -3187,9 +3141,15 @@
             } catch(_) {}
         })();
         
+        // Global flag to control Quick Actions visibility (default OFF)
+        window.__quickActionsEnabled = typeof window.__quickActionsEnabled === 'boolean' ? window.__quickActionsEnabled : false;
+
         // --- Quick Actions (temporary explicit buttons, bypass dropdown/matrix) ---
         (function setupQuickActions() {
             try {
+                if (!window.__quickActionsEnabled) {
+                    return; // Skip creating Quick Actions unless explicitly enabled
+                }
                 function createQuickActionsUI() {
                     const bar = document.createElement('div');
                     bar.id = 'quickActionsBar';
@@ -3257,6 +3217,181 @@
             } catch (e) {
                 console.warn('QuickActions setup failed:', e);
             }
+        })();
+
+        // Robust "View Latest" wiring for toolbar (prefers base64 path, with fallbacks)
+        (function setupToolbarViewLatest() {
+            try {
+                async function viewLatestRobust() {
+                    try {
+                        // Prefer our confirmed working flow
+                        if (typeof window.viewLatestSafe === 'function') {
+                            await window.viewLatestSafe();
+                            return;
+                        }
+                        if (typeof window.cleanViewLatest === 'function') {
+                            await window.cleanViewLatest();
+                            return;
+                        }
+                        // Last resort
+                        if (typeof window.viewReadOnly === 'function') {
+                            await window.viewReadOnly();
+                            return;
+                        }
+                        throw new Error('No View Latest function available');
+                    } catch (e) {
+                        console.error('Toolbar View Latest error:', e);
+                        try { showStatus('documentStatus', `❌ View Latest failed: ${e?.message || e}`, 'error'); } catch (_) {}
+                        // Protocol fallback: open via ms-word handler so user is never blocked
+                        try {
+                            const current = await (await fetch('http://localhost:3001/api/current-document')).json();
+                            const id = current && current.id ? current.id : 'default-doc';
+                            const docUrl = `http://localhost:3001/api/document/${encodeURIComponent(id)}.docx`;
+                            const wordUrl = `ms-word:ofe|u|${encodeURI(docUrl)}`;
+                            window.location.assign(wordUrl);
+                            try { showStatus('documentStatus', '✅ Opened latest in a new window', 'success'); } catch(_) {}
+                            return;
+                        } catch (fallbackErr) {
+                            console.warn('Protocol fallback failed', fallbackErr);
+                        }
+                    }
+                }
+
+                function bind() {
+                    const btn = document.getElementById('btnWordViewLatest');
+                    if (btn) {
+                        btn.onclick = () => { viewLatestRobust(); };
+                    }
+                }
+                if (document.readyState === 'loading') {
+                    document.addEventListener('DOMContentLoaded', bind);
+                } else {
+                    bind();
+                }
+            } catch (e) {
+                console.warn('setupToolbarViewLatest failed:', e);
+            }
+        })();
+
+        // Drive the toolbar's button visibility from the state matrix; hide legacy UIs
+        (function setupToolbarVisibility() {
+            try {
+                window.updateToolbarFromMatrix = function updateToolbarFromMatrix(config) {
+                    const buttons = (config && config.buttons) || {};
+                    const hasDocument = !!(config && config.checkoutStatus && config.checkoutStatus.show);
+                    const show = (id, visible) => { const el = document.getElementById(id); if (el) el.style.display = visible ? '' : 'none'; };
+                    // Visibility rules mirroring the web
+                    show('btnWordViewLatest', hasDocument);
+                    show('btnWordOpenWeb', true);
+                    show('btnWordCheckout', !!buttons.checkoutBtn);
+                    show('btnWordSaveProgress', !!buttons.checkedInBtns);
+                    show('btnWordCheckin', !!buttons.checkedInBtns);
+                    show('btnWordCancel', !!buttons.checkedInBtns);
+                    show('btnWordOverride', !!buttons.overrideBtn);
+                    show('btnWordSendVendor', !!buttons.sendVendorBtn);
+                    // Replace current stays visible
+                    show('btnReplaceCurrent', true);
+                };
+
+                // Hide legacy containers so only the toolbar remains
+                function hideLegacy() {
+                    const legacySelect = document.getElementById('docActionsSelect');
+                    if (legacySelect && legacySelect.parentElement) legacySelect.parentElement.style.display = 'none';
+                    const ddHost = document.getElementById('matrixActionsDropdownHost');
+                    if (ddHost) ddHost.style.display = 'none';
+                    const bar = document.getElementById('matrixActionsBarFixed');
+                    if (bar) bar.style.display = 'none';
+                }
+                if (document.readyState === 'loading') {
+                    document.addEventListener('DOMContentLoaded', hideLegacy);
+                } else {
+                    hideLegacy();
+                }
+
+                // If matrix already present, apply immediately
+                const kick = () => {
+                    try { if (window.__lastStateMatrix) window.updateToolbarFromMatrix(window.__lastStateMatrix); } catch(_) {}
+                };
+                if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', kick, { once: true }); else kick();
+            } catch (e) {
+                console.warn('setupToolbarVisibility failed:', e);
+            }
+        })();
+
+        // Web parity banner styling and logic
+        (function setupBannerParity() {
+            try {
+                const css = `
+                .checkout-banner { background: #ffc1d9; color: #ffffff; padding: 8px 16px; border-radius: 4px; font-size: 18px; font-weight: 500; margin: 8px auto; display: inline-block; }
+                .checkout-banner.checked-out { background: #ff6fa5; }
+                .viewer-message { color: #6c757d; font-size: 13px; margin-bottom: 4px; }
+                `;
+                const style = document.createElement('style'); style.textContent = css; document.head.appendChild(style);
+
+                window.updateBannerFromMatrix = function updateBannerFromMatrix(config) {
+                    const banner = document.getElementById('checkoutBanner');
+                    const viewerMsg = document.getElementById('viewerMessage');
+                    if (!banner) return;
+                    const show = !!(config && config.checkoutStatus && config.checkoutStatus.show);
+                    const text = (config && config.checkoutStatus && config.checkoutStatus.text) || '';
+                    if (viewerMsg && config && config.viewerMessage) {
+                        if (config.viewerMessage.show) { viewerMsg.textContent = config.viewerMessage.text || ''; viewerMsg.style.display = 'block'; }
+                        else { viewerMsg.textContent = ''; viewerMsg.style.display = 'none'; }
+                    }
+                    if (show && text) {
+                        banner.textContent = text;
+                        if (text.includes('Checked out by')) banner.classList.add('checked-out'); else banner.classList.remove('checked-out');
+                        banner.style.display = 'inline-block';
+                    } else {
+                        banner.textContent = '';
+                        banner.style.display = 'none';
+                        banner.classList.remove('checked-out');
+                    }
+                };
+
+                const kick = () => { try { if (window.__lastStateMatrix) window.updateBannerFromMatrix(window.__lastStateMatrix); } catch(_) {} };
+                if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', kick, { once: true }); else kick();
+            } catch (e) { console.warn('setupBannerParity failed:', e); }
+        })();
+
+        // Back-compat: no-op to satisfy legacy calls left in action handlers
+        function populateDocumentActions() { /* toolbar is the single source of truth now */ }
+
+        // Replace Current (upload) wiring (JSON base64 per server contract)
+        (function setupReplaceCurrent() {
+            try {
+                async function uploadDocxFile(file) {
+                    try {
+                        showStatus('documentStatus', `⬆️ Uploading ${file.name}...`, 'info');
+                        const buffer = await file.arrayBuffer();
+                        const base64 = (typeof window.ensureBase64FromArrayBuffer === 'function')
+                            ? await window.ensureBase64FromArrayBuffer(buffer)
+                            : arrayBufferToBase64(buffer);
+                        const resp = await fetch('http://localhost:3001/api/upload-docx', {
+                            method: 'POST',
+                            headers: { 'Content-Type': 'application/json' },
+                            body: JSON.stringify({ docx: base64, filename: file.name })
+                        });
+                        if (!resp.ok) throw new Error(`Upload failed: ${resp.status}`);
+                        const data = await resp.json();
+                        showStatus('documentStatus', `✅ Replaced current with ${data.filename || file.name}`, 'success');
+                        // Auto-attempt to load
+                        try { await (window.viewLatestSafe || window.cleanViewLatest || window.viewReadOnly)(); } catch(_) {}
+                    } catch (e) {
+                        console.error('Replace Current upload error:', e);
+                        showStatus('documentStatus', `❌ Replace failed: ${e?.message || e}`, 'error');
+                    }
+                }
+                function bind() {
+                    const btn = document.getElementById('btnReplaceCurrent');
+                    const input = document.getElementById('inputReplaceCurrent');
+                    if (btn && input) {
+                        btn.onclick = () => input.click();
+                        input.onchange = () => { const f = input.files && input.files[0]; if (f) uploadDocxFile(f); input.value=''; };
+                    }
+                }
+                if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', bind); else bind();
+            } catch (e) { console.warn('setupReplaceCurrent failed:', e); }
         })();
 
         // Load approvals from state machine and API
@@ -3605,6 +3740,7 @@
         
         // ===== NOTIFICATION SYSTEM =====
         
+        // Persist container and append-only notifications
         function addNotification(message, type = 'info') {
             const notification = {
                 id: ++notificationIdCounter,
@@ -3615,10 +3751,31 @@
                 platform: 'word'
             };
             
-            notificationHistory.unshift(notification); // Add to beginning
+            notificationHistory.unshift(notification); // Add to beginning (newest first)
             hasUnreadNotifications = true;
             updateNotificationDot();
-            renderNotifications(); // Update both modal and window
+            // Append-only render: create elements once and append new ones
+            try {
+                const modalBody = document.getElementById('notificationModalBody');
+                const windowBody = document.getElementById('notificationWindowBody');
+                const html = document.createElement('div');
+                html.className = `notification-item ${notification.type}`;
+                html.innerHTML = `<p class="notification-message">${notification.message}</p><p class="notification-timestamp">${getTimeAgo(notification.timestamp)}</p>`;
+                if (modalBody) {
+                    // Remove placeholder only once
+                    const empty = modalBody.querySelector('.no-notifications');
+                    if (empty) empty.remove();
+                    modalBody.insertBefore(html.cloneNode(true), modalBody.firstChild);
+                }
+                if (windowBody) {
+                    const empty2 = windowBody.querySelector('.no-notifications');
+                    if (empty2) empty2.remove();
+                    windowBody.insertBefore(html, windowBody.firstChild);
+                }
+            } catch (_) {
+                // Fallback to full rerender if needed
+                renderNotifications();
+            }
             
             console.log('📝 Added notification:', notification);
             
@@ -4227,6 +4384,145 @@
                 console.log('ℹ️ autoAttachToOpenDocument skipped:', e?.message || e);
             }
         }
+
+        // Hide legacy dropdown and render matrix-driven buttons instead
+        (function setupMatrixActionsBar() {
+            try {
+                function ensureContainer() {
+                    let bar = document.getElementById('matrixActionsBar');
+                    if (!bar) {
+                        bar = document.createElement('div');
+                        bar.id = 'matrixActionsBar';
+                        bar.style.display = 'flex';
+                        bar.style.flexWrap = 'wrap';
+                        bar.style.gap = '6px';
+                        bar.style.margin = '8px 0';
+                        const viewBtn = document.getElementById('viewLatestBtn');
+                        if (viewBtn && viewBtn.parentElement) {
+                            viewBtn.parentElement.insertBefore(bar, viewBtn.nextSibling);
+                        } else {
+                            (document.getElementById('documentActions') || document.body).appendChild(bar);
+                        }
+                    }
+                    return bar;
+                }
+
+                function clear(el) { while (el.firstChild) el.removeChild(el.firstChild); }
+                function mk(text, onClick) { const b = document.createElement('button'); b.type = 'button'; b.textContent = text; b.style.padding = '6px 10px'; b.style.fontSize = '12px'; b.addEventListener('click', onClick); return b; }
+
+                window.renderMatrixActionsBar = function renderMatrixActionsBar(config) {
+                    try {
+                        const select = document.getElementById('docActionsSelect');
+                        if (select && select.parentElement) select.parentElement.style.display = 'none';
+                        const bar = ensureContainer();
+                        clear(bar);
+                        if (!config || !config.buttons) return;
+                        const b = config.buttons;
+                        const add = (cond, text, fn) => { if (cond && typeof fn === 'function') bar.appendChild(mk(text, fn)); };
+                        // Match web actions 1:1 order
+                        add(config.checkoutStatus?.show !== false, '👀 View Latest', window.viewLatestSafe || window.cleanViewLatest || window.viewReadOnly);
+                        add(true, '🌐 Open in Web', window.shareToWeb);
+                        add(!!b.checkoutBtn, '🔒 Check-out', window.checkoutDocument);
+                        add(!!b.checkedInBtns, '💾 Save Progress', window.saveProgress);
+                        add(!!b.checkedInBtns, '✅ Check-in', window.checkinDocument);
+                        add(!!b.checkedInBtns, '❌ Cancel', window.cancelCheckout);
+                        add(!!b.overrideBtn, '🔄 Override', window.overrideCheckout);
+                        add(!!b.sendVendorBtn, '📤 Send to Vendor', window.openVendorModal);
+                    } catch (e) {
+                        console.warn('renderMatrixActionsBar error', e);
+                    }
+                };
+
+                // Do not hide legacy dropdown here; we'll hide it only after new UI renders
+            } catch (e) {
+                console.warn('setupMatrixActionsBar failed:', e);
+            }
+        })();
+
+        // Matrix-driven unified dropdown (matches web actions 1:1)
+        (function setupMatrixActionsDropdown() {
+            try {
+                function ensureDropdown() {
+                    let host = document.getElementById('matrixActionsDropdownHost');
+                    if (!host) {
+                        host = document.createElement('div');
+                        host.id = 'matrixActionsDropdownHost';
+                        host.style.margin = '8px 0';
+                        const viewBtn = document.getElementById('viewLatestBtn');
+                        if (viewBtn && viewBtn.parentElement) {
+                            viewBtn.parentElement.insertBefore(host, viewBtn.nextSibling);
+                        } else {
+                            (document.getElementById('documentActions') || document.body).appendChild(host);
+                        }
+                    }
+                    let select = document.getElementById('matrixActionsSelect');
+                    if (!select) {
+                        select = document.createElement('select');
+                        select.id = 'matrixActionsSelect';
+                        select.className = 'user-select';
+                        select.style.minWidth = '220px';
+                        host.appendChild(select);
+                    }
+                    return select;
+                }
+
+                function renderMatrixActionsDropdown(config) {
+                    const select = ensureDropdown();
+                    // Reset options
+                    while (select.options.length) select.remove(0);
+                    const placeholder = document.createElement('option');
+                    placeholder.value = '';
+                    placeholder.textContent = 'Document actions...';
+                    select.appendChild(placeholder);
+
+                    if (!config || !config.buttons) return;
+                    const b = config.buttons;
+                    const actions = [];
+                    const add = (cond, id, label, fn) => { if (cond && typeof fn === 'function') actions.push({ id, label, fn }); };
+
+                    // Match web order
+                    add(config.checkoutStatus?.show !== false, 'viewLatest', '👀 View Latest', window.viewLatestSafe || window.cleanViewLatest || window.viewReadOnly);
+                    add(true, 'openWeb', '🌐 Open in Web', window.shareToWeb);
+                    add(!!b.checkoutBtn, 'checkout', '🔒 Check-out Document', window.checkoutDocument);
+                    add(!!b.checkedInBtns, 'save', '💾 Save Progress', window.saveProgress);
+                    add(!!b.checkedInBtns, 'checkin', '✅ Save & Check-in', window.checkinDocument);
+                    add(!!b.checkedInBtns, 'cancel', '❌ Cancel Check-out', window.cancelCheckout);
+                    add(!!b.overrideBtn, 'override', '🔄 Override Check-out', window.overrideCheckout);
+                    add(!!b.sendVendorBtn, 'sendVendor', '📤 Send to Vendor', window.openVendorModal);
+
+                    actions.forEach(a => { const opt = document.createElement('option'); opt.value = a.id; opt.textContent = a.label; select.appendChild(opt); });
+                    select.onchange = (e) => { const val = e.target.value; const a = actions.find(x => x.id === val); if (a) a.fn(); select.value = ''; };
+
+                    // Always show the new dropdown host so controls don't disappear
+                    select.parentElement.style.display = 'block';
+                    // Hide legacy dropdown and bar now to avoid flicker
+                    const legacy = document.getElementById('docActionsSelect');
+                    if (legacy && legacy.parentElement) legacy.parentElement.style.display = 'none';
+                    const bar = document.getElementById('matrixActionsBar');
+                    if (bar) bar.style.display = 'none';
+                }
+
+                window.renderMatrixActionsDropdown = renderMatrixActionsDropdown;
+            } catch (e) {
+                console.warn('setupMatrixActionsDropdown failed:', e);
+            }
+        })();
+
+        // One-time kick: render new dropdown if matrix is already available after load
+        (function kickRenderMatrixDropdownOnce(){
+            try {
+                const doKick = () => {
+                    if (window.__lastStateMatrix && typeof window.renderMatrixActionsDropdown === 'function') {
+                        window.renderMatrixActionsDropdown(window.__lastStateMatrix);
+                    }
+                };
+                if (document.readyState === 'loading') {
+                    document.addEventListener('DOMContentLoaded', doKick, { once: true });
+                } else {
+                    setTimeout(doKick, 0);
+                }
+            } catch(_) {}
+        })();
 
         // Fresh minimal View Latest loader: prefer server/base64 → raw bytes → open-as-new
         window.cleanViewLatest = async function() {

@@ -51,6 +51,7 @@ let documentState = {
 // Mock user system - Platform-specific users
 let webUsers = {
     'user1': { id: 'user1', name: 'Warren Peace', email: 'warren@opengov.com', role: 'editor' },
+    'user3': { id: 'user3', name: 'Fun E. Guy', email: 'funguy@opengov.com', role: 'editor' },
     'user2': { id: 'user2', name: 'Gettysburger King', email: 'gettysburger@opengov.com', role: 'viewer' },
     'user5': { id: 'user5', name: 'Yuri Lee Laffed', email: 'reese@opengov.com', role: 'suggester' },
     'vendor1': { id: 'vendor1', name: 'Hoo R. U', email: 'moti@real.builders', role: 'vendor', vendor: 'Moti\'s Builders' }
@@ -232,7 +233,7 @@ app.post('/api/checkout', (req, res) => {
 
 // Save document progress (while keeping checkout)
 app.post('/api/save-progress', (req, res) => {
-    const { source, docx, filename } = req.body;
+    const { source, docx, filename, userId: requestedUserId } = req.body;
     
     // Check if document is checked out
     if (!documentState.isCheckedOut) {
@@ -242,8 +243,12 @@ app.post('/api/save-progress', (req, res) => {
         });
     }
     
-    // Check if the source is the one who checked it out
-    if (documentState.checkedOutBy !== source) {
+    // Allow same user to act across platforms: verify by user id, not platform
+    let actor = source === 'web' ? currentWebUser : currentWordUser;
+    if (requestedUserId && (webUsers[requestedUserId] || wordUsers[requestedUserId])) {
+        actor = webUsers[requestedUserId] || wordUsers[requestedUserId];
+    }
+    if (documentState.checkedOutUserId && actor?.id !== documentState.checkedOutUserId) {
         return res.status(403).json({
             success: false,
             error: 'Only the user who checked out the document can save progress',
@@ -299,7 +304,7 @@ app.post('/api/save-progress', (req, res) => {
 
 // Check-in document (save and unlock)
 app.post('/api/checkin', (req, res) => {
-    const { source, docx, filename } = req.body;
+    const { source, docx, filename, userId: requestedUserId } = req.body;
     
     // Check if document is checked out
     if (!documentState.isCheckedOut) {
@@ -309,8 +314,19 @@ app.post('/api/checkin', (req, res) => {
         });
     }
     
-    // Check if the source is the one who checked it out
-    if (documentState.checkedOutBy !== source) {
+    // Allow same user to act across platforms: verify by user id, not platform
+    let actor = source === 'web' ? currentWebUser : currentWordUser;
+    console.log('🔐 CHECKIN attempt:', {
+        requestedUserId,
+        platformSource: source,
+        platformUser: actor?.id,
+        checkedOutUserId: documentState.checkedOutUserId
+    });
+    if (requestedUserId && (webUsers[requestedUserId] || wordUsers[requestedUserId])) {
+        actor = webUsers[requestedUserId] || wordUsers[requestedUserId];
+    }
+    if (documentState.checkedOutUserId && actor?.id !== documentState.checkedOutUserId) {
+        console.log('⛔ CHECKIN denied: actor mismatch', { actorId: actor?.id, expected: documentState.checkedOutUserId });
         return res.status(403).json({
             success: false,
             error: 'Only the user who checked out the document can check it in',
@@ -344,6 +360,7 @@ app.post('/api/checkin', (req, res) => {
         documentState.checkedOutBy = null;
         documentState.checkedOutAt = null;
         documentState.checkedOutUser = null;
+        documentState.checkedOutUserId = null;
         
         // Broadcast check-in event
         broadcastSSE({
@@ -373,7 +390,7 @@ app.post('/api/checkin', (req, res) => {
 
 // Cancel checkout (unlock without saving)
 app.post('/api/cancel-checkout', (req, res) => {
-    const { source } = req.body;
+    const { source, userId: requestedUserId } = req.body;
     
     // Check if document is checked out
     if (!documentState.isCheckedOut) {
@@ -384,7 +401,18 @@ app.post('/api/cancel-checkout', (req, res) => {
     }
     
     // Check if the source is the one who checked it out
-    if (documentState.checkedOutBy !== source) {
+    let actor = source === 'web' ? currentWebUser : currentWordUser;
+    console.log('🔐 CANCEL attempt:', {
+        requestedUserId,
+        platformSource: source,
+        platformUser: actor?.id,
+        checkedOutUserId: documentState.checkedOutUserId
+    });
+    if (requestedUserId && (webUsers[requestedUserId] || wordUsers[requestedUserId])) {
+        actor = webUsers[requestedUserId] || wordUsers[requestedUserId];
+    }
+    if (documentState.checkedOutUserId && actor?.id !== documentState.checkedOutUserId) {
+        console.log('⛔ CANCEL denied: actor mismatch', { actorId: actor?.id, expected: documentState.checkedOutUserId });
         return res.status(403).json({
             success: false,
             error: 'Only the user who checked out the document can cancel the checkout',
@@ -398,6 +426,7 @@ app.post('/api/cancel-checkout', (req, res) => {
     documentState.checkedOutBy = null;
     documentState.checkedOutAt = null;
     documentState.checkedOutUser = null;
+    documentState.checkedOutUserId = null;
     
     console.log(`❌ Checkout cancelled by ${source} (no save)`);
     
@@ -1142,7 +1171,8 @@ app.get('/api/state-matrix', (req, res) => {
     const docState = {
         isCheckedOut: documentState.isCheckedOut || false,
         checkedOutBy: documentState.checkedOutBy || null,
-        checkedOutUser: documentState.checkedOutUser || null
+        checkedOutUser: documentState.checkedOutUser || null,
+        checkedOutUserId: documentState.checkedOutUserId || null
     };
     
     // Calculate state matrix configuration
@@ -1169,10 +1199,10 @@ app.get('/api/state-matrix', (req, res) => {
  * @returns {object} { buttons: {...}, banner: { text, show } }
  */
 function getStateMatrixConfig(userRole, platform, docState, currentUser) {
-    const { isCheckedOut, checkedOutBy, checkedOutUser } = docState;
+    const { isCheckedOut, checkedOutBy, checkedOutUser, checkedOutUserId } = docState;
     
     // Determine if this is self-checkout (cross-platform by user id)
-    const isSelfCheckout = isCheckedOut && (checkedOutUser?.id === currentUser?.id);
+    const isSelfCheckout = isCheckedOut && ((checkedOutUser?.id || checkedOutUserId) === currentUser?.id);
     
     // Initialize result
     const result = {
@@ -1196,6 +1226,17 @@ function getStateMatrixConfig(userRole, platform, docState, currentUser) {
         viewerMessage: {
             show: userRole === 'viewer' && !!(currentDocument.filename && currentDocument.id),
             text: 'You can look but don\'t touch'
+        },
+        flags: {
+            isSelfCheckout,
+            canCrossPlatformAct: isSelfCheckout,
+            checkedOutUserId: checkedOutUserId || checkedOutUser?.id || null,
+            actorUserId: currentUser?.id || null
+        },
+        actor: {
+            id: currentUser?.id,
+            name: currentUser?.name,
+            platform
         }
     };
     
