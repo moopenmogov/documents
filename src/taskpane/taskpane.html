@@ -3547,6 +3547,49 @@
         // Expose debug function globally
         window.debugDocumentEnvironment = debugDocumentEnvironment;
         
+        // Lightweight confirm dialog for Word WebView2 (window.confirm is blocked)
+        async function wordConfirm(message) {
+            return new Promise((resolve) => {
+                try {
+                    const backdrop = document.createElement('div');
+                    backdrop.id = 'ogConfirmBackdrop';
+                    backdrop.style.position = 'fixed';
+                    backdrop.style.inset = '0';
+                    backdrop.style.background = 'rgba(0,0,0,.35)';
+                    backdrop.style.zIndex = '2147483650';
+                    const modal = document.createElement('div');
+                    modal.id = 'ogConfirmModal';
+                    modal.style.position = 'fixed';
+                    modal.style.top = '50%';
+                    modal.style.left = '50%';
+                    modal.style.transform = 'translate(-50%,-50%)';
+                    modal.style.background = '#fff';
+                    modal.style.padding = '16px';
+                    modal.style.borderRadius = '10px';
+                    modal.style.boxShadow = '0 8px 24px rgba(0,0,0,.25)';
+                    modal.style.zIndex = '2147483651';
+                    modal.style.minWidth = '320px';
+                    modal.innerHTML = `
+                        <div style="font-weight:700;margin-bottom:8px">Please confirm</div>
+                        <div style="font-size:13px;color:#333;margin-bottom:12px">${message || 'Are you sure?'}</div>
+                        <div style="display:flex;gap:8px;justify-content:flex-end">
+                            <button id="ogConfirmCancel" class="btn" style="background:#6c757d;color:#fff;border:none;border-radius:8px;padding:8px 12px;font-weight:600;cursor:pointer">Cancel</button>
+                            <button id="ogConfirmOk" class="btn" style="background:#ff6fa5;color:#fff;border:none;border-radius:8px;padding:8px 12px;font-weight:600;cursor:pointer">Continue</button>
+                        </div>`;
+                    const cleanup = (val) => { try { modal.remove(); backdrop.remove(); } catch(_) {} resolve(val); };
+                    backdrop.addEventListener('click', () => cleanup(false));
+                    setTimeout(() => {
+                        try {
+                            document.getElementById('ogConfirmCancel').onclick = () => cleanup(false);
+                            document.getElementById('ogConfirmOk').onclick = () => cleanup(true);
+                        } catch(_) {}
+                    }, 0);
+                    document.body.append(backdrop, modal);
+                    try { modal.focus(); } catch(_) {}
+                } catch(_) { resolve(true); }
+            });
+        }
+
         // Handle approval actions (approve/reject)
         async function handleApprovalAction(userId, action) {
             try {
@@ -3779,7 +3822,7 @@ window.__forceOpenApprovalsTest = function() {
                     }
                 } catch(_) {}
                 if (needsConfirm) {
-                    const ok = window.confirm(confirmText || `You are about to ${action} on behalf of another user. Continue?`);
+                    const ok = await wordConfirm(confirmText || `You are about to ${action} on behalf of another user. Continue?`);
                     if (!ok) return;
                 }
                 
