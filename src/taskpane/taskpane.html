@@ -20,6 +20,49 @@
             box-sizing: border-box;
         }
         
+        // Deep logger for Office RichApi errors
+        function logRichApiError(error, label) {
+            try {
+                const seen = new WeakSet();
+                const safe = (obj) => {
+                    try {
+                        return JSON.parse(JSON.stringify(obj, (k, v) => {
+                            if (typeof v === 'object' && v !== null) {
+                                if (seen.has(v)) return '[Circular]';
+                                seen.add(v);
+                            }
+                            return v;
+                        }));
+                    } catch (_) { return obj; }
+                };
+                const tag = label || 'RichApi Error';
+                console.group(tag);
+                console.error(error);
+                if (error && typeof error === 'object') {
+                    try { console.log('name:', error.name); } catch(_) {}
+                    try { console.log('code:', error.code); } catch(_) {}
+                    try { console.log('message:', error.message); } catch(_) {}
+                    try { console.log('stack:', error.stack); } catch(_) {}
+                    try { console.log('traceMessages:', error.traceMessages || null); } catch(_) {}
+                    try { console.log('debugInfo:', safe(error.debugInfo) || null); } catch(_) {}
+                    let inner = error.innerError;
+                    let depth = 0;
+                    while (inner) {
+                        console.group(`innerError[${depth}]`);
+                        try { console.log('code:', inner.code); } catch(_) {}
+                        try { console.log('message:', inner.message); } catch(_) {}
+                        try { console.log('stack:', inner.stack); } catch(_) {}
+                        try { console.log('traceMessages:', inner.traceMessages || null); } catch(_) {}
+                        try { console.log('debugInfo:', safe(inner.debugInfo) || null); } catch(_) {}
+                        console.groupEnd();
+                        inner = inner.innerError;
+                        depth++;
+                    }
+                }
+                console.groupEnd();
+            } catch (_) {}
+        }
+
         body.read-only-mode {
             border: 8px solid #f8f9fa;
         }
@@ -154,7 +197,7 @@
         .document-title-section {
             width: 100%;
             padding: 12px 15px;
-            border-bottom: 1px solid #dee2e6;
+            border-bottom: none; /* Remove inner divider to avoid double border */
         }
         
         .document-title {
@@ -779,27 +822,29 @@
             </div>
             
             <!-- Document Actions Dropdown -->
-            <div class="user-switcher" style="margin-top: 8px;">
-                <select id="docActionsSelect" class="user-select" onchange="executeDocumentAction(this.value)">
-                    <option value="">Document actions...</option>
-                </select>
+            <!-- Legacy action row removed; using unified toolbar below -->
+
+            <!-- Always-visible Word Action Toolbar (simple, reliable) -->
+            <div id="wordActionToolbar" style="margin: 10px 0; padding: 8px; border: 1px solid #eee; border-radius: 6px; background: #fafafa; display: flex; flex-wrap: wrap; gap: 8px; z-index: 10000;">
+                <button id="btnWordViewLatest" type="button">👀 View Latest</button>
+                <button id="btnWordOpenWeb" type="button" onclick="window.shareToWeb?.()">🌐 Open in Web</button>
+                <button id="btnWordCheckout" type="button" onclick="window.checkoutDocument?.()">🔒 Check out</button>
+                <button id="btnWordSaveProgress" type="button" onclick="window.saveProgress?.()">💾 Save progress</button>
+                <button id="btnWordCheckin" type="button" onclick="window.checkinDocument?.()">✅ Check in</button>
+                <button id="btnWordCancel" type="button" onclick="window.cancelCheckout?.()">❌ Cancel</button>
+                <button id="btnWordOverride" type="button" onclick="window.overrideCheckout?.()">🔄 Override</button>
+                <button id="btnWordSendVendor" type="button" onclick="window.openVendorModal?.()">📤 Send to Vendor</button>
+                <button id="btnReplaceCurrent" type="button">⬆️ Replace Current (upload)</button>
+                <input id="inputReplaceCurrent" type="file" accept=".docx,application/vnd.openxmlformats-officedocument.wordprocessingml.document" style="display:none;" />
             </div>
         </div>
         
 
         
-        <!-- New Features Banner -->
-        <div id="new-feature-banner" class="banner new-feature-banner" style="display: none;">
-            <div class="banner-content">
-                <div class="banner-text">
-                    <span class="banner-title">🎉 New Features Available!</span>
-                    <span class="banner-description">Enhanced collaboration tools and improved workflow</span>
-                </div>
-                <div class="banner-actions">
-                    <button id="btnEnable" class="btn-banner btn-enable">Enable</button>
-                    <button id="btnDisable" class="btn-banner btn-disable">Disable</button>
-                </div>
-            </div>
+        <!-- Checkout Status Banner (web parity) -->
+        <div class="center-column title-banner-column" style="flex: 1; text-align: center; margin-top: 8px;">
+            <div id="viewerMessage" class="viewer-message" style="display: none;"></div>
+            <div id="checkoutBanner" class="checkout-banner" style="display: none;"></div>
         </div>
         
         <div id="addin-controls-area">
@@ -816,19 +861,7 @@
                 </div>
             </div>
         
-            <!-- Checkout Status -->
-            <div id="checkoutStatus" class="checkout-status">
-                Available for check-out
-            </div>
-            
-            <!-- Viewer Message -->
-            <div id="viewerMessage" class="viewer-message" style="display: none;">
-                You can look but don't touch
-            </div>
-            
-            <!-- Legacy Banner (for remaining edge cases) -->
-            <div id="checkoutBanner" class="checkout-banner" style="display: none;">
-            </div>
+            <!-- Legacy banners removed to avoid duplicates; single banner is defined above -->
             
                         <!-- Individual buttons hidden - now using dropdown -->
             <div class="sync-section" style="display: none;">
@@ -974,6 +1007,472 @@
     </div>
     
     <script>
+    // Enable extended error logging from Office.js runtime (best-effort)
+    try {
+        if (window.OfficeExtension && OfficeExtension.config) {
+            OfficeExtension.config.extendedErrorLogging = true;
+            console.log('🧭 OfficeExtension: extendedErrorLogging enabled');
+        }
+    } catch (_) {}
+
+    // Back-compat global stubs to prevent legacy calls from throwing
+    try {
+        if (typeof window.populateDocumentActions !== 'function') {
+            window.populateDocumentActions = function() {};
+        }
+        if (typeof window.refreshActionsDropdownFromMatrix !== 'function') {
+            window.refreshActionsDropdownFromMatrix = function() {};
+        }
+        if (typeof window.renderMatrixActionsDropdown !== 'function') {
+            window.renderMatrixActionsDropdown = function() {};
+        }
+        if (typeof window.renderMatrixActionsBar !== 'function') {
+            window.renderMatrixActionsBar = function() {};
+        }
+        if (typeof window.refreshActionsDropdown !== 'function') {
+            window.refreshActionsDropdown = function() {};
+        }
+    } catch (_) {}
+
+    // Catch any uncaught errors/rejections so nothing is lost
+    try {
+        window.addEventListener('unhandledrejection', (ev) => {
+            const reason = ev && (ev.reason || ev.detail || ev);
+            console.warn('⚠️ Unhandled promise rejection');
+            try { logRichApiError(reason, 'unhandledrejection'); } catch(_) { console.warn(reason); }
+        });
+        window.addEventListener('error', (ev) => {
+            const err = (ev && (ev.error || ev.message)) || ev;
+            console.warn('⚠️ Unhandled window error');
+            try { logRichApiError(err, 'window.error'); } catch(_) { console.warn(err); }
+        });
+    } catch (_) {}
+
+    // --- Self Test: Insert local DOCX via file picker ---
+    (function setupSelfTestInsertDocx() {
+        try {
+            function ensureBase64FromArrayBuffer(buffer) {
+                try {
+                    if (typeof window.arrayBufferToBase64 === 'function') {
+                        return window.arrayBufferToBase64(buffer);
+                    }
+                    let binary = '';
+                    const bytes = new Uint8Array(buffer);
+                    const len = bytes.byteLength;
+                    for (let i = 0; i < len; i++) {
+                        binary += String.fromCharCode(bytes[i]);
+                    }
+                    return btoa(binary);
+                } catch (e) {
+                    console.warn('arrayBuffer->base64 failed, retrying via Blob/DataURL', e);
+                    return new Promise((resolve, reject) => {
+                        try {
+                            const blob = new Blob([buffer], { type: 'application/vnd.openxmlformats-officedocument.wordprocessingml.document' });
+                            const fr = new FileReader();
+                            fr.onload = () => {
+                                const dataUrl = fr.result || '';
+                                const comma = (dataUrl || '').indexOf(',');
+                                if (comma >= 0) return resolve(dataUrl.slice(comma + 1));
+                                return resolve(dataUrl);
+                            };
+                            fr.onerror = (err) => reject(err);
+                            fr.readAsDataURL(blob);
+                        } catch (err) { reject(err); }
+                    });
+                }
+            }
+
+            async function insertDocxBase64Normalized(base64) {
+                const maybeAwait = (v) => (v && typeof v.then === 'function' ? v : Promise.resolve(v));
+                const b64 = await maybeAwait(base64);
+                // quick PK check
+                try {
+                    const d = atob(b64);
+                    if (!(d.charCodeAt(0) === 80 && d.charCodeAt(1) === 75)) {
+                        throw new Error('Selected file is not a valid .docx (PK signature missing)');
+                    }
+                } catch (_) {
+                    // continue; some environments may fail atob on large inputs, Word will still validate
+                }
+                await Word.run(async (context) => {
+                    if (typeof context.document.insertFileFromBase64 !== 'function') {
+                        throw new Error('insertFileFromBase64 not supported');
+                    }
+                    context.document.insertFileFromBase64(b64, Word.InsertLocation.replace);
+                    await context.sync();
+                });
+            }
+
+            // Expose helpers globally so other loaders can reuse the exact same successful path
+            try {
+                window.ensureBase64FromArrayBuffer = ensureBase64FromArrayBuffer;
+                window.insertDocxBase64Normalized = insertDocxBase64Normalized;
+            } catch (_) {}
+
+            function createUI() {
+                const wrapper = document.createElement('div');
+                wrapper.id = 'self-test-insert-docx-wrapper';
+                wrapper.style.marginTop = '8px';
+                wrapper.style.padding = '8px';
+                wrapper.style.borderTop = '1px solid #eee';
+
+                const btn = document.createElement('button');
+                btn.id = 'selfTestInsertDocxBtn';
+                btn.type = 'button';
+                btn.textContent = '🧪 Self Test: Insert DOCX';
+                btn.style.padding = '6px 10px';
+                btn.style.fontSize = '12px';
+
+                const hint = document.createElement('div');
+                hint.textContent = 'Pick a local .docx (e.g., Contract of the Future.docx) to insert in-place.';
+                hint.style.fontSize = '11px';
+                hint.style.color = '#555';
+                hint.style.marginTop = '4px';
+
+                const input = document.createElement('input');
+                input.type = 'file';
+                input.accept = '.docx,application/vnd.openxmlformats-officedocument.wordprocessingml.document';
+                input.style.display = 'none';
+                input.id = 'selfTestFileInputDocx';
+
+                btn.addEventListener('click', () => input.click());
+                input.addEventListener('change', async () => {
+                    const file = input.files && input.files[0];
+                    if (!file) return;
+                    if (window.__documentInsertInProgress) {
+                        console.log('⚠️ SelfTest: insert already in progress');
+                        return;
+                    }
+                    try {
+                        window.__documentInsertInProgress = true;
+                        if (typeof showStatus === 'function') {
+                            showStatus('documentStatus', `👀 Loading ${file.name}...`, 'info');
+                        }
+                        const buffer = await file.arrayBuffer();
+                        const base64 = await ensureBase64FromArrayBuffer(buffer);
+                        await insertDocxBase64Normalized(base64);
+                        if (typeof showStatus === 'function') {
+                            showStatus('documentStatus', `✅ Inserted: ${file.name}`, 'success');
+                        }
+                    } catch (e) {
+                        console.error('🧪 SelfTest insert error:', e);
+                        try { logRichApiError(e, 'SelfTest insert'); } catch(_) {}
+                        if (typeof showStatus === 'function') {
+                            showStatus('documentStatus', `❌ Self Test failed: ${e && e.message ? e.message : e}`, 'error');
+                        }
+                    } finally {
+                        window.__documentInsertInProgress = false;
+                        input.value = '';
+                    }
+                });
+
+                wrapper.appendChild(btn);
+                wrapper.appendChild(hint);
+                wrapper.appendChild(input);
+
+                // Prefer to place right after the View Latest button
+                const viewBtn = document.getElementById('viewLatestBtn');
+                if (viewBtn && viewBtn.parentElement) {
+                    console.log('🧪 Adding Self Test button next to View Latest');
+                    viewBtn.parentElement.insertBefore(wrapper, viewBtn.nextSibling);
+                    return;
+                }
+                // Otherwise attach near existing actions area; fallback to body
+                const targets = [
+                    document.getElementById('documentActions'),
+                    document.getElementById('actions'),
+                    document.getElementById('app'),
+                    document.body
+                ];
+                const host = targets.find(Boolean) || document.body;
+                console.log('🧪 Adding Self Test button to fallback host');
+                host.appendChild(wrapper);
+            }
+
+            if (document.readyState === 'loading') {
+                document.addEventListener('DOMContentLoaded', createUI);
+            } else {
+                createUI();
+            }
+        } catch (e) {
+            console.warn('Failed to set up Self Test Insert DOCX UI', e);
+        }
+    })();
+
+    // --- Server Raw Loader: Use the same insert path as Self Test but fetch from API ---
+    /* Removed legacy server raw loader UI */
+    /* (function setupServerRawLoader() {
+        try {
+            async function loadLatestServerRaw() {
+                if (window.__documentInsertInProgress) {
+                    console.log('⚠️ ServerRaw: insert already in progress');
+                    return;
+                }
+                try {
+                    window.__documentInsertInProgress = true;
+                    const getDoc = (typeof getCurrentOrDefaultDocument === 'function') ? getCurrentOrDefaultDocument : null;
+                    const current = getDoc ? await getDoc() : null;
+                    if (!current || !current.id) {
+                        showStatus('documentStatus', '⚠️ No document available', 'warning');
+                        return;
+                    }
+                    showStatus('documentStatus', `👀 Loading ${current.filename || 'latest'}...`, 'info');
+                    const baseUrl = `http://localhost:3001/api/document/${encodeURIComponent(current.id)}`;
+
+                    // Prefer .docx endpoint with full headers; fall back to raw if needed
+                    let chosenUrl = `${baseUrl}.docx`;
+                    let resp = await fetch(chosenUrl, { cache: 'no-store', headers: { 'Accept': 'application/vnd.openxmlformats-officedocument.wordprocessingml.document' } });
+                    if (!resp.ok) {
+                        console.log(`ℹ️ .docx endpoint returned ${resp.status}; retrying without suffix`);
+                        chosenUrl = baseUrl;
+                        resp = await fetch(chosenUrl, { cache: 'no-store' });
+                    }
+                    if (!resp.ok) throw new Error(`Fetch failed: ${resp.status}`);
+
+                    const contentType = resp.headers.get('content-type') || '';
+                    const contentLength = resp.headers.get('content-length') || 'unknown';
+                    console.log(`🔎 ServerRaw: headers content-type='${contentType}', content-length='${contentLength}', url='${chosenUrl}'`);
+
+                    const buffer = await resp.arrayBuffer();
+                    const byteLen = buffer.byteLength || 0;
+                    console.log(`🔎 ServerRaw: fetched ${byteLen} bytes`);
+
+                    // Quick binary PK signature check before base64
+                    try {
+                        const u8 = new Uint8Array(buffer);
+                        const pkOk = u8.length >= 2 && u8[0] === 0x50 && u8[1] === 0x4B;
+                        if (!pkOk) {
+                            console.warn('⚠️ ServerRaw: PK signature missing in binary; attempting to read as text to inspect error');
+                            // Try to decode a small portion as text for diagnostics
+                            const slice = u8.subarray(0, Math.min(256, u8.length));
+                            const textProbe = new TextDecoder('utf-8', { fatal: false }).decode(slice);
+                            console.warn('ℹ️ First bytes (as text):', textProbe);
+                        }
+                    } catch (_) {}
+
+                    const base64 = (typeof window.ensureBase64FromArrayBuffer === 'function')
+                        ? await window.ensureBase64FromArrayBuffer(buffer)
+                        : (typeof arrayBufferToBase64 === 'function' ? arrayBufferToBase64(buffer) : null);
+                    if (!base64) throw new Error('Base64 conversion failed');
+                    // Try multiple insert paths mirroring cleanViewLatest to maximize chances
+                    const tryInsert = async (fn, label) => {
+                        try {
+                            await fn();
+                            console.log(`✅ ServerRaw insert succeeded via ${label}`);
+                            showStatus('documentStatus', `✅ Inserted: ${current.filename || 'document'}`, 'success');
+                            return true;
+                        } catch (err) {
+                            console.log(`ℹ️ ServerRaw insert failed via ${label}:`, err?.message || err);
+                            try { logRichApiError(err, `ServerRaw ${label}`); } catch(_) {}
+                            return false;
+                        }
+                    };
+
+                    // A. exact working path from Self Test
+                    const pathA = async () => (typeof window.insertDocxBase64Normalized === 'function')
+                        ? window.insertDocxBase64Normalized(base64)
+                        : insertBase64IntoWord(base64, current.filename);
+                    if (await tryInsert(pathA, 'normalized(document.replace)')) return;
+
+                    // B. body.replace
+                    const pathB = async () => Word.run(async (context) => {
+                        context.document.body.insertFileFromBase64(base64, Word.InsertLocation.replace);
+                        await context.sync();
+                    });
+                    if (await tryInsert(pathB, 'body.replace')) return;
+
+                    // C. selection.replace
+                    const pathC = async () => Word.run(async (context) => {
+                        const sel = context.document.getSelection();
+                        sel.insertFileFromBase64(base64, Word.InsertLocation.replace);
+                        await context.sync();
+                    });
+                    if (await tryInsert(pathC, 'selection.replace')) return;
+
+                    // D. Open as new document (diagnostic fallback)
+                    const pathD = async () => Word.run(async (context) => {
+                        if (typeof context.application.createDocument !== 'function') throw new Error('createDocument not available');
+                        const newDoc = context.application.createDocument(base64);
+                        newDoc.open();
+                        await context.sync();
+                    });
+                    if (await tryInsert(pathD, 'application.createDocument(base64).open')) return;
+
+                    throw new Error('insertFileFromBase64 failed in all ServerRaw modes');
+                } catch (e) {
+                    console.error('ServerRaw load error:', e);
+                    try { logRichApiError(e, 'ServerRaw insert'); } catch(_) {}
+                    showStatus('documentStatus', `❌ Server/raw load failed: ${e && e.message ? e.message : e}`, 'error');
+                } finally {
+                    window.__documentInsertInProgress = false;
+                }
+            }
+
+            function createUI() {
+                const btnRaw = document.createElement('button');
+                btnRaw.id = 'loadLatestServerRawBtn';
+                btnRaw.type = 'button';
+                btnRaw.textContent = '🔗 Load Latest (server/raw)';
+                btnRaw.style.padding = '6px 10px';
+                btnRaw.style.fontSize = '12px';
+                btnRaw.addEventListener('click', () => loadLatestServerRaw());
+
+                async function loadLatestServerBase64() {
+                    if (window.__documentInsertInProgress) return;
+                    try {
+                        window.__documentInsertInProgress = true;
+                        const resp = await fetch('http://localhost:3001/api/get-updated-docx', { cache: 'no-store' });
+                        if (!resp.ok) throw new Error(`Fetch failed: ${resp.status}`);
+                        const data = await resp.json();
+                        const b64 = data && data.docx;
+                        if (!b64) throw new Error('No base64 docx in response');
+                        console.log(`🔎 ServerBase64: got ${b64.length} chars (~${Math.round(b64.length*3/4/1024)}KB) for ${data.filename}`);
+
+                        // Quick PK signature check by decoding first few base64 blocks
+                        try {
+                            const probeLen = Math.min(((8 + 3) & ~3), b64.length); // nearest >=8 and multiple of 4
+                            const headBytes = atob(b64.slice(0, probeLen));
+                            const pkOk = headBytes.length >= 2 && headBytes.charCodeAt(0) === 0x50 && headBytes.charCodeAt(1) === 0x4B;
+                            console.log(`🔎 ServerBase64: PK signature ${pkOk ? '✅' : '❌'}`);
+                        } catch (e) {
+                            console.log('ℹ️ ServerBase64: PK probe skipped:', e?.message || e);
+                        }
+
+                        const tryInsert = async (fn, label) => {
+                            try {
+                                await fn();
+                                console.log(`✅ ServerBase64 insert succeeded via ${label}`);
+                                showStatus('documentStatus', `✅ Inserted: ${data.filename || 'document'}`, 'success');
+                                return true;
+                            } catch (err) {
+                                console.log(`ℹ️ ServerBase64 insert failed via ${label}:`, err?.message || err);
+                                try { logRichApiError(err, `ServerBase64 ${label}`); } catch(_) {}
+                                return false;
+                            }
+                        };
+
+                        // A. exact path used in self-test
+                        const pathA = async () => (typeof window.insertDocxBase64Normalized === 'function')
+                            ? window.insertDocxBase64Normalized(b64)
+                            : insertBase64IntoWord(b64, data.filename);
+                        if (await tryInsert(pathA, 'normalized(document.replace)')) return;
+
+                        // B. body.replace
+                        const pathB = async () => Word.run(async (context) => {
+                            context.document.body.insertFileFromBase64(b64, Word.InsertLocation.replace);
+                            await context.sync();
+                        });
+                        if (await tryInsert(pathB, 'body.replace')) return;
+
+                        // C. selection.replace
+                        const pathC = async () => Word.run(async (context) => {
+                            const sel = context.document.getSelection();
+                            sel.insertFileFromBase64(b64, Word.InsertLocation.replace);
+                            await context.sync();
+                        });
+                        if (await tryInsert(pathC, 'selection.replace')) return;
+
+                        // D. Open as new document
+                        const pathD = async () => Word.run(async (context) => {
+                            if (typeof context.application.createDocument !== 'function') throw new Error('createDocument not available');
+                            const newDoc = context.application.createDocument(b64);
+                            newDoc.open();
+                            await context.sync();
+                        });
+                        if (await tryInsert(pathD, 'application.createDocument(base64).open')) return;
+
+                        throw new Error('insertFileFromBase64 failed in all ServerBase64 modes');
+                    } catch (e) {
+                        console.error('ServerBase64 load error:', e);
+                        try { logRichApiError(e, 'ServerBase64 insert'); } catch(_) {}
+                        showStatus('documentStatus', `❌ Server/base64 load failed: ${e && e.message ? e.message : e}`, 'error');
+                    } finally {
+                        window.__documentInsertInProgress = false;
+                    }
+                }
+
+                const btnB64 = document.createElement('button');
+                btnB64.id = 'loadLatestServerBase64Btn';
+                btnB64.type = 'button';
+                btnB64.textContent = '🧬 Load Latest (server/base64)';
+                btnB64.style.padding = '6px 10px';
+                btnB64.style.fontSize = '12px';
+                btnB64.style.marginLeft = '6px';
+                btnB64.addEventListener('click', loadLatestServerBase64);
+
+                // Upload/Replace current document on the server
+                const btnReplace = document.createElement('button');
+                btnReplace.id = 'replaceCurrentDocBtn';
+                btnReplace.type = 'button';
+                btnReplace.textContent = '⬆️ Replace Current (upload)';
+                btnReplace.style.padding = '6px 10px';
+                btnReplace.style.fontSize = '12px';
+                btnReplace.style.marginLeft = '6px';
+
+                const inputReplace = document.createElement('input');
+                inputReplace.type = 'file';
+                inputReplace.accept = '.docx,application/vnd.openxmlformats-officedocument.wordprocessingml.document';
+                inputReplace.style.display = 'none';
+                inputReplace.id = 'replaceCurrentDocFileInput';
+
+                btnReplace.addEventListener('click', () => inputReplace.click());
+                inputReplace.addEventListener('change', async () => {
+                    const file = inputReplace.files && inputReplace.files[0];
+                    if (!file) return;
+                    try {
+                        showStatus('documentStatus', `⬆️ Uploading ${file.name}...`, 'info');
+                        // Server expects JSON with base64 docx, not multipart
+                        const buffer = await file.arrayBuffer();
+                        const base64 = (typeof window.ensureBase64FromArrayBuffer === 'function')
+                            ? await window.ensureBase64FromArrayBuffer(buffer)
+                            : arrayBufferToBase64(buffer);
+                        const resp = await fetch('http://localhost:3001/api/upload-docx', {
+                            method: 'POST',
+                            headers: { 'Content-Type': 'application/json' },
+                            body: JSON.stringify({ docx: base64, filename: file.name })
+                        });
+                        if (!resp.ok) throw new Error(`Upload failed: ${resp.status}`);
+                        const resJson = await resp.json().catch(() => ({}));
+                        showStatus('documentStatus', `✅ Replaced current with ${resJson.filename || file.name}`, 'success');
+                        // After replacement, immediately try loading via base64 path
+                        setTimeout(() => {
+                            try { loadLatestServerBase64(); } catch(_) {}
+                        }, 150);
+                    } catch (e) {
+                        console.error('Replace current upload error:', e);
+                        showStatus('documentStatus', `❌ Replace failed: ${e && e.message ? e.message : e}`, 'error');
+                    } finally {
+                        inputReplace.value = '';
+                    }
+                });
+
+                const viewBtn = document.getElementById('viewLatestBtn');
+                if (viewBtn && viewBtn.parentElement) {
+                    viewBtn.parentElement.insertBefore(btnRaw, viewBtn.nextSibling);
+                    viewBtn.parentElement.insertBefore(btnB64, btnRaw.nextSibling);
+                    viewBtn.parentElement.insertBefore(btnReplace, btnB64.nextSibling);
+                    viewBtn.parentElement.insertBefore(inputReplace, btnReplace.nextSibling);
+                    return;
+                }
+                const host = document.getElementById('documentActions') || document.body;
+                host.appendChild(btnRaw);
+                host.appendChild(btnB64);
+                host.appendChild(btnReplace);
+                host.appendChild(inputReplace);
+            }
+
+            if (document.readyState === 'loading') {
+                document.addEventListener('DOMContentLoaded', createUI);
+            } else {
+                createUI();
+            }
+
+            // Expose for debug
+            window.loadLatestServerRaw = loadLatestServerRaw;
+        } catch (e) {
+            console.warn('Failed to set up Server Raw loader', e);
+        }
+    })(); */
         // Notification system variables
         let notificationHistory = [];
         let hasUnreadNotifications = false;
@@ -994,7 +1493,9 @@
         
         function connectSSE() {
             try {
-                eventSource = new EventSource('http://localhost:3001/api/events');
+                const clientId = 'word-' + Date.now() + '-' + Math.random().toString(36).slice(2);
+                window.__clientId = clientId;
+                eventSource = new EventSource(`http://localhost:3001/api/events?platform=word&clientId=${encodeURIComponent(clientId)}`);
                 
                 eventSource.onopen = function(event) {
                     console.log('SSE connection opened');
@@ -1007,6 +1508,8 @@
                     
                     if (data.type === 'connected') {
                         showStatus('sseStatus', `📡 ${data.message}`, 'success');
+                        // On (re)connect, force a status+matrix refresh
+                        fetchDocumentStatus().then(() => updateUIFromStateMatrix('word', getCurrentUser, getCurrentUserRole, currentDocumentState));
                     } else if (data.type === 'notification') {
                         // Mirror web: show server-sent notifications
                         try { addNotification(data.message || 'Notification'); } catch(_) {}
@@ -1018,26 +1521,22 @@
                         setTimeout(() => updateUIFromStateMatrix('word', getCurrentUser, getCurrentUserRole, currentDocumentState), 100);
                     } else if (data.type === 'document-checked-out') {
                         showStatus('sseStatus', `📡 ${data.message}`, 'info');
-                        fetchDocumentStatus();
-                        setTimeout(() => updateUIFromStateMatrix('word', getCurrentUser, getCurrentUserRole, currentDocumentState), 50);
+                        fetchDocumentStatus().then(() => updateUIFromStateMatrix('word', getCurrentUser, getCurrentUserRole, currentDocumentState));
                         if (data.checkedOutBy !== 'word') {
                             loadDocumentContent();
                         }
                     } else if (data.type === 'document-checked-in') {
                         showStatus('sseStatus', `📡 ${data.message}`, 'info');
-                        fetchDocumentStatus();
-                        setTimeout(() => updateUIFromStateMatrix('word', getCurrentUser, getCurrentUserRole, currentDocumentState), 50);
+                        fetchDocumentStatus().then(() => updateUIFromStateMatrix('word', getCurrentUser, getCurrentUserRole, currentDocumentState));
                     } else if (data.type === 'document-saved') {
                         showStatus('sseStatus', `📡 ${data.message}`, 'info');
-                        setTimeout(() => updateUIFromStateMatrix('word', getCurrentUser, getCurrentUserRole, currentDocumentState), 50);
+                        fetchDocumentStatus().then(() => updateUIFromStateMatrix('word', getCurrentUser, getCurrentUserRole, currentDocumentState));
                     } else if (data.type === 'checkout-cancelled') {
                         showStatus('sseStatus', `📡 ${data.message}`, 'info');
-                        fetchDocumentStatus();
-                        setTimeout(() => updateUIFromStateMatrix('word', getCurrentUser, getCurrentUserRole, currentDocumentState), 50);
+                        fetchDocumentStatus().then(() => updateUIFromStateMatrix('word', getCurrentUser, getCurrentUserRole, currentDocumentState));
                     } else if (data.type === 'document-uploaded') {
                         showStatus('sseStatus', `📡 ${data.message}`, 'info');
-                        fetchDocumentStatus();
-                        setTimeout(() => updateUIFromStateMatrix('word', getCurrentUser, getCurrentUserRole, currentDocumentState), 50);
+                        fetchDocumentStatus().then(() => updateUIFromStateMatrix('word', getCurrentUser, getCurrentUserRole, currentDocumentState));
                     } else if (data.type === 'user-switched') {
                         console.log(`📡 WORD SSE: User switched event received:`, data);
                         if (data.platform === 'word') {
@@ -1628,9 +2127,13 @@
                 if (response.ok) {
                     const result = await response.json();
                     showStatus('documentStatus', '✅ Document checked out successfully', 'success');
-                    
-                    // Disable user selection during checkoutawait fetchDocumentStatus(); // Refresh UI (includes unlocking)
-                    
+                    // Immediately refresh local state/UI so controls reflect checkout
+                    try {
+                        await fetchDocumentStatus();
+                        populateDocumentActions();
+                        await updateButtonStates();
+                        if (window.updateQuickActionsVisibility) updateQuickActionsVisibility();
+                    } catch(_) {}
                     // Load document content using working method
                     await loadDocumentContent();
                 } else {
@@ -1756,6 +2259,7 @@
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({ 
                         source: 'word',
+                        userId: getCurrentUser()?.id,
                         docx: docx,
                         filename: 'word-progress-save.docx'
                     })
@@ -1763,6 +2267,17 @@
                 
                 if (response.ok) {
                     showStatus('documentStatus', '✅ Progress saved successfully', 'success');
+                    // Refresh matrix-driven UI immediately
+                    try {
+                        await fetchDocumentStatus();
+                        await updateUIFromStateMatrix('word', getCurrentUser, getCurrentUserRole, currentDocumentState);
+                        if (window.refreshActionsDropdownFromMatrix && window.__lastStateMatrix) {
+                            window.refreshActionsDropdownFromMatrix('docActionsSelect', window.__lastStateMatrix);
+                        } else {
+                            populateDocumentActions();
+                        }
+                        if (window.updateQuickActionsVisibility) updateQuickActionsVisibility();
+                    } catch(_) {}
                 } else {
                     const error = await response.json();
                     showStatus('documentStatus', `❌ ${error.error}`, 'error');
@@ -1789,6 +2304,7 @@
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({ 
                         source: 'word',
+                        userId: getCurrentUser()?.id,
                         docx: docx,
                         filename: 'word-checkin.docx'
                     })
@@ -1796,8 +2312,17 @@
                 
                 if (response.ok) {
                     showStatus('documentStatus', '✅ Document checked in successfully', 'success');
-                    
-                    // Re-enable user selection after successful checkinawait fetchDocumentStatus(); // Refresh UI (includes re-locking if needed)
+                    // Refresh matrix/UI state immediately
+                    try {
+                        await fetchDocumentStatus();
+                        await updateUIFromStateMatrix('word', getCurrentUser, getCurrentUserRole, currentDocumentState);
+                        if (window.refreshActionsDropdownFromMatrix && window.__lastStateMatrix) {
+                            window.refreshActionsDropdownFromMatrix('docActionsSelect', window.__lastStateMatrix);
+                        } else {
+                            populateDocumentActions();
+                        }
+                        if (window.updateQuickActionsVisibility) updateQuickActionsVisibility();
+                    } catch(_) {}
                 } else {
                     const error = await response.json();
                     showStatus('documentStatus', `❌ ${error.error}`, 'error');
@@ -1818,11 +2343,18 @@
                 const response = await fetch('http://localhost:3001/api/cancel-checkout', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ source: 'word' })
+                    body: JSON.stringify({ source: 'word', userId: getCurrentUser()?.id })
                 });
                 
                 if (response.ok) {
                     showStatus('documentStatus', '✅ Checkout cancelled', 'success');
+                    // Refresh local state/UI immediately so controls reflect unlock
+                    try {
+                        await fetchDocumentStatus();
+                        populateDocumentActions();
+                        await updateButtonStates();
+                        if (window.updateQuickActionsVisibility) updateQuickActionsVisibility();
+                    } catch(_) {}
                     
                     // Re-enable user selection after cancelling checkoutawait fetchDocumentStatus(); // Refresh UI
                 } else {
@@ -1847,7 +2379,17 @@
                 
                 if (response.ok) {
                     console.log('âœ… WORD: Override successful');
-                    await fetchDocumentStatus();
+                    // Refresh matrix/UI state immediately
+                    try {
+                        await fetchDocumentStatus();
+                        await updateUIFromStateMatrix('word', getCurrentUser, getCurrentUserRole, currentDocumentState);
+                        if (window.refreshActionsDropdownFromMatrix && window.__lastStateMatrix) {
+                            window.refreshActionsDropdownFromMatrix('docActionsSelect', window.__lastStateMatrix);
+                        } else {
+                            populateDocumentActions();
+                        }
+                        if (window.updateQuickActionsVisibility) updateQuickActionsVisibility();
+                    } catch(_) {}
                 } else {
                     console.error('âŒ WORD: Override failed:', response.status);
                 }
@@ -1869,7 +2411,8 @@
                     showStatus('documentStatus', 'ℹ️ No document available', 'info');
                     return;
                 }
-                const docUrl = `http://localhost:3001/api/document/${encodeURIComponent(current.id)}`;
+                // Prefer the .docx suffixed endpoint with full headers
+                const docUrl = `http://localhost:3001/api/document/${encodeURIComponent(current.id)}.docx`;
                 const wordUrl = `ms-word:ofe|u|${encodeURI(docUrl)}`;
                 // Use protocol directly; no http fallback to avoid downloads
                 window.location.assign(wordUrl);
@@ -1915,6 +2458,8 @@
         window.__pureInsertMode = window.__pureInsertMode !== undefined ? window.__pureInsertMode : true; // Do not modify the document content before/after insert attempts
         window.__allowPreInsertStyleReset = window.__allowPreInsertStyleReset || false; // opt-in test; default off
         window.__baselineStylesJson = window.__baselineStylesJson || null;
+        // Default to live mode so SSE/matrix updates reflect immediately
+        window.__insertIsolation = window.__insertIsolation !== undefined ? window.__insertIsolation : false;
         
         // Disable HMR/live reload during pure insert testing to reduce WebView churn
         try { if (window.__pureInsertMode && typeof module !== 'undefined' && module.hot && typeof module.hot.decline === 'function') { module.hot.decline(); console.log('🔕 HMR disabled for pure insert testing'); } } catch(_) {}
@@ -2583,85 +3128,7 @@
             }
         }
         
-        // Populate document actions dropdown based on state matrix
-        function populateDocumentActions() {
-            const actionsSelect = document.getElementById('docActionsSelect');
-            if (!actionsSelect) return;
-            
-            // Clear existing options except placeholder
-            actionsSelect.innerHTML = '<option value="">Document actions...</option>';
-            
-            // Get available buttons from state matrix
-            const matrix = window.__lastStateMatrix || {};
-            const buttons = matrix.buttons || {};
-            const currentUser = window.getCurrentUser ? window.getCurrentUser() : null;
-            const userRole = currentUser ? currentUser.role : 'viewer';
-            
-            // Define all possible actions with their conditions
-            const possibleActions = [
-                { id: 'viewLatest', label: '👀 View Latest', icon: '👀', always: true },
-                { id: 'openWeb', label: '🌐 Open in Web', icon: '🌐', always: true },
-                { id: 'checkout', label: '🔒 Check-out Document', icon: '🔒', condition: buttons.checkout?.visible },
-                { id: 'checkin', label: '✅ Save & Check-in', icon: '✅', condition: buttons.checkin?.visible },
-                { id: 'saveProgress', label: '💾 Save Progress', icon: '💾', condition: buttons.saveProgress?.visible },
-                { id: 'cancel', label: '❌ Cancel Check-out', icon: '❌', condition: buttons.cancel?.visible },
-                { id: 'override', label: '🔄 Override Check-out', icon: '🔄', condition: buttons.override?.visible },
-                { id: 'sendVendor', label: '📤 Send to Vendor', icon: '📤', condition: buttons.sendVendor?.visible }
-            ];
-            
-            // Add available actions to dropdown
-            possibleActions.forEach(action => {
-                if (action.always || action.condition) {
-                    const option = document.createElement('option');
-                    option.value = action.id;
-                    option.textContent = action.label;
-                    actionsSelect.appendChild(option);
-                }
-            });
-            
-            console.log('📋 Document actions populated:', possibleActions.filter(a => a.always || a.condition).map(a => a.label));
-        }
-        
-        // Execute selected document action
-        function executeDocumentAction(actionId) {
-            if (!actionId) return;
-            
-            console.log('🎯 Executing document action:', actionId);
-            
-            // Reset dropdown to placeholder
-            const actionsSelect = document.getElementById('docActionsSelect');
-            if (actionsSelect) actionsSelect.value = '';
-            
-            // Execute the appropriate function
-            switch (actionId) {
-                case 'viewLatest':
-                    viewReadOnly();
-                    break;
-                case 'openWeb':
-                    shareToWeb();
-                    break;
-                case 'checkout':
-                    checkoutDocument();
-                    break;
-                case 'checkin':
-                    checkinDocument();
-                    break;
-                case 'saveProgress':
-                    saveProgress();
-                    break;
-                case 'cancel':
-                    cancelCheckout();
-                    break;
-                case 'override':
-                    overrideCheckout();
-                    break;
-                case 'sendVendor':
-                    openVendorModal();
-                    break;
-                default:
-                    console.log('❌ Unknown document action:', actionId);
-            }
-        }
+        // Removed legacy dropdown population/execute handlers
         
         // Load shared approvals UI config
         window.__approvalsUi = window.__approvalsUi || null;
@@ -2674,6 +3141,259 @@
             } catch(_) {}
         })();
         
+        // Global flag to control Quick Actions visibility (default OFF)
+        window.__quickActionsEnabled = typeof window.__quickActionsEnabled === 'boolean' ? window.__quickActionsEnabled : false;
+
+        // --- Quick Actions (temporary explicit buttons, bypass dropdown/matrix) ---
+        (function setupQuickActions() {
+            try {
+                if (!window.__quickActionsEnabled) {
+                    return; // Skip creating Quick Actions unless explicitly enabled
+                }
+                function createQuickActionsUI() {
+                    const bar = document.createElement('div');
+                    bar.id = 'quickActionsBar';
+                    bar.style.marginTop = '8px';
+                    bar.style.display = 'flex';
+                    bar.style.flexWrap = 'wrap';
+                    bar.style.gap = '6px';
+
+                    const mkBtn = (id, text, onClick) => {
+                        const b = document.createElement('button');
+                        b.id = id;
+                        b.type = 'button';
+                        b.textContent = text;
+                        b.style.padding = '6px 10px';
+                        b.style.fontSize = '12px';
+                        b.addEventListener('click', onClick);
+                        return b;
+                    };
+
+                    const btnCheckout = mkBtn('quickCheckoutBtn', '🔒 Check out', () => checkoutDocument());
+                    const btnSave = mkBtn('quickSaveBtn', '💾 Save progress', () => saveProgress());
+                    const btnCheckin = mkBtn('quickCheckinBtn', '✅ Check in', () => checkinDocument());
+                    const btnCancel = mkBtn('quickCancelBtn', '❌ Cancel', () => cancelCheckout());
+                    const btnOverride = mkBtn('quickOverrideBtn', '🔄 Override', () => overrideCheckout());
+
+                    bar.appendChild(btnCheckout);
+                    bar.appendChild(btnSave);
+                    bar.appendChild(btnCheckin);
+                    bar.appendChild(btnCancel);
+                    bar.appendChild(btnOverride);
+
+                    const viewBtn = document.getElementById('viewLatestBtn');
+                    if (viewBtn && viewBtn.parentElement) {
+                        viewBtn.parentElement.insertBefore(bar, viewBtn.nextSibling);
+                    } else {
+                        (document.getElementById('documentActions') || document.body).appendChild(bar);
+                    }
+                }
+
+                function updateQuickActionsVisibility() {
+                    // Simplified: always show and enable all quick action buttons.
+                    const q = (id) => document.getElementById(id);
+                    const buttons = [
+                        q('quickCheckoutBtn'),
+                        q('quickSaveBtn'),
+                        q('quickCheckinBtn'),
+                        q('quickCancelBtn'),
+                        q('quickOverrideBtn')
+                    ];
+                    buttons.forEach(b => { if (b) b.disabled = false; });
+                }
+
+                if (document.readyState === 'loading') {
+                    document.addEventListener('DOMContentLoaded', () => { createQuickActionsUI(); updateQuickActionsVisibility(); });
+                } else {
+                    createQuickActionsUI();
+                    updateQuickActionsVisibility();
+                }
+
+                // Keep the quick actions in sync periodically (lightweight, temporary)
+                setInterval(updateQuickActionsVisibility, 1000);
+
+                // Expose for debug
+                window.updateQuickActionsVisibility = updateQuickActionsVisibility;
+            } catch (e) {
+                console.warn('QuickActions setup failed:', e);
+            }
+        })();
+
+        // Robust "View Latest" wiring for toolbar (prefers base64 path, with fallbacks)
+        (function setupToolbarViewLatest() {
+            try {
+                async function viewLatestRobust() {
+                    try {
+                        // Prefer our confirmed working flow
+                        if (typeof window.viewLatestSafe === 'function') {
+                            await window.viewLatestSafe();
+                            return;
+                        }
+                        if (typeof window.cleanViewLatest === 'function') {
+                            await window.cleanViewLatest();
+                            return;
+                        }
+                        // Last resort
+                        if (typeof window.viewReadOnly === 'function') {
+                            await window.viewReadOnly();
+                            return;
+                        }
+                        throw new Error('No View Latest function available');
+                    } catch (e) {
+                        console.error('Toolbar View Latest error:', e);
+                        try { showStatus('documentStatus', `❌ View Latest failed: ${e?.message || e}`, 'error'); } catch (_) {}
+                        // Protocol fallback: open via ms-word handler so user is never blocked
+                        try {
+                            const current = await (await fetch('http://localhost:3001/api/current-document')).json();
+                            const id = current && current.id ? current.id : 'default-doc';
+                            const docUrl = `http://localhost:3001/api/document/${encodeURIComponent(id)}.docx`;
+                            const wordUrl = `ms-word:ofe|u|${encodeURI(docUrl)}`;
+                            window.location.assign(wordUrl);
+                            try { showStatus('documentStatus', '✅ Opened latest in a new window', 'success'); } catch(_) {}
+                            return;
+                        } catch (fallbackErr) {
+                            console.warn('Protocol fallback failed', fallbackErr);
+                        }
+                    }
+                }
+
+                function bind() {
+                    const btn = document.getElementById('btnWordViewLatest');
+                    if (btn) {
+                        btn.onclick = () => { viewLatestRobust(); };
+                    }
+                }
+                if (document.readyState === 'loading') {
+                    document.addEventListener('DOMContentLoaded', bind);
+                } else {
+                    bind();
+                }
+            } catch (e) {
+                console.warn('setupToolbarViewLatest failed:', e);
+            }
+        })();
+
+        // Drive the toolbar's button visibility from the state matrix; hide legacy UIs
+        (function setupToolbarVisibility() {
+            try {
+                window.updateToolbarFromMatrix = function updateToolbarFromMatrix(config) {
+                    const buttons = (config && config.buttons) || {};
+                    const hasDocument = !!(config && config.checkoutStatus && config.checkoutStatus.show);
+                    const show = (id, visible) => { const el = document.getElementById(id); if (el) el.style.display = visible ? '' : 'none'; };
+                    // Visibility rules mirroring the web
+                    show('btnWordViewLatest', hasDocument);
+                    show('btnWordOpenWeb', true);
+                    show('btnWordCheckout', !!buttons.checkoutBtn);
+                    show('btnWordSaveProgress', !!buttons.checkedInBtns);
+                    show('btnWordCheckin', !!buttons.checkedInBtns);
+                    show('btnWordCancel', !!buttons.checkedInBtns);
+                    show('btnWordOverride', !!buttons.overrideBtn);
+                    show('btnWordSendVendor', !!buttons.sendVendorBtn);
+                    // Replace current stays visible
+                    show('btnReplaceCurrent', true);
+                };
+
+                // Hide legacy containers so only the toolbar remains
+                function hideLegacy() {
+                    const legacySelect = document.getElementById('docActionsSelect');
+                    if (legacySelect && legacySelect.parentElement) legacySelect.parentElement.style.display = 'none';
+                    const ddHost = document.getElementById('matrixActionsDropdownHost');
+                    if (ddHost) ddHost.style.display = 'none';
+                    const bar = document.getElementById('matrixActionsBarFixed');
+                    if (bar) bar.style.display = 'none';
+                }
+                if (document.readyState === 'loading') {
+                    document.addEventListener('DOMContentLoaded', hideLegacy);
+                } else {
+                    hideLegacy();
+                }
+
+                // If matrix already present, apply immediately
+                const kick = () => {
+                    try { if (window.__lastStateMatrix) window.updateToolbarFromMatrix(window.__lastStateMatrix); } catch(_) {}
+                };
+                if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', kick, { once: true }); else kick();
+            } catch (e) {
+                console.warn('setupToolbarVisibility failed:', e);
+            }
+        })();
+
+        // Web parity banner styling and logic
+        (function setupBannerParity() {
+            try {
+                const css = `
+                .checkout-banner { background: #ffc1d9; color: #ffffff; padding: 8px 16px; border-radius: 4px; font-size: 18px; font-weight: 500; margin: 8px auto; display: inline-block; }
+                .checkout-banner.checked-out { background: #ff6fa5; }
+                .viewer-message { color: #6c757d; font-size: 13px; margin-bottom: 4px; }
+                `;
+                const style = document.createElement('style'); style.textContent = css; document.head.appendChild(style);
+
+                window.updateBannerFromMatrix = function updateBannerFromMatrix(config) {
+                    const banner = document.getElementById('checkoutBanner');
+                    const viewerMsg = document.getElementById('viewerMessage');
+                    if (!banner) return;
+                    const show = !!(config && config.checkoutStatus && config.checkoutStatus.show);
+                    const text = (config && config.checkoutStatus && config.checkoutStatus.text) || '';
+                    if (viewerMsg && config && config.viewerMessage) {
+                        if (config.viewerMessage.show) { viewerMsg.textContent = config.viewerMessage.text || ''; viewerMsg.style.display = 'block'; }
+                        else { viewerMsg.textContent = ''; viewerMsg.style.display = 'none'; }
+                    }
+                    if (show && text) {
+                        banner.textContent = text;
+                        if (text.includes('Checked out by')) banner.classList.add('checked-out'); else banner.classList.remove('checked-out');
+                        banner.style.display = 'inline-block';
+                    } else {
+                        banner.textContent = '';
+                        banner.style.display = 'none';
+                        banner.classList.remove('checked-out');
+                    }
+                };
+
+                const kick = () => { try { if (window.__lastStateMatrix) window.updateBannerFromMatrix(window.__lastStateMatrix); } catch(_) {} };
+                if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', kick, { once: true }); else kick();
+            } catch (e) { console.warn('setupBannerParity failed:', e); }
+        })();
+
+        // Back-compat: no-op to satisfy legacy calls left in action handlers
+        function populateDocumentActions() { /* toolbar is the single source of truth now */ }
+
+        // Replace Current (upload) wiring (JSON base64 per server contract)
+        (function setupReplaceCurrent() {
+            try {
+                async function uploadDocxFile(file) {
+                    try {
+                        showStatus('documentStatus', `⬆️ Uploading ${file.name}...`, 'info');
+                        const buffer = await file.arrayBuffer();
+                        const base64 = (typeof window.ensureBase64FromArrayBuffer === 'function')
+                            ? await window.ensureBase64FromArrayBuffer(buffer)
+                            : arrayBufferToBase64(buffer);
+                        const resp = await fetch('http://localhost:3001/api/upload-docx', {
+                            method: 'POST',
+                            headers: { 'Content-Type': 'application/json' },
+                            body: JSON.stringify({ docx: base64, filename: file.name })
+                        });
+                        if (!resp.ok) throw new Error(`Upload failed: ${resp.status}`);
+                        const data = await resp.json();
+                        showStatus('documentStatus', `✅ Replaced current with ${data.filename || file.name}`, 'success');
+                        // Auto-attempt to load
+                        try { await (window.viewLatestSafe || window.cleanViewLatest || window.viewReadOnly)(); } catch(_) {}
+                    } catch (e) {
+                        console.error('Replace Current upload error:', e);
+                        showStatus('documentStatus', `❌ Replace failed: ${e?.message || e}`, 'error');
+                    }
+                }
+                function bind() {
+                    const btn = document.getElementById('btnReplaceCurrent');
+                    const input = document.getElementById('inputReplaceCurrent');
+                    if (btn && input) {
+                        btn.onclick = () => input.click();
+                        input.onchange = () => { const f = input.files && input.files[0]; if (f) uploadDocxFile(f); input.value=''; };
+                    }
+                }
+                if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', bind); else bind();
+            } catch (e) { console.warn('setupReplaceCurrent failed:', e); }
+        })();
+
         // Load approvals from state machine and API
         async function loadApprovalsSection() {
             const approvalsList = document.getElementById('approvalsList');
@@ -2869,23 +3589,31 @@
             if (info.host === Office.HostType.Word) {
                 try { OfficeExtension.config.extendedErrorLogging = true; } catch (e) {}
                 console.log('OpenGov Contract Redlining add-in ready');
-                console.log('Connecting to SSE...');
-                connectSSE();
+                if (!window.__insertIsolation) {
+                    console.log('Connecting to SSE...');
+                    connectSSE();
+                } else {
+                    console.log('⛔ Insert isolation ON: skipping SSE connect');
+                }
 
                 // Capture baseline styles once for optional reset (does not touch source file)
-                (async () => {
-                    try {
-                        await Word.run(async (context) => {
-                            const styles = context.document.getStyles();
-                            styles.load('items');
-                            await context.sync();
-                            window.__baselineStylesJson = JSON.stringify(styles.items || []);
-                            console.log('🎯 Captured baseline styles snapshot');
-                        });
-                    } catch (e) {
-                        console.log('ℹ️ Baseline styles capture skipped:', e?.message || e);
-                    }
-                })();
+                if (!window.__insertIsolation) {
+                    (async () => {
+                        try {
+                            await Word.run(async (context) => {
+                                const styles = context.document.getStyles();
+                                styles.load('items');
+                                await context.sync();
+                                window.__baselineStylesJson = JSON.stringify(styles.items || []);
+                                console.log('🎯 Captured baseline styles snapshot');
+                            });
+                        } catch (e) {
+                            console.log('ℹ️ Baseline styles capture skipped:', e?.message || e);
+                        }
+                    })();
+                } else {
+                    console.log('⛔ Insert isolation ON: skipping baseline styles capture');
+                }
 
                 // Initialize systems
                 setTimeout(async () => {
@@ -2900,8 +3628,12 @@
                     // Initial UI sync from state matrix
                     setTimeout(() => updateUIFromStateMatrix('word', getCurrentUser, getCurrentUserRole, currentDocumentState), 100);
                     
-                    // Auto attach to existing open document without modifying content
-                    setTimeout(() => autoAttachToOpenDocument(), 800);
+                    if (!window.__insertIsolation) {
+                        // Auto attach to existing open document without modifying content
+                        setTimeout(() => autoAttachToOpenDocument(), 800);
+                    } else {
+                        console.log('⛔ Insert isolation ON: skipping auto-attach');
+                    }
                     
                     // Refresh approvals when users are loaded
                     setTimeout(() => loadApprovalsSection(), 2000);
@@ -3008,6 +3740,7 @@
         
         // ===== NOTIFICATION SYSTEM =====
         
+        // Persist container and append-only notifications
         function addNotification(message, type = 'info') {
             const notification = {
                 id: ++notificationIdCounter,
@@ -3018,10 +3751,31 @@
                 platform: 'word'
             };
             
-            notificationHistory.unshift(notification); // Add to beginning
+            notificationHistory.unshift(notification); // Add to beginning (newest first)
             hasUnreadNotifications = true;
             updateNotificationDot();
-            renderNotifications(); // Update both modal and window
+            // Append-only render: create elements once and append new ones
+            try {
+                const modalBody = document.getElementById('notificationModalBody');
+                const windowBody = document.getElementById('notificationWindowBody');
+                const html = document.createElement('div');
+                html.className = `notification-item ${notification.type}`;
+                html.innerHTML = `<p class="notification-message">${notification.message}</p><p class="notification-timestamp">${getTimeAgo(notification.timestamp)}</p>`;
+                if (modalBody) {
+                    // Remove placeholder only once
+                    const empty = modalBody.querySelector('.no-notifications');
+                    if (empty) empty.remove();
+                    modalBody.insertBefore(html.cloneNode(true), modalBody.firstChild);
+                }
+                if (windowBody) {
+                    const empty2 = windowBody.querySelector('.no-notifications');
+                    if (empty2) empty2.remove();
+                    windowBody.insertBefore(html, windowBody.firstChild);
+                }
+            } catch (_) {
+                // Fallback to full rerender if needed
+                renderNotifications();
+            }
             
             console.log('📝 Added notification:', notification);
             
@@ -3631,7 +4385,146 @@
             }
         }
 
-        // Fresh minimal View Latest loader (no pre-writes, single call)
+        // Hide legacy dropdown and render matrix-driven buttons instead
+        (function setupMatrixActionsBar() {
+            try {
+                function ensureContainer() {
+                    let bar = document.getElementById('matrixActionsBar');
+                    if (!bar) {
+                        bar = document.createElement('div');
+                        bar.id = 'matrixActionsBar';
+                        bar.style.display = 'flex';
+                        bar.style.flexWrap = 'wrap';
+                        bar.style.gap = '6px';
+                        bar.style.margin = '8px 0';
+                        const viewBtn = document.getElementById('viewLatestBtn');
+                        if (viewBtn && viewBtn.parentElement) {
+                            viewBtn.parentElement.insertBefore(bar, viewBtn.nextSibling);
+                        } else {
+                            (document.getElementById('documentActions') || document.body).appendChild(bar);
+                        }
+                    }
+                    return bar;
+                }
+
+                function clear(el) { while (el.firstChild) el.removeChild(el.firstChild); }
+                function mk(text, onClick) { const b = document.createElement('button'); b.type = 'button'; b.textContent = text; b.style.padding = '6px 10px'; b.style.fontSize = '12px'; b.addEventListener('click', onClick); return b; }
+
+                window.renderMatrixActionsBar = function renderMatrixActionsBar(config) {
+                    try {
+                        const select = document.getElementById('docActionsSelect');
+                        if (select && select.parentElement) select.parentElement.style.display = 'none';
+                        const bar = ensureContainer();
+                        clear(bar);
+                        if (!config || !config.buttons) return;
+                        const b = config.buttons;
+                        const add = (cond, text, fn) => { if (cond && typeof fn === 'function') bar.appendChild(mk(text, fn)); };
+                        // Match web actions 1:1 order
+                        add(config.checkoutStatus?.show !== false, '👀 View Latest', window.viewLatestSafe || window.cleanViewLatest || window.viewReadOnly);
+                        add(true, '🌐 Open in Web', window.shareToWeb);
+                        add(!!b.checkoutBtn, '🔒 Check-out', window.checkoutDocument);
+                        add(!!b.checkedInBtns, '💾 Save Progress', window.saveProgress);
+                        add(!!b.checkedInBtns, '✅ Check-in', window.checkinDocument);
+                        add(!!b.checkedInBtns, '❌ Cancel', window.cancelCheckout);
+                        add(!!b.overrideBtn, '🔄 Override', window.overrideCheckout);
+                        add(!!b.sendVendorBtn, '📤 Send to Vendor', window.openVendorModal);
+                    } catch (e) {
+                        console.warn('renderMatrixActionsBar error', e);
+                    }
+                };
+
+                // Do not hide legacy dropdown here; we'll hide it only after new UI renders
+            } catch (e) {
+                console.warn('setupMatrixActionsBar failed:', e);
+            }
+        })();
+
+        // Matrix-driven unified dropdown (matches web actions 1:1)
+        (function setupMatrixActionsDropdown() {
+            try {
+                function ensureDropdown() {
+                    let host = document.getElementById('matrixActionsDropdownHost');
+                    if (!host) {
+                        host = document.createElement('div');
+                        host.id = 'matrixActionsDropdownHost';
+                        host.style.margin = '8px 0';
+                        const viewBtn = document.getElementById('viewLatestBtn');
+                        if (viewBtn && viewBtn.parentElement) {
+                            viewBtn.parentElement.insertBefore(host, viewBtn.nextSibling);
+                        } else {
+                            (document.getElementById('documentActions') || document.body).appendChild(host);
+                        }
+                    }
+                    let select = document.getElementById('matrixActionsSelect');
+                    if (!select) {
+                        select = document.createElement('select');
+                        select.id = 'matrixActionsSelect';
+                        select.className = 'user-select';
+                        select.style.minWidth = '220px';
+                        host.appendChild(select);
+                    }
+                    return select;
+                }
+
+                function renderMatrixActionsDropdown(config) {
+                    const select = ensureDropdown();
+                    // Reset options
+                    while (select.options.length) select.remove(0);
+                    const placeholder = document.createElement('option');
+                    placeholder.value = '';
+                    placeholder.textContent = 'Document actions...';
+                    select.appendChild(placeholder);
+
+                    if (!config || !config.buttons) return;
+                    const b = config.buttons;
+                    const actions = [];
+                    const add = (cond, id, label, fn) => { if (cond && typeof fn === 'function') actions.push({ id, label, fn }); };
+
+                    // Match web order
+                    add(config.checkoutStatus?.show !== false, 'viewLatest', '👀 View Latest', window.viewLatestSafe || window.cleanViewLatest || window.viewReadOnly);
+                    add(true, 'openWeb', '🌐 Open in Web', window.shareToWeb);
+                    add(!!b.checkoutBtn, 'checkout', '🔒 Check-out Document', window.checkoutDocument);
+                    add(!!b.checkedInBtns, 'save', '💾 Save Progress', window.saveProgress);
+                    add(!!b.checkedInBtns, 'checkin', '✅ Save & Check-in', window.checkinDocument);
+                    add(!!b.checkedInBtns, 'cancel', '❌ Cancel Check-out', window.cancelCheckout);
+                    add(!!b.overrideBtn, 'override', '🔄 Override Check-out', window.overrideCheckout);
+                    add(!!b.sendVendorBtn, 'sendVendor', '📤 Send to Vendor', window.openVendorModal);
+
+                    actions.forEach(a => { const opt = document.createElement('option'); opt.value = a.id; opt.textContent = a.label; select.appendChild(opt); });
+                    select.onchange = (e) => { const val = e.target.value; const a = actions.find(x => x.id === val); if (a) a.fn(); select.value = ''; };
+
+                    // Always show the new dropdown host so controls don't disappear
+                    select.parentElement.style.display = 'block';
+                    // Hide legacy dropdown and bar now to avoid flicker
+                    const legacy = document.getElementById('docActionsSelect');
+                    if (legacy && legacy.parentElement) legacy.parentElement.style.display = 'none';
+                    const bar = document.getElementById('matrixActionsBar');
+                    if (bar) bar.style.display = 'none';
+                }
+
+                window.renderMatrixActionsDropdown = renderMatrixActionsDropdown;
+            } catch (e) {
+                console.warn('setupMatrixActionsDropdown failed:', e);
+            }
+        })();
+
+        // One-time kick: render new dropdown if matrix is already available after load
+        (function kickRenderMatrixDropdownOnce(){
+            try {
+                const doKick = () => {
+                    if (window.__lastStateMatrix && typeof window.renderMatrixActionsDropdown === 'function') {
+                        window.renderMatrixActionsDropdown(window.__lastStateMatrix);
+                    }
+                };
+                if (document.readyState === 'loading') {
+                    document.addEventListener('DOMContentLoaded', doKick, { once: true });
+                } else {
+                    setTimeout(doKick, 0);
+                }
+            } catch(_) {}
+        })();
+
+        // Fresh minimal View Latest loader: prefer server/base64 → raw bytes → open-as-new
         window.cleanViewLatest = async function() {
             if (window.__documentInsertInProgress) {
                 console.log('⚠️ cleanViewLatest: insert already in progress');
@@ -3642,34 +4535,88 @@
                 const current = await getCurrentOrDefaultDocument();
                 if (!current || !current.id) {
                     showStatus('documentStatus', '⚠️ No document available', 'warning');
-                    return;
+                    throw new Error('No document available');
                 }
-                const url = `http://localhost:3001/api/document/${encodeURIComponent(current.id)}`;
-                const resp = await fetch(url, { cache: 'no-store' });
-                if (!resp.ok) throw new Error('Download failed');
-                const buf = await resp.arrayBuffer();
-                const b64 = arrayBufferToBase64(buf);
-                // quick validation (PK signature)
+                // Step A: try server/base64 endpoint directly
                 try {
-                    const d = atob(b64);
-                    if (!(d.charCodeAt(0) === 80 && d.charCodeAt(1) === 75)) throw new Error('Invalid DOCX');
-                } catch (e) {
-                    throw new Error('Invalid base64 content');
-                }
-                // One-shot insert
-                await Word.run(async (context) => {
-                    if (typeof context.document.insertFileFromBase64 !== 'function') {
-                        throw new Error('insertFileFromBase64 not supported');
+                    const respJson = await fetch('http://localhost:3001/api/get-updated-docx', { cache: 'no-store' });
+                    if (respJson.ok) {
+                        const data = await respJson.json();
+                        const b64FromServer = data && data.docx;
+                        if (b64FromServer && typeof window.insertDocxBase64Normalized === 'function') {
+                            await window.insertDocxBase64Normalized(b64FromServer);
+                            showStatus('documentStatus', '✅ Loaded latest (server/base64)', 'success');
+                            return;
+                        }
                     }
-                    context.document.insertFileFromBase64(b64, Word.InsertLocation.replace);
-                    await context.sync();
-                });
-                showStatus('documentStatus', '✅ Loaded latest document', 'success');
+                } catch (eA) {
+                    console.warn('cleanViewLatest: server/base64 failed →', eA?.message || eA);
+                    try { logRichApiError(eA, 'cleanViewLatest A server/base64'); } catch(_) {}
+                }
+
+                // Step B: try raw bytes endpoint, then convert to base64
+                try {
+                    const baseUrl = `http://localhost:3001/api/document/${encodeURIComponent(current.id)}`;
+                    let url = `${baseUrl}.docx`;
+                    let resp = await fetch(url, { cache: 'no-store' });
+                    if (!resp.ok) { url = baseUrl; resp = await fetch(url, { cache: 'no-store' }); }
+                    if (!resp.ok) throw new Error('Download failed');
+                    const buf = await resp.arrayBuffer();
+                    const b64 = arrayBufferToBase64(buf);
+                    await Word.run(async (context) => {
+                        context.document.insertFileFromBase64(b64, Word.InsertLocation.replace);
+                        await context.sync();
+                    });
+                    showStatus('documentStatus', '✅ Loaded latest (server/raw→b64)', 'success');
+                    return;
+                } catch (eB) {
+                    console.warn('cleanViewLatest: server/raw failed →', eB?.message || eB);
+                    try { logRichApiError(eB, 'cleanViewLatest B server/raw'); } catch(_) {}
+                }
+
+                // Step C: fallback open-as-new via base64 if available
+                try {
+                    const respJson2 = await fetch('http://localhost:3001/api/get-updated-docx', { cache: 'no-store' });
+                    if (respJson2.ok) {
+                        const data2 = await respJson2.json();
+                        const b64Data = data2 && data2.docx;
+                        await Word.run(async (ctx) => {
+                            const newDoc = ctx.application.createDocument(b64Data);
+                            newDoc.open();
+                            await ctx.sync();
+                        });
+                        showStatus('documentStatus', '✅ Opened latest in a new document', 'success');
+                        return;
+                    }
+                } catch (eC) {
+                    console.warn('cleanViewLatest: open-as-new failed →', eC?.message || eC);
+                    try { logRichApiError(eC, 'cleanViewLatest C open-as-new'); } catch(_) {}
+                }
+
+                throw new Error('insertFileFromBase64 failed in all modes');
             } catch (e) {
                 console.error('cleanViewLatest error:', e);
+                try { console.error('cleanViewLatest debugInfo:', e && e.debugInfo ? e.debugInfo : null); } catch(_) {}
+                try { console.error('cleanViewLatest code:', e && e.code ? e.code : null); } catch(_) {}
+                try { logRichApiError(e, 'cleanViewLatest final'); } catch(_) {}
                 showStatus('documentStatus', `❌ View Latest failed: ${e.message}`, 'error');
+                throw e;
             } finally {
                 window.__documentInsertInProgress = false;
+            }
+        };
+
+        // Safe wrapper: try in-app insert only (no external fallback)
+        window.viewLatestSafe = async function() {
+            try { addNotification('👀 View Latest invoked'); } catch(_) {}
+            try {
+                if (typeof window.cleanViewLatest === 'function') {
+                    await window.cleanViewLatest();
+                } else {
+                    showStatus('documentStatus', '❌ View Latest not available', 'error');
+                }
+            } catch (e) {
+                showStatus('documentStatus', `❌ View Latest failed: ${e?.message || e}`, 'error');
             }
         };
     </script>

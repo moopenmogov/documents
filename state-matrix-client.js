@@ -120,9 +120,8 @@ function applyStateMatrixToUI(config) {
         }
     }
 
-    // After applying visibility, refresh any dynamic document actions dropdowns
-    try { refreshActionsDropdown('docActionsSelect'); } catch (e) {}
-    try { refreshActionsDropdown('webDocActionsSelect'); } catch (e) {}
+    // Note: legacy dropdown refresh is handled in platform-specific updater
+    // to avoid hiding controls prematurely in hosts with custom UI.
 }
 
 /**
@@ -132,6 +131,11 @@ function applyStateMatrixToUI(config) {
 async function updateUIFromStateMatrix(platform, getCurrentUser, getCurrentUserRole, currentDocumentState) {
     const userRole = getCurrentUserRole();
     const userId = getCurrentUser()?.id;
+    // If user not yet loaded, defer until available to avoid 404s and bad state
+    if (!userId) {
+        try { console.log(`⏳ ${platform.toUpperCase()}: user not ready; deferring matrix update`); } catch(_) {}
+        return;
+    }
     const isCheckedOut = currentDocumentState?.isCheckedOut || false;
     const checkedOutBy = currentDocumentState?.checkedOutBy || null;
     
@@ -151,8 +155,11 @@ async function updateUIFromStateMatrix(platform, getCurrentUser, getCurrentUserR
             // Apply matrix to UI
             applyStateMatrixToUI(config);
             
-            // After applying, refresh platform-specific action dropdowns if present
-            try { if (platform === 'word') refreshActionsDropdownFromMatrix('docActionsSelect', config); } catch (e) {}
+            // After applying, update the single toolbar (source of truth)
+            try { if (platform === 'word' && typeof window.updateToolbarFromMatrix === 'function') window.updateToolbarFromMatrix(config); } catch (e) {}
+            // Update banner parity
+            try { if (platform === 'word' && typeof window.updateBannerFromMatrix === 'function') window.updateBannerFromMatrix(config); } catch (e) {}
+    // Legacy renderers removed for Word platform to avoid UI duplication
             try { if (platform === 'web') refreshActionsDropdownFromMatrix('webDocActionsSelect', config); } catch (e) {}
             
             console.log(`✅ ${platform.toUpperCase()}: State matrix applied to UI`);
@@ -173,7 +180,7 @@ window.refreshActionsDropdownFromMatrix = function(selectId, config) {
     const add = (id, label, fn, include) => { if (include && typeof fn === 'function') actions.push({ id, label, fn }); };
     const b = config.buttons;
     const hasDoc = !!config.checkoutStatus?.show;
-    add('viewOnlyBtn', 'View Latest', window.cleanViewLatest || window.viewReadOnly, hasDoc && (b.viewOnlyBtn !== false));
+    add('viewOnlyBtn', 'View Latest', window.viewLatestSafe || window.cleanViewLatest || window.viewReadOnly, hasDoc && (b.viewOnlyBtn !== false));
     add('shareToWebBtn', 'Open in Web', window.shareToWeb, true);
     add('checkoutBtn', 'Check-out Document', window.checkoutDocument, !!b.checkoutBtn);
     add('checkinBtn', 'Save & Check-in', window.checkinDocument, !!b.checkedInBtns);
