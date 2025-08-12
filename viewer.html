@@ -972,24 +972,16 @@
     </style>
 
     <div class="controls-grid">
-        <!-- Top-left: Workflows (Users) -->
+        <!-- Top-left: Workflows (Users) - collapsed to summary + modal -->
         <div class="grid-card" style="grid-column:1; grid-row:1;">
-            <div class="grid-title" id="approvalsTitleWeb">Workflows</div>
-            <div class="grid-actions"></div>
-            <div id="usersInlineContainer" style="margin-top:8px;">
-                <table style="width:100%; border-collapse:collapse; font-size:12px;">
-                    <thead>
-                        <tr style="text-align:left; color:#495057;" id="approvalsHeaderRowWeb">
-                            <th style="padding:5px 4px; border-bottom:1px solid #f1f3f5;" data-col="user">User</th>
-                            <th style="padding:5px 4px; border-bottom:1px solid #f1f3f5;" data-col="role">Role</th>
-                            <th style="padding:5px 4px; border-bottom:1px solid #f1f3f5; width:80px;" data-col="status">Approved</th>
-                            <th style="padding:5px 4px; border-bottom:1px solid #f1f3f5;" data-col="actions">Actions</th>
-                        </tr>
-                    </thead>
-                    <tbody id="usersInlineBody"></tbody>
-                </table>
+            <div style="display:flex; align-items:center; justify-content:space-between;">
+                <div class="grid-title" id="approvalsTitleWeb">Workflows</div>
+                <div style="display:flex; align-items:center; gap:8px;">
+                    <span id="approvalsPillWeb" style="display:inline-block; padding:4px 10px; border-radius:999px; background:#e9f5ee; color:#0f5132; font-weight:600; font-size:12px;">—/— approved</span>
+                    <button type="button" id="btnApprovalsDetailsWeb" class="btn btn-secondary" style="padding:4px 10px; font-size:12px;">Approval details</button>
+                </div>
+            </div>
         </div>
-    </div>
 
         <!-- Bottom-left Work on Document card removed; actions now via dropdown above -->
 
@@ -1131,17 +1123,17 @@
             <div class="notification-modal-body">
                 <div id="usersModalBody">
                     <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:8px;">
-                        <div style="font-weight:600;">User Permissions and Approval Status</div>
+                        <div style="font-weight:600;">Approval details</div>
                         <button class="btn btn-secondary" onclick="refreshUsersModal()">Refresh</button>
                     </div>
                     <div style="overflow:auto; max-height:50vh; border:1px solid #e9ecef; border-radius:6px;">
                         <table style="width:100%; border-collapse:collapse; font-size:14px;">
                             <thead style="position:sticky; top:0; background:#f8f9fa;">
-                                <tr>
-                                    <th style="text-align:left; padding:8px; border-bottom:1px solid #e9ecef;">Name</th>
-                                    <th style="text-align:left; padding:8px; border-bottom:1px solid #e9ecef;">Role</th>
-                                    <th style="text-align:left; padding:8px; border-bottom:1px solid #e9ecef; width:110px;">Approved</th>
-                                    <th style="text-align:left; padding:8px; border-bottom:1px solid #e9ecef;">Action</th>
+                                <tr id="approvalsHeaderRowWeb">
+                                    <th style="text-align:left; padding:8px; border-bottom:1px solid #e9ecef;" data-col="user">User</th>
+                                    <th style="text-align:left; padding:8px; border-bottom:1px solid #e9ecef;" data-col="role">Role</th>
+                                    <th style="text-align:left; padding:8px; border-bottom:1px solid #e9ecef; width:110px;" data-col="status">Approved</th>
+                                    <th style="text-align:left; padding:8px; border-bottom:1px solid #e9ecef;" data-col="actions">Action</th>
                                 </tr>
                             </thead>
                             <tbody id="usersTableBody"></tbody>
@@ -2200,6 +2192,25 @@
             const modal = document.getElementById('vendorModal');
             modal.style.display = 'flex';
         }
+
+        // Wire approvals summary for web
+        (function setupApprovalsSummaryWeb(){
+            function open() {
+                const modal = document.getElementById('usersModal');
+                if (modal) { modal.style.display = 'flex'; refreshUsersModal(); }
+            }
+            function updatePill(approved, total) {
+                const pill = document.getElementById('approvalsPillWeb');
+                if (pill) pill.textContent = `${approved}/${total} approved`;
+            }
+            window.__updateApprovalsPillWeb = updatePill;
+            setTimeout(() => {
+                try {
+                    const btn = document.getElementById('btnApprovalsDetailsWeb');
+                    if (btn) btn.onclick = open;
+                } catch(_) {}
+            }, 0);
+        })();
         
         function closeVendorModal() {
             console.log('Closing vendor modal...');
@@ -2712,9 +2723,10 @@
                 if (usersCardTitle) {
                     const ui = window.__approvalsUi;
                     const title = ui?.title || 'Approvals';
-                    usersCardTitle.textContent = `${title} (${approvedCount}/${totalCount} approved)`;
+                    usersCardTitle.textContent = `${title}`;
                     if (ui?.colors?.title) usersCardTitle.style.color = ui.colors.title;
                 }
+                try { if (window.__updateApprovalsPillWeb) window.__updateApprovalsPillWeb(approvedCount, totalCount); } catch(_) {}
                 
                 // Apply shared column headers
                 const headerRow = document.getElementById('approvalsHeaderRowWeb');
@@ -2748,8 +2760,7 @@
                             ` : `<span style=\"opacity:.6; font-size:12px;\">No actions</span>`}
                         </td>
                     `;
-                    if (modalTbody) modalTbody.appendChild(tr.cloneNode(true));
-                    if (inlineTbody) inlineTbody.appendChild(tr);
+                    if (modalTbody) modalTbody.appendChild(tr);
                 });
 
                 // Bind click handlers to update state and re-render

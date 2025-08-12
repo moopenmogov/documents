@@ -837,6 +837,12 @@
                 <button id="btnReplaceCurrent" type="button">⬆️ Replace default document</button>
                 <input id="inputReplaceCurrent" type="file" accept=".docx,application/vnd.openxmlformats-officedocument.wordprocessingml.document" style="display:none;" />
             </div>
+
+            <!-- Approvals summary pill and details trigger -->
+            <div id="approvalsSummaryRowWord" style="display:flex; align-items:center; gap:8px; margin: 6px 0 12px 0;">
+                <span id="approvalsPillWord" style="display:inline-block; padding:4px 10px; border-radius:999px; background:#e9f5ee; color:#0f5132; font-weight:600; font-size:12px;">—/— approved</span>
+                <button id="btnApprovalsDetailsWord" type="button" style="padding:4px 10px; font-size:12px;">Approval details</button>
+            </div>
         </div>
         
 
@@ -889,23 +895,29 @@
             </button>
             </div>
         
-        <!-- Approvals Section -->
-        <div class="approvals-section">
-            <div class="section-header">
-                <h3>✅ Approvals</h3>
-            </div>
-            <div id="approvalsTableContainer" style="margin-top:8px;">
-                <table class="approvals-table" style="width:100%; border-collapse:collapse; font-size:12px;">
-                    <thead>
-                        <tr id="approvalsHeaderRowAddin" style="text-align:left; color:#495057;">
-                            <th style="padding:5px 4px; border-bottom:1px solid #f1f3f5;" data-col="user">User</th>
-                            <th style="padding:5px 4px; border-bottom:1px solid #f1f3f5;" data-col="role">Role</th>
-                            <th style="padding:5px 4px; border-bottom:1px solid #f1f3f5; width:80px;" data-col="status">Approved</th>
-                            <th style="padding:5px 4px; border-bottom:1px solid #f1f3f5;" data-col="actions">Actions</th>
-                        </tr>
-                    </thead>
-                    <tbody id="approvalsList"></tbody>
-                </table>
+        <!-- Approvals Modal (collapses the inline approvals table into a modal) -->
+        <div id="approvalsModalWord" class="notification-modal" style="display:none;">
+            <div class="notification-modal-backdrop" onclick="(function(){document.getElementById('approvalsModalWord').style.display='none'})()"></div>
+            <div class="notification-modal-content" style="max-width:700px; width:90%;">
+                <div class="notification-modal-header">
+                    <h3 class="notification-modal-title">✅ Approval details</h3>
+                    <button class="notification-modal-close" onclick="document.getElementById('approvalsModalWord').style.display='none'">×</button>
+                </div>
+                <div class="notification-modal-body">
+                    <div id="approvalsTableContainer" style="margin-top:8px;">
+                        <table class="approvals-table" style="width:100%; border-collapse:collapse; font-size:12px;">
+                            <thead>
+                                <tr id="approvalsHeaderRowAddin" style="text-align:left; color:#495057;">
+                                    <th style="padding:5px 4px; border-bottom:1px solid #f1f3f5;" data-col="user">User</th>
+                                    <th style="padding:5px 4px; border-bottom:1px solid #f1f3f5;" data-col="role">Role</th>
+                                    <th style="padding:5px 4px; border-bottom:1px solid #f1f3f5; width:80px;" data-col="status">Approved</th>
+                                    <th style="padding:5px 4px; border-bottom:1px solid #f1f3f5;" data-col="actions">Actions</th>
+                                </tr>
+                            </thead>
+                            <tbody id="approvalsList"></tbody>
+                        </table>
+                    </div>
+                </div>
             </div>
         </div>
 
@@ -3340,14 +3352,16 @@
                 
                 // Header title with count
                 const uiCfg = window.__approvalsUi;
+                const approvedCount = (data.approvals || []).filter(a => a.status === 'approved').length;
+                const totalCount = users.length;
                 const titleEl = document.querySelector('.approvals-section .section-header h3');
                 if (titleEl) {
-                    const approvedCount = (data.approvals || []).filter(a => a.status === 'approved').length;
-                    const totalCount = users.length;
                     const title = uiCfg?.title || 'Approvals';
                     titleEl.textContent = `${title} (${approvedCount}/${totalCount} approved)`;
                     if (uiCfg?.colors?.title) titleEl.style.color = uiCfg.colors.title;
                 }
+                // Update approvals summary pill row
+                try { const pill = document.getElementById('approvalsPillWord'); if (pill) pill.textContent = `${approvedCount}/${totalCount} approved`; } catch(_) {}
                 
                 // Clear and populate
                 approvalsList.innerHTML = '';
@@ -3460,6 +3474,23 @@
                     console.error('❌ No current user for approval action');
                     return;
                 }
+
+// Wire Approval Details button for Word (open modal)
+(function wireApprovalsModalWord(){
+    function open() {
+        const m = document.getElementById('approvalsModalWord');
+        if (m) { m.style.display = 'flex'; }
+    }
+    if (document.readyState === 'loading') {
+        document.addEventListener('DOMContentLoaded', () => {
+            const b = document.getElementById('btnApprovalsDetailsWord');
+            if (b) b.onclick = open;
+        });
+    } else {
+        const b = document.getElementById('btnApprovalsDetailsWord');
+        if (b) b.onclick = open;
+    }
+})();
                 
                 // Warn if acting on behalf of someone else and current user is editor
                 try {
