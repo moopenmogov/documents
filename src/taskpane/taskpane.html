@@ -3477,14 +3477,92 @@
 
 // Wire Approval Details button for Word (open modal)
 // Expose an opener globally and wire after Office.onReady
-window.openApprovalsModalWord = function() {
+window.openApprovalsModalWord = async function() {
     try {
-        const m = document.getElementById('approvalsModalWord');
-        if (m) {
-            m.style.display = 'flex';
-            // Force reflow for WebView2 quirks
-            try { void m.offsetHeight; } catch(_) {}
+        // Create NFB-styled modal lazily
+        let backdrop = document.getElementById('approvalsNfbBackdrop');
+        let modal = document.getElementById('approvalsNfbModal');
+        if (!backdrop) {
+            backdrop = document.createElement('div');
+            backdrop.id = 'approvalsNfbBackdrop';
+            backdrop.className = 'nfb-modal-backdrop';
+            document.body.appendChild(backdrop);
         }
+        if (!modal) {
+            modal = document.createElement('div');
+            modal.id = 'approvalsNfbModal';
+            modal.className = 'nfb-modal nfb-compact';
+            modal.innerHTML = `
+                <div class="nfb-modal-title">✅ Approval details</div>
+                <div class="nfb-modal-sub" id="approvalsNfbSubWord">—/— approved</div>
+                <div id="approvalsNfbBodyWord"></div>
+                <div class="nfb-footer"><span></span><button class="nfb-btn" id="approvalsNfbCloseWord">Close</button></div>
+            `;
+            document.body.appendChild(modal);
+            const close = () => { try { modal.style.display='none'; backdrop.style.display='none'; document.documentElement.classList.remove('nfb-is-open'); } catch(_) {} };
+            backdrop.addEventListener('click', close);
+            modal.querySelector('#approvalsNfbCloseWord').addEventListener('click', close);
+        }
+
+        // Fetch approvals fresh for the modal
+        const currentUser = window.getCurrentUser ? window.getCurrentUser() : null;
+        const documentId = currentDocumentState?.currentDocument?.id || 'default-doc';
+        const resp = await fetch(`http://localhost:3001/api/approval-matrix?actorPlatform=word&actorId=${currentUser?.id || ''}&documentId=${documentId}`);
+        const data = await resp.json();
+        const users = data.users || [];
+        const matrix = data.matrix || {};
+        const approvals = Array.isArray(data.approvals) ? data.approvals : [];
+        const approvedCount = approvals.filter(a => a.status === 'approved').length;
+        const totalCount = users.length;
+        const sub = document.getElementById('approvalsNfbSubWord');
+        if (sub) sub.textContent = `${approvedCount}/${totalCount} approved`;
+
+        const uiCfg = window.__approvalsUi || {};
+        const body = document.getElementById('approvalsNfbBodyWord');
+        if (body) {
+            const table = document.createElement('table');
+            table.className = 'nfb-table';
+            const thead = document.createElement('thead');
+            thead.innerHTML = `
+                <tr>
+                  <th>${uiCfg.columns?.user || 'User'}</th>
+                  <th>${uiCfg.columns?.role || 'Role'}</th>
+                  <th>${uiCfg.columns?.status || 'Approved'}</th>
+                  <th>${uiCfg.columns?.actions || 'Actions'}</th>
+                </tr>`;
+            const tbody = document.createElement('tbody');
+            users.forEach(u => {
+                const row = matrix[u.id] || { status: 'no', showButtons: true, approveEnabled: true, rejectEnabled: true };
+                const status = approvals.find(a => a.userId === u.id)?.status || row.status || 'no';
+                const tr = document.createElement('tr');
+                const pill = (function(){
+                    const span = document.createElement('span');
+                    span.className = 'nfb-pill';
+                    if (status === 'approved') { span.style.background = uiCfg.colors?.pillApprovedBg || '#d4edda'; span.style.color = uiCfg.colors?.pillApprovedText || '#155724'; span.textContent = uiCfg.labels?.approved || 'Approved'; }
+                    else if (status === 'rejected') { span.style.background = uiCfg.colors?.pillRejectedBg || '#f8d7da'; span.style.color = uiCfg.colors?.pillRejectedText || '#721c24'; span.textContent = uiCfg.labels?.rejected || 'Rejected'; }
+                    else { span.textContent = uiCfg.labels?.no || 'No'; }
+                    return span;
+                })();
+                const tdActions = document.createElement('td');
+                if (row.showButtons) {
+                    const btnApprove = document.createElement('button'); btnApprove.className='nfb-btn'; btnApprove.textContent='Approve'; btnApprove.disabled = status==='approved' || !row.approveEnabled; btnApprove.onclick = () => handleApprovalAction(u.id, 'approve');
+                    const btnReject = document.createElement('button'); btnReject.className='nfb-btn'; btnReject.textContent='Reject'; btnReject.disabled = status==='rejected' || !row.rejectEnabled; btnReject.onclick = () => handleApprovalAction(u.id, 'reject');
+                    const wrap = document.createElement('div'); wrap.className='nfb-actions'; wrap.appendChild(btnApprove); wrap.appendChild(btnReject); tdActions.appendChild(wrap);
+                } else { tdActions.textContent = 'No actions'; tdActions.style.opacity = '.6'; }
+                tr.innerHTML = `<td>${u.name}</td><td>${u.role}</td>`;
+                const tdStatus = document.createElement('td'); tdStatus.appendChild(pill);
+                tr.appendChild(tdStatus); tr.appendChild(tdActions);
+                tbody.appendChild(tr);
+            });
+            table.appendChild(thead); table.appendChild(tbody);
+            body.innerHTML = ''; body.appendChild(table);
+        }
+
+        // Show
+        document.documentElement.classList.add('nfb-is-open');
+        backdrop.style.display = 'block';
+        modal.style.display = 'block';
+        try { modal.focus(); modal.scrollIntoView({ block: 'center' }); } catch(_) {}
     } catch(_) {}
 };
                 
@@ -3591,6 +3669,13 @@ window.openApprovalsModalWord = function() {
                     loadApprovalsSection();
                     populateDocumentActions();
                     setTimeout(() => populateDocumentActions(), 3000);
+                    // Ensure Approvals Details button opens modal (no inline dependency)
+                    try {
+                        const btnDetails = document.getElementById('btnApprovalsDetailsWord');
+                        if (btnDetails && typeof window.openApprovalsModalWord === 'function') {
+                            btnDetails.addEventListener('click', window.openApprovalsModalWord);
+                        }
+                    } catch(_) {}
                 }, 1000); // Small delay to ensure SSE connection is established
             }
         });
