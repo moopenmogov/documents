@@ -3420,8 +3420,8 @@
                 
                 // Header title with count
                 const uiCfg = window.__approvalsUi;
-                const approvedCount = (data.approvals || []).filter(a => a.status === 'approved').length;
-                const totalCount = users.length;
+                const approvedCount = Array.isArray(data.approvals) ? data.approvals.filter(a => a.status === 'approved').length : 0;
+                const totalCount = Array.isArray(users) ? users.length : 0;
                 const titleEl = document.querySelector('.approvals-section .section-header h3');
                 if (titleEl) {
                     const title = uiCfg?.title || 'Approvals';
@@ -3429,7 +3429,14 @@
                     if (uiCfg?.colors?.title) titleEl.style.color = uiCfg.colors.title;
                 }
                 // Update approvals summary pill row
-                try { const pill = document.getElementById('approvalsPillWord'); if (pill) pill.textContent = `${approvedCount}/${totalCount} approved`; } catch(_) {}
+                try {
+                    const pill = document.getElementById('approvalsPillWord');
+                    if (pill) {
+                        const denom = Number.isFinite(totalCount) && totalCount > 0 ? totalCount : 0;
+                        const numer = Number.isFinite(approvedCount) && approvedCount >= 0 ? approvedCount : 0;
+                        pill.textContent = `${numer}/${denom} approved`;
+                    }
+                } catch(_) {}
                 
                 // Clear and populate
                 approvalsList.innerHTML = '';
