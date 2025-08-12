@@ -1052,24 +1052,80 @@
         }
     } catch (_) {}
 
-    // Ensure approvals modal opener exists early for state-matrix dropdown
+    // Ensure approvals modal opener exists early for state-matrix dropdown (proxy that upgrades to real impl)
     try {
         if (typeof window.openUsersModalWord !== 'function') {
-            window.openUsersModalWord = function () {
+            window.openUsersModalWord = async function () {
                 try {
-                    if (typeof window.__forceOpenApprovalsTest === 'function') {
-                        return window.__forceOpenApprovalsTest();
+                    console.log('[approvals] opener invoked (early impl)');
+                    // Ensure approvals modal styles exist (scoped)
+                    const styleId = 'approvals-modal-styles-word';
+                    if (!document.getElementById(styleId)) {
+                        const st = document.createElement('style');
+                        st.id = styleId;
+                        st.textContent = `
+                            #approvalsBackdropWord{position:fixed;inset:0;background:rgba(0,0,0,.35);z-index:2147483646;display:block}
+                            #approvalsModalWord{position:fixed;top:50%;left:50%;transform:translate(-50%,-50%);background:#fff;border-radius:10px;
+                              width:min(700px,92vw);max-height:80vh;overflow:auto;padding:16px;box-shadow:0 8px 24px rgba(0,0,0,.25);z-index:2147483647}
+                            #approvalsModalWord .title{font-size:18px;font-weight:700;margin:0 0 6px}
+                            #approvalsModalWord .sub{font-size:12px;color:#6c757d;margin:0 0 12px}
+                            #approvalsModalWord table{width:100%;border-collapse:collapse}
+                            #approvalsModalWord th,#approvalsModalWord td{border-bottom:1px solid #eee;padding:8px;text-align:left;font-size:14px}
+                            #approvalsModalWord .pill{display:inline-block;padding:2px 8px;border-radius:999px;font-size:12px;font-weight:600}
+                            #approvalsModalWord .actions{display:flex;gap:8px;flex-wrap:wrap;justify-content:flex-end;margin-top:10px}
+                            #approvalsModalWord .btn{background:#ff6fa5;color:#fff;border:none;border-radius:8px;padding:8px 12px;font-weight:600;cursor:pointer}`;
+                        document.head.appendChild(st);
                     }
-                    // Minimal inline fallback
-                    const bd = document.createElement('div');
-                    Object.assign(bd.style, { position: 'fixed', inset: '0', background: 'rgba(0,0,0,.35)', zIndex: '2147483646' });
-                    const md = document.createElement('div');
-                    Object.assign(md.style, { position: 'fixed', top: '50%', left: '50%', transform: 'translate(-50%,-50%)', background: '#fff', padding: '16px', borderRadius: '10px', boxShadow: '0 8px 24px rgba(0,0,0,.25)', zIndex: '2147483647' });
-                    md.innerHTML = '<div style="font-weight:700;margin-bottom:6px">Approvals</div><div>Opening…</div><div style="margin-top:10px;text-align:right"><button id="og-ap-shim-close">Close</button></div>';
-                    document.body.append(bd, md);
-                    const close = () => { try { md.remove(); bd.remove(); } catch (_) {} };
-                    bd.onclick = close; md.querySelector('#og-ap-shim-close').onclick = close;
-                } catch (_) {}
+
+                    // Create dedicated backdrop and modal
+                    let backdrop = document.getElementById('approvalsBackdropWord');
+                    if (!backdrop) { backdrop = document.createElement('div'); backdrop.id='approvalsBackdropWord'; document.body.appendChild(backdrop); }
+                    let modal = document.getElementById('approvalsModalWord');
+                    if (!modal) { modal = document.createElement('div'); modal.id='approvalsModalWord'; document.body.appendChild(modal); }
+
+                    // Fetch approvals data
+                    const currentUser = window.getCurrentUser ? window.getCurrentUser() : null;
+                    const documentId = currentDocumentState?.currentDocument?.id || 'default-doc';
+                    const resp = await fetch(`http://localhost:3001/api/approval-matrix?actorPlatform=word&actorId=${currentUser?.id||''}&documentId=${documentId}`);
+                    const data = await resp.json();
+                    const users = Array.isArray(data.users) ? data.users : [];
+                    const matrix = data.matrix || {};
+                    const approvals = Array.isArray(data.approvals) ? data.approvals : [];
+                    const approvedCount = approvals.filter(a => a.status==='approved').length;
+
+                    modal.innerHTML = ''+
+                      `<div class="title">Approvals</div>`+
+                      `<div class="sub">${approvedCount}/${users.length} approved</div>`+
+                      `<table><thead><tr>`+
+                      `<th>User</th><th>Role</th><th>Approved</th><th>Actions</th>`+
+                      `</tr></thead><tbody class="tbody"></tbody></table>`+
+                      `<div class="actions"><button class="btn" id="approvalsCloseWord">Close</button></div>`;
+
+                    const tbody = modal.querySelector('tbody.tbody');
+                    users.forEach(u => {
+                        const row = matrix[u.id] || { status:'no', showButtons:true, approveEnabled:true, rejectEnabled:true };
+                        const status = approvals.find(a => a.userId===u.id)?.status || row.status || 'no';
+                        const tr = document.createElement('tr');
+                        const pill = document.createElement('span'); pill.className='pill';
+                        if (status==='approved'){ pill.style.background='#d4edda'; pill.style.color='#155724'; pill.textContent='Approved'; }
+                        else if (status==='rejected'){ pill.style.background='#f8d7da'; pill.style.color='#721c24'; pill.textContent='Rejected'; }
+                        else { pill.textContent='No'; }
+                        const tdS=document.createElement('td'); tdS.appendChild(pill);
+                        const tdA=document.createElement('td');
+                        if (row.showButtons) {
+                            const a=document.createElement('button'); a.className='btn'; a.textContent='Approve'; a.disabled=(status==='approved'||!row.approveEnabled); a.onclick=()=>handleApprovalAction(u.id,'approve');
+                            const r=document.createElement('button'); r.className='btn'; r.textContent='Reject'; r.disabled=(status==='rejected'||!row.rejectEnabled); r.onclick=()=>handleApprovalAction(u.id,'reject');
+                            tdA.append(a,r);
+                        } else { tdA.textContent='No actions'; tdA.style.opacity='.6'; }
+                        tr.innerHTML=`<td>${u.name}</td><td>${u.role}</td>`; tr.append(tdS, tdA); tbody.appendChild(tr);
+                    });
+
+                    // Open + close handlers
+                    backdrop.style.display='block'; modal.style.display='block';
+                    const close=()=>{ try{ modal.style.display='none'; backdrop.style.display='none'; }catch(_){} };
+                    modal.querySelector('#approvalsCloseWord').onclick = close; backdrop.onclick = close;
+                    try{ modal.focus(); }catch(_){}
+                } catch (e) { console.error('Users modal (Word) early impl error:', e); }
             };
         }
     } catch (_) {}
@@ -3591,9 +3647,12 @@
     } catch(_) {}
 };
 
-        // Word: open Users/Approvals modal using a dedicated container (no NFB id sharing)
-        window.openUsersModalWord = async function() {
+        // Word: real Users/Approvals modal implementation (dedicated container). The opener proxies to this.
+        window.__openUsersModalWordImpl = async function() {
             try {
+                console.log('[approvals] impl running');
+                // Close shim if it exists
+                try { document.getElementById('og-ap-shim-modal')?.remove(); document.getElementById('og-ap-shim-backdrop')?.remove(); } catch(_) {}
                 // Ensure approvals modal styles exist (scoped)
                 const styleId = 'approvals-modal-styles-word';
                 if (!document.getElementById(styleId)) {
