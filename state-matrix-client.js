@@ -55,27 +55,27 @@ function applyStateMatrixToUI(config) {
             
             // Apply softer pink/teal directly via JavaScript (CSS specificity)
             if (config.checkoutStatus.text.includes('Checked out by')) {
-                console.log('🔴 Applying pink background - text contains "Checked out by":', config.checkoutStatus.text);
-                checkoutStatus.style.backgroundColor = '#ff6fa5';
+                console.log('🔴 Applying medium blue background - text contains "Checked out by":', config.checkoutStatus.text);
+                checkoutStatus.style.backgroundColor = '#3b82f6';
                 checkoutStatus.style.color = 'white';
-                checkoutStatus.style.padding = '8px 16px';
+                checkoutStatus.style.padding = '6px 11px';
                 checkoutStatus.style.borderRadius = '4px';
                 checkoutStatus.style.fontSize = '18px';
                 checkoutStatus.style.fontWeight = '500';
                 checkoutStatus.style.margin = '8px 0';
                 checkoutStatus.classList.add('checked-out');
-                console.log('🎨 Applied pink checkout styling');
+                console.log('🎨 Applied medium blue checkout styling');
             } else {
-                console.log('🔵 Applying soft pink background - available state:', config.checkoutStatus.text);
-                checkoutStatus.style.backgroundColor = '#ffc1d9';
-                checkoutStatus.style.color = 'white';
-                checkoutStatus.style.padding = '8px 16px';
+                console.log('🔵 Applying light blue background - available state:', config.checkoutStatus.text);
+                checkoutStatus.style.backgroundColor = '#bfdbfe';
+                checkoutStatus.style.color = '#1e40af';
+                checkoutStatus.style.padding = '6px 11px';
                 checkoutStatus.style.borderRadius = '4px';
                 checkoutStatus.style.fontSize = '18px';
                 checkoutStatus.style.fontWeight = '500';
                 checkoutStatus.style.margin = '8px 0';
                 checkoutStatus.classList.remove('checked-out');
-                console.log('🎨 Applied available checkout styling');
+                console.log('🎨 Applied available blue checkout styling');
             }
         } else {
             checkoutStatus.style.display = 'none';

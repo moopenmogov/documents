@@ -744,10 +744,10 @@
             text-align: center !important;
         }
         
-        /* Checkout Status Banner - unified pink to match Word add-in */
+        /* Checkout Status Banner - unified light blue */
         div#checkoutStatus.checkout-status {
-            background: #ffc1d9 !important;
-            color: white !important;
+            background: #bfdbfe !important;
+            color: #1e40af !important;
             padding: 6px 11px !important;
             text-align: center !important;
             font-weight: 500 !important;
@@ -757,9 +757,9 @@
             display: block !important;
         }
         
-        /* Checked out state - unified pink to match Word add-in */
+        /* Checked out state - unified medium blue */
         div#checkoutStatus.checkout-status.checked-out {
-            background: #ff6fa5 !important;
+            background: #3b82f6 !important;
         }
         
         .main-content-3col .right-column {
@@ -3477,21 +3477,22 @@
                     console.log('📝 Current text:', banner.textContent);
                     console.log('🎨 Current classes:', banner.classList.toString());
                     console.log('🖌️ Computed background color:', getComputedStyle(banner).backgroundColor);
-                    console.log('🖌️ Expected: Available=#ffc1d9, Checked-out=#ff6fa5');
+                    console.log('🖌️ Expected: Available=#bfdbfe, Checked-out=#3b82f6');
                     
-                    // Test unified pink colors
-                    console.log('🧪 Testing unified pink colors:');
-                    banner.style.backgroundColor = '#ffc1d9';
-                    banner.style.color = 'white';
+                    // Test unified blue colors
+                    console.log('🧪 Testing unified blue colors:');
+                    banner.style.backgroundColor = '#bfdbfe';
+                    banner.style.color = '#1e40af';
                     banner.style.padding = '6px 11px';
                     banner.style.borderRadius = '4px';
-                    console.log('🌸 Applied unified available pink (#ffc1d9)');
+                    console.log('🔵 Applied unified available light blue (#bfdbfe)');
                     console.log('🖌️ Background after unified style:', getComputedStyle(banner).backgroundColor);
                     
                     setTimeout(() => {
-                        banner.style.backgroundColor = '#ff6fa5';
-                        console.log('🌸 Applied unified checked-out pink (#ff6fa5)');
-                        console.log('🖌️ Background after checked-out pink:', getComputedStyle(banner).backgroundColor);
+                        banner.style.backgroundColor = '#3b82f6';
+                        banner.style.color = 'white';
+                        console.log('🔵 Applied unified checked-out medium blue (#3b82f6)');
+                        console.log('🖌️ Background after checked-out blue:', getComputedStyle(banner).backgroundColor);
                         
                         setTimeout(() => {
                             banner.style.backgroundColor = '';

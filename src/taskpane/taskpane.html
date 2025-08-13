@@ -1730,15 +1730,15 @@
             console.log('📝 Current text:', banner.textContent);
             console.log('🎨 Current classes:', banner.classList.toString());
             console.log('🖌️ Computed background color:', getComputedStyle(banner).backgroundColor);
-            console.log('🖌️ Expected: Available=#ffc1d9, Checked-out=#ff6fa5');
+            console.log('🖌️ Expected: Available=#bfdbfe, Checked-out=#3b82f6');
             
             // Test state matrix styling
             console.log('🧪 Testing state matrix colors:');
-            banner.style.backgroundColor = '#ffc1d9';
-            banner.style.color = 'white';
+            banner.style.backgroundColor = '#bfdbfe';
+            banner.style.color = '#1e40af';
             banner.style.padding = '6px 11px';
             banner.style.borderRadius = '4px';
-            console.log('🌸 Applied unified available pink (#ffc1d9)');
+            console.log('🔵 Applied unified available light blue (#bfdbfe)');
             console.log('🖌️ Background after unified style:', getComputedStyle(banner).backgroundColor);
         };
 
