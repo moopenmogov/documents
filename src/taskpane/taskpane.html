@@ -792,8 +792,15 @@
         }
 
         /* Fix default checkout status background to avoid teal */
+        /* Align add-in status bar with web viewer */
         .checkout-status {
-            background: transparent !important;
+            background: #f1f5f9 !important; /* light gray-blue */
+            color: #0f172a !important;      /* slate-900 */
+            border: 1px solid #e2e8f0 !important;
+            padding: 8px 16px !important;
+            border-radius: 6px !important;
+            font-weight: 600 !important;
+            display: inline-block;
         }
     </style>
 </head>
@@ -3289,9 +3296,6 @@
                             } else if (config && config.checkoutStatus && config.checkoutStatus.show) {
                                 cs.textContent = config.checkoutStatus.text || '';
                                 cs.style.display = 'block';
-                                // Reset any forced colors from prior runs
-                                cs.style.backgroundColor = 'transparent';
-                                cs.style.color = '#495057';
                             } else {
                                 cs.textContent = '';
                                 cs.style.display = 'none';
