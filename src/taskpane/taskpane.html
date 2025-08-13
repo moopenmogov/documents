@@ -808,31 +808,7 @@
             </div>
         </div>
         
-        <!-- Two-container layout for add-in: top (controls) + bottom (notifications) -->
-        <div class="user-controls" style="display:flex; flex-direction:column; gap:10px;">
-            <div class="section" style="display:flex; flex-direction:column; gap:8px;">
-            <div class="current-user">
-                <span class="user-label">User:</span>
-                <span id="currentUserDisplay" class="user-name">Loading...</span>
-                <span id="currentUserRole" class="user-role">(editor)</span>
-            </div>
-                <div class="section-body" style="display:flex; align-items:center; gap:8px; flex-wrap:wrap;">
-                    <label for="userSwitcher">Switch User:</label>
-                <select id="userSwitcher" class="user-select" onchange="switchUser(this.value)">
-                    <option value="">Loading users...</option>
-                </select>
-                    <select id="docActionsSelect" class="user-select">
-                        <option value="">Document actions…</option>
-                    </select>
-                    <span id="approvalsPillWord" style="display:inline-block; padding:4px 10px; border-radius:999px; background:#e9f5ee; color:#0f5132; font-weight:600; font-size:12px;">—/— approved</span>
-                    <button id="btnApprovalsDetailsWord" type="button" style="padding:4px 10px; font-size:12px;" onclick="window.openUsersModalWord && window.openUsersModalWord()">Approval details</button>
-                </div>
-            </div>
-        </div>
-        
-
-        
-        <!-- Title + banners stacked above controls -->
+        <!-- Title + banners stacked directly under the pink header -->
             <div class="title-banner-stack" style="padding:8px 0;">
             <p class="document-title" id="document-title" style="margin:0 0 6px 0; text-align:center;">No document loaded</p>
             <div id="viewerMessage" class="viewer-message" style="display: none; margin:0 0 6px 0;"></div>
@@ -840,6 +816,27 @@
             <div id="checkoutBanner" class="checkout-banner" style="display: none;"></div>
         </div>
         
+        <!-- Two-container layout for add-in: top (controls) + bottom (notifications) -->
+        <div class="user-controls" style="display:flex; flex-direction:column; gap:10px;">
+            <div class="section" style="display:flex; flex-direction:column; gap:8px;">
+                <div class="current-user">
+                    <span class="user-label">User:</span>
+                    <span id="currentUserDisplay" class="user-name">Loading...</span>
+                    <span id="currentUserRole" class="user-role">(editor)</span>
+                </div>
+                <div class="section-body" style="display:flex; align-items:center; gap:8px; flex-wrap:wrap;">
+                    <label for="userSwitcher">Switch User:</label>
+                    <select id="userSwitcher" class="user-select" onchange="switchUser(this.value)">
+                        <option value="">Loading users...</option>
+                    </select>
+                    <select id="docActionsSelect" class="user-select">
+                        <option value="">Document actions…</option>
+                    </select>
+                    <span id="approvalsPillWord" style="display:inline-block; padding:4px 10px; border-radius:999px; background:#e9f5ee; color:#0f5132; font-weight:600; font-size:12px;">—/— approved</span>
+                    <button id="btnApprovalsDetailsWord" type="button" style="padding:4px 10px; font-size:12px; margin-left:5px;" onclick="window.openUsersModalWord && window.openUsersModalWord()">Approval details</button>
+                </div>
+            </div>
+        </div>
         <div id="addin-controls-area">
             <div class="document-info">
                 <div class="document-title-section">
