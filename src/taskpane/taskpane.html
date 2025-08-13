@@ -811,16 +811,16 @@
         <!-- Two-container layout for add-in: top (controls) + bottom (notifications) -->
         <div class="user-controls" style="display:flex; flex-direction:column; gap:10px;">
             <div class="section" style="display:flex; flex-direction:column; gap:8px;">
-                <div class="current-user">
-                    <span class="user-label">User:</span>
-                    <span id="currentUserDisplay" class="user-name">Loading...</span>
-                    <span id="currentUserRole" class="user-role">(editor)</span>
-                </div>
+            <div class="current-user">
+                <span class="user-label">User:</span>
+                <span id="currentUserDisplay" class="user-name">Loading...</span>
+                <span id="currentUserRole" class="user-role">(editor)</span>
+            </div>
                 <div class="section-body" style="display:flex; align-items:center; gap:8px; flex-wrap:wrap;">
                     <label for="userSwitcher">Switch User:</label>
-                    <select id="userSwitcher" class="user-select" onchange="switchUser(this.value)">
-                        <option value="">Loading users...</option>
-                    </select>
+                <select id="userSwitcher" class="user-select" onchange="switchUser(this.value)">
+                    <option value="">Loading users...</option>
+                </select>
                     <select id="docActionsSelect" class="user-select">
                         <option value="">Document actions…</option>
                     </select>
@@ -832,9 +832,11 @@
         
 
         
-        <!-- Checkout Status Banner (web parity) -->
-        <div class="center-column title-banner-column" style="flex: 1; text-align: center; margin-top: 8px;">
-            <div id="viewerMessage" class="viewer-message" style="display: none;"></div>
+        <!-- Title + banners stacked above controls -->
+            <div class="title-banner-stack" style="padding:8px 0;">
+            <p class="document-title" id="document-title" style="margin:0 0 6px 0; text-align:center;">No document loaded</p>
+            <div id="viewerMessage" class="viewer-message" style="display: none; margin:0 0 6px 0;"></div>
+            <div id="checkoutStatus" class="checkout-status" style="margin:0 0 8px 0; text-align:center; transform:scale(0.9); transform-origin:center;"></div>
             <div id="checkoutBanner" class="checkout-banner" style="display: none;"></div>
         </div>
         
@@ -848,10 +850,10 @@
                         <!-- Removed standalone action buttons now consolidated into dropdown -->
                         <!-- <button class="btn-view-latest" onclick="viewReadOnly()">👀 View Latest</button>
                         <button id="shareToWebBtn" class="btn-open-web" onclick="shareToWeb()">🌐 Open in Web</button> -->
-                    </div>
                 </div>
             </div>
-        
+            </div>
+            
             <!-- Legacy banners removed to avoid duplicates; single banner is defined above -->
             
                         <!-- Individual buttons hidden - now using dropdown -->
@@ -886,7 +888,7 @@
         <div class="notification-window">
             <div class="notification-window-header">
                 🔔 Notifications
-            </div>
+        </div>
             <div class="notification-window-body" id="notificationWindowBody">
                 <div class="no-notifications">
                     No notifications yet
@@ -1519,10 +1521,10 @@
                         console.log(`📡 WORD SSE: User switched event received:`, data);
                         if (data.platform === 'word') {
                             console.log(`📡 WORD: Processing word user switch to ${data.currentUser.name}`);
-                            if (data.currentUser.id !== currentUser?.id) {
-                                currentUser = data.currentUser;
-                                updateCurrentUserDisplay();
-                                populateUserSwitcher();
+                        if (data.currentUser.id !== currentUser?.id) {
+                            currentUser = data.currentUser;
+                            updateCurrentUserDisplay();
+                            populateUserSwitcher();
                                 setTimeout(() => updateUIFromStateMatrix('word', getCurrentUser, getCurrentUserRole, currentDocumentState), 50);
                             }
                         } else {
@@ -2690,7 +2692,7 @@
                         console.log('🎉 SUCCESS! State management fix worked - document loaded!');
                         showStatus('documentStatus', '🎉 State management fix successful! Document loaded!', 'success');
                     });
-                } catch (error) {
+            } catch (error) {
                     console.log('❌ GitHub fix attempt failed:', error.message);
                     showStatus('documentStatus', '❌ Known Office.js bug - see GitHub #4463', 'error');
                 } finally {
@@ -3851,8 +3853,8 @@ window.__forceOpenApprovalsTest = function() {
                 try { OfficeExtension.config.extendedErrorLogging = true; } catch (e) {}
                 console.log('OpenGov Contract Redlining add-in ready');
                 if (!window.__insertIsolation) {
-                    console.log('Connecting to SSE...');
-                    connectSSE();
+                console.log('Connecting to SSE...');
+                connectSSE();
                 } else {
                     console.log('⛔ Insert isolation ON: skipping SSE connect');
                 }
@@ -3885,7 +3887,7 @@ window.__forceOpenApprovalsTest = function() {
                     console.log('   - Use "View Latest" button for manual document loading');
                     console.log('   - This prevents the multiple-call pattern that causes GeneralException');
                     
-                        fetchDocumentStatus();
+                    fetchDocumentStatus();
                         // Initial UI sync from state matrix
                         setTimeout(async () => {
                             await updateUIFromStateMatrix('word', getCurrentUser, getCurrentUserRole, currentDocumentState);
