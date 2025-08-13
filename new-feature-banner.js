@@ -68,8 +68,6 @@
     style.id = 'new-feature-banner-styles';
     style.textContent = `
       .nfb-btn { 
-        background: #bfdbfe !important; 
-        color: #1e40af !important; 
         border: none !important; 
         border-radius: 999px !important; 
         padding: 4px 10px !important; 
@@ -77,8 +75,12 @@
         cursor: pointer !important; 
         font-size: 12px !important;
         box-shadow: 0 2px 6px rgba(0,0,0,0.2) !important;
+        margin: 0 !important;
+        letter-spacing: 0.3px !important;
+        display: inline-block !important;
+        position: relative !important;
       }
-      .nfb-btn:hover { background: #3b82f6 !important; color: white !important; }
+      .nfb-btn:not(.nfb-pulse):hover { background: #3b82f6 !important; color: white !important; }
       .nfb-btn[disabled] { opacity: .55 !important; cursor: default !important; }
       .nfb-btn-inactive { opacity: .55 !important; }
       .nfb-btn-active { background: #3b82f6 !important; color: white !important; }
@@ -105,11 +107,12 @@
         }
       }
       
-      .nfb-pulse {
+      .nfb-btn.nfb-pulse {
         animation: nfb-pulse 1.5s infinite ease-in-out !important;
+        animation-fill-mode: both !important;
       }
       
-      .nfb-pulse:hover {
+      .nfb-btn.nfb-pulse:hover {
         animation-play-state: paused !important;
         background: #3b82f6 !important;
         color: white !important;
@@ -305,8 +308,8 @@
       btn.className = 'nfb-btn nfb-pulse';
       btn.id = 'newFeaturesBtn';
       btn.textContent = 'See New Features';
-      btn.style.marginLeft = '8px';
-      btn.style.marginTop = '8px';
+      btn.style.marginLeft = '0px';
+      btn.style.marginTop = '0px';
       // Anchor inside header to avoid overflowing taskpane width
       try { if (header && getComputedStyle(header).position === 'static') header.style.position = 'relative'; } catch (_) {}
       btn.style.position = 'absolute';
