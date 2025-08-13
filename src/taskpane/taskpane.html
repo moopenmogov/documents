@@ -800,6 +800,9 @@
 <body>
     <div class="container">
         <div class="opengov-header">
+            <div style="display:flex;align-items:center;gap:8px;">
+                <span id="comingSoonPill" style="display:inline-block;padding:2px 8px;border-radius:999px;background:#dbeafe;color:#1e3a8a;font-weight:600;font-size:11px;">Coming soon</span>
+            </div>
             <div class="opengov-logo">
                 <img src="../../assets/opengov-logo.png" alt="OpenGov" style="height: 50px; width: auto;">
             </div>
@@ -831,7 +834,7 @@
                     <select id="docActionsSelect" class="user-select">
                         <option value="">Document actions…</option>
                     </select>
-                    <span id="approvalsPillWord" style="display:inline-block; padding:4px 10px; border-radius:999px; background:#e9f5ee; color:#0f5132; font-weight:600; font-size:12px;">—/— approved</span>
+                    <span id="approvalsPillWord" style="display:inline-block; padding:4px 10px; border-radius:999px; background:#eef2ff; color:#3730a3; font-weight:600; font-size:12px;">—/— approved</span>
                     <button id="btnApprovalsDetailsWord" type="button" style="padding:4px 10px; font-size:12px; margin-left:5px;" onclick="window.openUsersModalWord && window.openUsersModalWord()">Approval details</button>
                 </div>
             </div>
@@ -4582,6 +4585,18 @@ window.__forceOpenApprovalsTest = function() {
             };
         };
         
+        // Load shared banner strings (single source of truth)
+        (async function loadBannerStrings(){
+            try {
+                const resp = await fetch('banner-strings.json');
+                if (resp.ok) {
+                    const s = await resp.json();
+                    if (s && s.comingSoon) { const pill = document.getElementById('comingSoonPill'); if (pill) pill.textContent = s.comingSoon; }
+                    if (s && s.subtitle) { const vm = document.getElementById('viewerMessage'); if (vm) { vm.textContent = s.subtitle; vm.style.display = 'block'; } }
+                }
+            } catch(_) {}
+        })();
+
         // ===== CHECKOUT BANNER SYSTEM =====
         // Removed custom checkoutBanner logic in favor of single checkoutStatus element
         function updateCheckoutBanner() {
