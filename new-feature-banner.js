@@ -67,11 +67,46 @@
     const style = document.createElement('style');
     style.id = 'new-feature-banner-styles';
     style.textContent = `
-      .nfb-btn { background: #ff6fa5; color: #fff; border: none; border-radius: 8px; padding: 8px 12px; font-weight: 600; cursor: pointer; }
+      .nfb-btn { 
+        background: #ff6fa5; 
+        color: #fff; 
+        border: none; 
+        border-radius: 999px; 
+        padding: 4px 12px; 
+        font-weight: 600; 
+        cursor: pointer; 
+        font-size: 12px;
+        box-shadow: 0 2px 6px rgba(0,0,0,0.2);
+      }
       .nfb-btn:hover { background: #ff8fbd; }
       .nfb-btn[disabled] { opacity: .55; cursor: default; }
       .nfb-btn-inactive { opacity: .55; }
       .nfb-btn-active { background: #ff2d80 !important; }
+      
+      /* Pulsing animation */
+      @keyframes nfb-pulse {
+        0% { 
+          background: #ff6fa5; 
+          box-shadow: 0 0 0 0 rgba(255, 111, 165, 0.7);
+        }
+        50% { 
+          background: #ff2d80; 
+          box-shadow: 0 0 0 6px rgba(255, 111, 165, 0.3);
+        }
+        100% { 
+          background: #ff6fa5; 
+          box-shadow: 0 0 0 0 rgba(255, 111, 165, 0);
+        }
+      }
+      
+      .nfb-pulse {
+        animation: nfb-pulse 2s infinite ease-in-out;
+      }
+      
+      .nfb-pulse:hover {
+        animation-play-state: paused;
+        background: #ff8fbd !important;
+      }
       /* Use extreme z-index to appear above any stacking contexts */
       .nfb-modal-backdrop { position: fixed; inset: 0; background: rgba(0,0,0,0.35); display: none; z-index: 2147483646; }
       .nfb-modal { position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%); background: #fff; border-radius: 10px; width: min(700px, 92vw); max-height: 80vh; overflow: auto; padding: 16px; box-shadow: 0 8px 24px rgba(0,0,0,0.25); display: none; z-index: 2147483647; opacity: 1; }
@@ -262,16 +297,16 @@
 
       const header = document.querySelector('.opengov-header') || document.body;
       const btn = document.createElement('button');
-      btn.className = 'nfb-btn';
+      btn.className = 'nfb-btn nfb-pulse';
       btn.id = 'newFeaturesBtn';
-      btn.textContent = strings.banner.buttonLabel || 'New features';
+      btn.textContent = 'click me';
       btn.style.marginLeft = '8px';
       btn.style.marginTop = '8px';
       // Anchor inside header to avoid overflowing taskpane width
       try { if (header && getComputedStyle(header).position === 'static') header.style.position = 'relative'; } catch (_) {}
       btn.style.position = 'absolute';
       btn.style.top = '8px';
-      btn.style.right = '8px';
+      btn.style.right = '60px'; // Move left to avoid menu button conflict
       btn.style.zIndex = '1000002';
       btn.style.pointerEvents = 'auto';
       log('button-created');
