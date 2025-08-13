@@ -2287,8 +2287,16 @@
         // Wire approvals summary for web
         (function setupApprovalsSummaryWeb(){
             function open() {
+                console.log('🔔 WEB: Opening approvals modal...');
                 const modal = document.getElementById('usersModal');
-                if (modal) { modal.style.display = 'flex'; refreshUsersModal(); }
+                console.log('🔔 WEB: Modal element found:', !!modal);
+                if (modal) { 
+                    modal.style.display = 'flex'; 
+                    console.log('🔔 WEB: Modal display set to flex, calling refreshUsersModal...');
+                    refreshUsersModal(); 
+                } else {
+                    console.error('❌ WEB: usersModal element not found!');
+                }
             }
             function updatePill(approved, total) {
                 const pill = document.getElementById('approvalsPillWeb');
@@ -2298,8 +2306,16 @@
             setTimeout(() => {
                 try {
                     const btn = document.getElementById('btnApprovalsDetailsWeb');
-                    if (btn) btn.onclick = open;
-                } catch(_) {}
+                    console.log('🔔 WEB: Wiring approvals button...', !!btn);
+                    if (btn) {
+                        btn.onclick = open;
+                        console.log('🔔 WEB: Button onclick handler assigned');
+                    } else {
+                        console.error('❌ WEB: btnApprovalsDetailsWeb not found!');
+                    }
+                } catch(e) {
+                    console.error('❌ WEB: Error wiring button:', e);
+                }
             }, 0);
         })();
         

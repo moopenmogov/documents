@@ -1007,6 +1007,18 @@
     } catch (_) {}
 
     // Early modal stub removed - using unified implementation below
+    
+    // CRITICAL: Assign approvals function early for dropdown compatibility
+    // This must happen before any dropdown rendering to ensure the function exists
+    window.openUsersModalWord = function() { 
+        console.log('🔄 Early approvals function called - waiting for real implementation');
+        // If real implementation is ready, call it
+        if (window.__openUsersModalWordImpl) {
+            window.__openUsersModalWordImpl();
+        } else {
+            console.warn('⚠️ Approvals modal not ready yet');
+        }
+    };
 
     // Catch any uncaught errors/rejections so nothing is lost
     try {
@@ -3652,7 +3664,7 @@
             } catch (e) { console.error('Users modal (Word) error:', e); }
         };
         
-        // Replace the early stub with the real implementation
+        // Install implementation immediately for dropdown compatibility  
         window.openUsersModalWord = window.__openUsersModalWordImpl;
         console.log('📋 APPROVALS: Real implementation installed, replacing stub');
 
