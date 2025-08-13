@@ -955,6 +955,8 @@
             opacity: .5 !important;
             cursor: default !important;
         }
+        
+        /* Modal approval buttons - now styled via inline JS for maximum specificity */
     </style>
     <script>
         // Work around SuperDoc UMD builds referencing a global __IS_DEBUG__
@@ -1072,11 +1074,11 @@
                         <label for="userSwitcher" style="width:120px;">Switch user:</label>
                         <select id="userSwitcher" class="shared-dropdown user-select" onchange="switchUser(this.value)" style="width:200px;">
                             <option value="">no change</option>
-                        </select>
+                </select>
                     </div>
                     <div style="display:flex; align-items:center; gap:8px;">
                         <label for="webDocActionsSelect" style="width:115px;">Document actions:</label>
-                        <select id="webDocActionsSelect" class="shared-dropdown user-select" style="width:200px; margin-left:5px;" onclick="refreshWebDropdownFromMatrix()">
+                        <select id="webDocActionsSelect" class="shared-dropdown user-select" style="width:200px; margin-left:5px;" onfocus="refreshWebDropdownFromMatrix()">
                             <option value="">select</option>
                         </select>
                     </div>
@@ -1275,6 +1277,8 @@
                 eventSource.onopen = function(event) {
                     console.log('SSE connection opened');
                     console.log('📡 Connected to real-time events');
+                    // Unified initial load when SSE connects
+                    setTimeout(() => { try { fetchUnifiedStateWeb(); } catch(_) {} }, 300);
                 };
                 
                 eventSource.onmessage = function(event) {
@@ -1339,10 +1343,9 @@
                             console.log('WEB: Ignoring unknown user switch event');
                         }
                     } else if (data.type === 'approvals-updated') {
-                        console.log('📡 SSE: approvals-updated received');
-                        try { refreshUsersModal(); } catch (e) {}
-                        try { if (typeof window.__updateApprovalsPillWeb === 'function') window.__updateApprovalsPillWeb(data.approved || 0, data.total || 0); } catch (e) {}
-                        try { addNotification(data.message || 'Approvals updated', 'info'); } catch (e) {}
+                        console.log('📡 WEB SSE: approvals-updated received:', data);
+                        // Always re-pull unified snapshot to avoid drift and races
+                        fetchUnifiedStateWeb();
                     } else if (data.type === 'permission-changed') {
                         console.log(`📡 SSE: Permission changed for ${data.user.name}`);
                         // Refresh button states if this affects current user
@@ -2268,10 +2271,22 @@
                 }
             }
             function updatePill(approved, total) {
+                console.log(`📊 WEB: updatePill called with approved=${approved}, total=${total}`);
                 const pill = document.getElementById('approvalsPillWeb');
-                if (pill) pill.textContent = `${approved}/${total} approved`;
+                console.log(`📊 WEB: Found pill element:`, !!pill);
+                if (pill) {
+                    const newText = `${approved}/${total} approved`;
+                    console.log(`📊 WEB: Setting pill text to: "${newText}"`);
+                    pill.textContent = newText;
+                } else {
+                    console.warn(`📊 WEB: approvalsPillWeb element not found!`);
+                }
             }
-            window.__updateApprovalsPillWeb = updatePill;
+            
+            // Make open function globally available for the state matrix client
+            window.openUsersModalWeb = open;
+            // Pill function moved earlier to be available when SSE connects
+            
             setTimeout(() => {
                 try {
                     const btn = document.getElementById('btnApprovalsDetailsWeb');
@@ -2660,6 +2675,13 @@
         
         // ===== END STATE MATRIX IMPLEMENTATION =====
         
+        // Make action functions globally available for dropdown to call
+        window.checkoutDocument = checkoutDocument;
+        window.checkinDocument = checkinDocument;
+        window.cancelCheckout = cancelCheckout;
+        window.viewReadOnly = viewReadOnly;
+        window.openVendorModal = openVendorModal;
+        
         // Make debugging functions globally available
         // Force a specific scenario for testing (overrides detection logic)
         function debugForceScenario(scenarioName) {
@@ -2719,6 +2741,155 @@
             if (!modal) return;
             modal.style.display = 'none';
         }
+        // Update individual user approval status from SSE (avoids API calls)
+        function updateUserApprovalStatus(userId, newStatus) {
+            console.log(`📊 WEB: Updating user ${userId} status to ${newStatus} (from SSE)`);
+            
+            // Find user row in modal table
+            const modalTbody = document.getElementById('usersTableBody');
+            if (!modalTbody) {
+                console.warn(`📊 WEB: usersTableBody not found - modal may not be open or populated`);
+                return;
+            }
+            console.log(`📊 WEB: Found modalTbody with ${modalTbody.querySelectorAll('tr').length} rows, looking for user row with data-user-id="${userId}"`);
+            
+            const userRow = modalTbody.querySelector(`tr[data-user-id="${userId}"]`);
+            if (!userRow) {
+                console.warn(`📊 WEB: User row not found for ${userId} - available rows:`, Array.from(modalTbody.querySelectorAll('tr')).map(tr => ({
+                    dataUserId: tr.getAttribute('data-user-id'),
+                    textContent: tr.textContent.substring(0, 50)
+                })));
+                return;
+            }
+            console.log(`📊 WEB: Found user row for ${userId}, updating status...`);
+            
+            // Update status display
+            const statusCell = userRow.querySelector('[data-col="status"]');
+            if (statusCell) {
+                const isApproved = newStatus === 'approved';
+                const uiCfg = window.__approvalsUi || {};
+                const pill = isApproved
+                  ? `<span style="display:inline-block;padding:2px 8px;border-radius:12px;font-size:12px;font-weight:600;color:${uiCfg?.colors?.pillApprovedText || '#155724'};background:${uiCfg?.colors?.pillApprovedBg || '#d4edda'};">${uiCfg?.labels?.approved || 'Approved'}</span>`
+                  : newStatus === 'rejected'
+                  ? `<span style="display:inline-block;padding:2px 8px;border-radius:12px;font-size:12px;font-weight:600;color:${uiCfg?.colors?.pillRejectedText || '#721c24'};background:${uiCfg?.colors?.pillRejectedBg || '#f8d7da'};">${uiCfg?.labels?.rejected || 'Rejected'}</span>`
+                  : `<span style="display:inline-block;padding:2px 8px;border-radius:12px;font-size:12px;font-weight:600;color:#6c757d;background:#e9ecef;">${uiCfg?.labels?.no || 'No'}</span>`;
+                statusCell.innerHTML = pill;
+            }
+            
+            // Update action buttons based on new status
+            const actionsCell = userRow.querySelector('[data-col="actions"]');
+            if (actionsCell) {
+                const buttons = actionsCell.querySelectorAll('button');
+                buttons.forEach(btn => {
+                    if (btn.textContent.includes('Approve')) {
+                        btn.disabled = newStatus === 'approved';
+                    } else if (btn.textContent.includes('Reject')) {
+                        btn.disabled = newStatus === 'rejected';
+                    }
+                });
+            }
+        }
+
+        // Quick pill update function for SSE sync (must be defined before SSE connects)
+        function __updateApprovalsPillWeb(approved, total) {
+            try {
+                console.log(`📊 WEB: __updateApprovalsPillWeb called with approved=${approved}, total=${total}`);
+                const pill = document.getElementById('approvalsPillWeb');
+                console.log(`📊 WEB: Found pill element:`, !!pill);
+                if (pill) {
+                    const newText = `${approved || 0}/${total || 0} approved`;
+                    console.log(`📊 WEB: Setting pill text to: "${newText}"`);
+                    pill.textContent = newText;
+                } else {
+                    console.warn('📊 WEB: Pill element not found');
+                }
+            } catch (e) {
+                console.warn('📊 WEB: Failed to update approvals pill:', e);
+            }
+        }
+        
+        // Make pill update function globally available EARLY (before SSE connects)
+        window.__updateApprovalsPillWeb = __updateApprovalsPillWeb;
+
+        // Unified approvals refresh from server: fetch snapshot, update pill, then refresh modal
+        // Unified: fetch state-matrix and approval-matrix, then apply to UI
+        async function fetchUnifiedStateWeb() {
+            try {
+                const actor = (window.currentUser && window.currentUser.id) ? window.currentUser : (getCurrentUser && getCurrentUser());
+                const actorId = actor && actor.id ? actor.id : null;
+                if (!actorId) return;
+                const currentId = (window.currentDocumentState && window.currentDocumentState.currentDocument && window.currentDocumentState.currentDocument.id) || 'default-doc';
+                const [mxResp, apprResp] = await Promise.all([
+                    fetch(`http://localhost:3001/api/state-matrix?userRole=${encodeURIComponent(getCurrentUserRole())}&platform=web&userId=${encodeURIComponent(actorId)}`),
+                    fetch(`http://localhost:3001/api/approval-matrix?actorPlatform=web&actorId=${encodeURIComponent(actorId)}&documentId=${encodeURIComponent(currentId)}`)
+                ]);
+                const mxData = await mxResp.json();
+                const apprData = await apprResp.json();
+                if (mxData && mxData.success && apprData && apprData.success) {
+                    applyUnifiedStateWeb({ matrixConfig: mxData.config, approvals: apprData });
+                }
+            } catch (_) {}
+        }
+
+        function applyUnifiedStateWeb(unified) {
+            try {
+                if (unified && unified.matrixConfig) {
+                    window.__lastStateMatrix = unified.matrixConfig;
+                    if (typeof window.applyStateMatrixToUI === 'function') {
+                        window.applyStateMatrixToUI(unified.matrixConfig);
+                    }
+                }
+                const users = Array.isArray(unified?.approvals?.users) ? unified.approvals.users : [];
+                const approvals = Array.isArray(unified?.approvals?.approvals) ? unified.approvals.approvals : [];
+                const approvedCount = approvals.filter(a => a.status === 'approved').length;
+                const totalCount = users.length;
+                if (typeof window.__updateApprovalsPillWeb === 'function') {
+                    window.__updateApprovalsPillWeb(approvedCount, totalCount);
+                }
+                try { refreshUsersModal(); } catch(_) {}
+            } catch(_) {}
+        }
+
+        // Load initial approvals data for pill display (called on SSE connect)
+        async function loadInitialApprovalsData() {
+            try {
+                const currentId = (window.currentDocumentState && window.currentDocumentState.currentDocument && window.currentDocumentState.currentDocument.id) || 'default-doc';
+                const actor = (window.currentUser && window.currentUser.id) ? window.currentUser : (getCurrentUser && getCurrentUser());
+                const actorId = actor && actor.id ? actor.id : null;
+                
+                if (!actorId) {
+                    console.warn('📊 WEB: No user available for initial approvals load');
+                    if (window.__updateApprovalsPillWeb) window.__updateApprovalsPillWeb(0, 0);
+                    return;
+                }
+                
+                // Use approval-matrix endpoint for consistency with modal
+                const response = await fetch(`http://localhost:3001/api/approval-matrix?actorPlatform=web&actorId=${encodeURIComponent(actorId)}&documentId=${encodeURIComponent(currentId)}`);
+                const data = await response.json();
+                
+                if (data.success && data.users && data.matrix) {
+                    const users = data.users || [];
+                    const matrix = data.matrix || {};
+                    const approvals = data.approvals || [];
+                    
+                    // Calculate pill counts from actual approvals data (matches refreshUsersModal)
+                    const approvedCount = approvals.filter(a => a.status === 'approved').length;
+                    const totalCount = users.length;
+                    
+                    console.log(`📊 WEB: Initial approvals loaded - ${approvedCount}/${totalCount} approved`);
+                    if (window.__updateApprovalsPillWeb) {
+                        window.__updateApprovalsPillWeb(approvedCount, totalCount);
+                    }
+                } else {
+                    console.warn('📊 WEB: Failed to load initial approvals data:', data);
+                    if (window.__updateApprovalsPillWeb) window.__updateApprovalsPillWeb(0, 0);
+                }
+            } catch (error) {
+                console.error('📊 WEB: Error loading initial approvals data:', error);
+                if (window.__updateApprovalsPillWeb) window.__updateApprovalsPillWeb(0, 0);
+            }
+        }
+
         async function refreshUsersModal() {
             try {
                 // Determine current document id; fall back to 'default-doc'
@@ -2750,7 +2921,8 @@
                     usersCardTitle.textContent = `${title}`;
                     if (ui?.colors?.title) usersCardTitle.style.color = ui.colors.title;
                 }
-                try { if (window.__updateApprovalsPillWeb) window.__updateApprovalsPillWeb(approvedCount, totalCount); } catch(_) {}
+                // REMOVED: Local pill calculation to prevent race condition with SSE events
+                // Only SSE events should update the pill to ensure consistency
                 
                 // Apply shared column headers
                 const headerRow = document.getElementById('approvalsHeaderRowWeb');
@@ -2764,6 +2936,7 @@
 
                 users.forEach(u => {
                     const tr = document.createElement('tr');
+                    tr.setAttribute('data-user-id', u.id);
                     const row = matrix && matrix[u.id] ? matrix[u.id] : { status: 'no', showButtons: true, approveEnabled: true, rejectEnabled: true };
                     const status = approvalMap[u.id]?.status || row.status || 'no';
                     const isApproved = status === 'approved';
@@ -2772,10 +2945,10 @@
                       ? `<span style=\"display:inline-block;padding:2px 8px;border-radius:12px;font-size:12px;font-weight:600;color:${uiCfg?.colors?.pillApprovedText || '#155724'};background:${uiCfg?.colors?.pillApprovedBg || '#d4edda'};\">${uiCfg?.labels?.approved || 'Approved'}<\/span>`
                       : `<span style=\"display:inline-block;padding:2px 8px;border-radius:12px;font-size:12px;font-weight:600;color:${uiCfg?.colors?.pillRejectedText || '#721c24'};background:${uiCfg?.colors?.pillRejectedBg || '#f8d7da'};\">${status === 'rejected' ? (uiCfg?.labels?.rejected || 'Rejected') : (uiCfg?.labels?.no || 'No')}<\/span>`;
                     tr.innerHTML = `
-                        <td style="padding:8px; border-bottom:1px solid #f1f3f5;">${u.name}</td>
-                        <td style="padding:8px; border-bottom:1px solid #f1f3f5;">${u.role}</td>
-                        <td style="padding:8px; border-bottom:1px solid #f1f3f5; white-space:nowrap;">${pill}</td>
-                        <td style="padding:8px; border-bottom:1px solid #f1f3f5;">
+                        <td data-col="user" style="padding:8px; border-bottom:1px solid #f1f3f5;">${u.name}</td>
+                        <td data-col="role" style="padding:8px; border-bottom:1px solid #f1f3f5;">${u.role}</td>
+                        <td data-col="status" style="padding:8px; border-bottom:1px solid #f1f3f5; white-space:nowrap;">${pill}</td>
+                        <td data-col="actions" style="padding:8px; border-bottom:1px solid #f1f3f5;">
                             ${row.showButtons ? `
                                 <div style=\"display:flex; gap:6px;\">
                                     <button class=\"btn\" ${isApproved ? 'disabled' : ''} data-action=\"approve\" data-user=\"${u.id}\" data-status=\"${status}\">Approve</button>
@@ -2784,13 +2957,75 @@
                             ` : `<span style=\"opacity:.6; font-size:12px;\">No actions</span>`}
                         </td>
                     `;
-                    if (modalTbody) modalTbody.appendChild(tr);
+                    if (modalTbody) {
+                        modalTbody.appendChild(tr);
+                        console.log('🔍 WEB: Created row for user:', u.name, {
+                            showButtons: row.showButtons,
+                            status: status,
+                            isApproved: isApproved,
+                            buttonsInHTML: tr.innerHTML.includes('data-action="approve"')
+                        });
+                        
+                        // FIX: Apply proper styling via inline styles (highest specificity)
+                        const modalButtons = tr.querySelectorAll('button[data-user]');
+                        modalButtons.forEach(btn => {
+                            const action = btn.getAttribute('data-action');
+                            const isApproveBtn = action === 'approve';
+                            
+                            // Use approved/rejected colors to match status pills
+                            const normalBg = isApproveBtn ? '#d4edda' : '#f8d7da';  // Light green/red
+                            const normalColor = isApproveBtn ? '#155724' : '#721c24';  // Dark green/red
+                            const normalBorder = isApproveBtn ? '#c3e6cb' : '#f5c6cb';  // Medium green/red
+                            const hoverBg = isApproveBtn ? '#c3e6cb' : '#f5c6cb';  // Darker on hover
+                            
+                            btn.style.cssText = `
+                                background: ${normalBg} !important;
+                                color: ${normalColor} !important; 
+                                border: 1px solid ${normalBorder} !important;
+                                border-radius: 4px !important;
+                                padding: 6px 10px !important;
+                                font-size: 12px !important;
+                                font-weight: 500 !important;
+                                margin: 0 2px !important;
+                                cursor: pointer !important;
+                                display: inline-block !important;
+                                visibility: visible !important;
+                                opacity: 1 !important;
+                                position: relative !important;
+                                z-index: 1 !important;
+                            `;
+                            
+                            // Add hover effects with matching colors
+                            btn.addEventListener('mouseenter', () => {
+                                if (!btn.disabled) {
+                                    btn.style.background = `${hoverBg} !important`;
+                                    btn.style.borderColor = `${hoverBg} !important`;
+                                }
+                            });
+                            btn.addEventListener('mouseleave', () => {
+                                if (!btn.disabled) {
+                                    btn.style.background = `${normalBg} !important`;
+                                    btn.style.borderColor = `${normalBorder} !important`;
+                                }
+                            });
+                        });
+                    }
                 });
 
                 // Bind click handlers to update state and re-render
                 const bindActions = (root) => {
-                    (root || document).querySelectorAll('button[data-user]').forEach(btn => {
+                    const buttons = (root || document).querySelectorAll('button[data-user]');
+                    console.log('🔍 WEB: Found approval buttons for binding:', buttons.length);
+                    // Debugging removed - buttons now working with inline styling fix
+                    buttons.forEach(btn => {
                         btn.addEventListener('click', async (e) => {
+                            console.log('🎯 WEB: Approval button clicked!', {
+                                button: e.target,
+                                dataUser: btn.getAttribute('data-user'),
+                                dataAction: btn.getAttribute('data-action'),
+                                dataStatus: btn.getAttribute('data-status')
+                            });
+                            
                             const targetUserId = btn.getAttribute('data-user');
                             const explicitAction = btn.getAttribute('data-action');
                             const currentStatus = btn.getAttribute('data-status');
@@ -2814,6 +3049,14 @@
                             } catch(_) {}
                             try {
                                 const currentId = (window.currentDocumentState && window.currentDocumentState.currentDocument && window.currentDocumentState.currentDocument.id) || 'default-doc';
+                                
+                                console.log('🚀 WEB: Making approval API call', {
+                                    userId: targetUserId,
+                                    action: nextAction,
+                                    actorId: (window.currentUser && window.currentUser.id) || 'user1',
+                                    documentId: currentId
+                                });
+                                
                                 await fetch(`http://localhost:3001/api/document/${currentId}/approvals`, {
                                     method: 'POST',
                                     headers: { 'Content-Type': 'application/json' },
@@ -3218,12 +3461,14 @@
         // Initialize web viewer
         window.addEventListener('load', () => {
             console.log('OpenGov Contract Redlining Web Viewer initialized');
-            console.log('Connecting to SSE...');
-            connectSSE();
-            
-            // Initialize user system
+            // Initialize user system FIRST to ensure approvals data loads correctly
+            console.log('Initializing user system first...');
             setTimeout(async () => {
                 await initializeUserSystem();
+                
+                // Connect SSE AFTER user system is ready
+                console.log('User system ready, connecting to SSE...');
+                connectSSE();
                 fetchDocumentStatus();
                 // Fixed timing: populate dropdown BEFORE hiding legacy buttons
                 setTimeout(async () => {

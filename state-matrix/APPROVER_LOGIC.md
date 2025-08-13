@@ -6,7 +6,7 @@ Key points:
 - Approver state does not depend on checkout.
 - A user can always approve themself unless already approved.
 - A user can always reject themself unless already rejected.
-- Viewers get no approval buttons at all.
+- Viewers can approve/reject for themself (cannot act on others).
 - Users can only act for themself.
 - Editors are the only role that can approve/reject on behalf of others.
 
@@ -19,7 +19,7 @@ Legend:
 
 | Role → / Target-Status ↓ | Self: Approved | Self: Unapproved | Others: Approved | Others: Unapproved |
 |---|---|---|---|---|
-| Viewer | — | — | — | — |
+| Viewer | Reject(enabled) | Approve(enabled) | — | — |
 | Suggester | Reject(enabled) | Approve(enabled) | — | — |
 | Vendor | Reject(enabled) | Approve(enabled) | — | — |
 | Editor | Reject(enabled) | Approve(enabled) | Reject(enabled) | Approve(enabled) |
@@ -29,7 +29,7 @@ Disabled states (implicit):
   - Example: Self already Approved → Approve(disabled); Self already Unapproved → Reject(disabled).
 
 Notes:
-- Viewers never see approval controls.
+
 - For non-editors, acting on others is not permitted, so no buttons are shown in the “Others” columns.
 
 ### Backend API (shared by Web and Word add-in)
@@ -61,7 +61,7 @@ Response shape:
 ```
 
 Rules embodied in API:
-- Viewers: `showButtons = false` for all targets.
+- Viewers: `showButtons = true` for self, `false` for others.
 - Non-editors on others: `showButtons = false`.
 - Editors on others: `showButtons = true` with enablement based on target status.
 - Self: always `showButtons = true` (non-viewers), with enablement based on self status.

@@ -6,7 +6,7 @@ This document defines the complete state matrix for the Document Collaboration T
 
 ## Key Principles
 
-1. **Platform Isolation**: Viewers can never check out documents from their own platform
+1. **Viewer Role**: Viewers cannot check out documents
 2. **Self-Checkout Management**: Users manage their own checkouts with Save/Checkin/Cancel buttons
 3. **Override Privilege**: **ONLY EDITORS** can override other users' checkouts
 4. **No Suggester Override**: Suggesters can check out but cannot override others
@@ -25,53 +25,31 @@ This document defines the complete state matrix for the Document Collaboration T
 
 ## 🌐 Web Viewer State Matrix
 
-| Web User Role | Document State | Banner Message | Checkout Btn | Override Btn | Send Vendor Btn | Checked-In Btns |
-|---------------|----------------|----------------|--------------|-------------|-----------------|-----------------|
-| **Web Viewer** | Available | "u no change this" | ❌ | ❌ | ❌ | ❌ |
-| **Web Viewer** | Word Checkout | "u no change this - also checked out by word" | ❌ | ❌ | ❌ | ❌ |
-| **Web Viewer** | Web Checkout (other) | "u no change this - doc checked out" | ❌ | ❌ | ❌ | ❌ |
-| **Web Viewer** | Vendor Checkout | "vendor be redlining" | ❌ | ❌ | ❌ | ❌ |
-| **Web Editor** | Available | ❌ | ✅ | ❌ | ✅ | ❌ |
-| **Web Editor** | Word Checkout | "YA CAN'T SAVE HERE FORREST -- WORD GOT YA DOC!" | ❌ | ✅ | ❌ | ❌ |
-| **Web Editor** | Web Checkout (self) | ❌ | ❌ | ❌ | ❌ | ✅ |
-| **Web Editor** | Web Checkout (other) | "doc doc u ... right here right meow" | ❌ | ✅ | ❌ | ❌ |
-| **Web Editor** | Vendor Checkout | "vendor be redlining" | ❌ | ✅ | ❌ | ❌ |
-| **Web Suggester** | Available | ❌ | ✅ | ❌ | ❌ | ❌ |
-| **Web Suggester** | Word Checkout | Same banner as Web Editor | ❌ | ❌ | ❌ | ❌ |
-| **Web Suggester** | Web Checkout (self) | ❌ | ❌ | ❌ | ❌ | ✅ |
-| **Web Suggester** | Web Checkout (other) | Same banner as Web Editor | ❌ | ❌ | ❌ | ❌ |
-| **Web Suggester** | Vendor Checkout | Same banner as Web Editor | ❌ | ❌ | ❌ | ❌ |
-| **Web Vendor** | Available | ❌ | ✅ | ❌ | ❌ | ❌ |
-| **Web Vendor** | Word Checkout | Same banner as Web Editor | ❌ | ❌ | ❌ | ❌ |
-| **Web Vendor** | Web Checkout (self) | ❌ | ❌ | ❌ | ❌ | ✅ |
-| **Web Vendor** | Web Checkout (other) | Same banner as Web Editor | ❌ | ❌ | ❌ | ❌ |
-| **Web Vendor** | Vendor Checkout | Same banner as Web Editor | ❌ | ❌ | ❌ | ❌ |
+| Web User Role | Document State | Banner | Checkout Btn | Override Btn | Send Vendor Btn | Checked-In Btns |
+|---------------|----------------|--------|--------------|-------------|-----------------|-----------------|
+| **Web Viewer** | Any | Viewer Read-Only | ❌ | ❌ | ❌ | ❌ |
+| **Web Editor** | Available | Available for checkout | ✅ | ❌ | ✅ | ❌ |
+| **Web Editor** | Web Checkout (self) | Checked out by you | ❌ | ❌ | ❌ | ✅ |
+| **Web Editor** | Web/Word/Vendor Checkout (other) | Checked out by <platform/user> | ❌ | ✅ | ❌ | ❌ |
+| **Web Suggester** | Available | Available for checkout | ✅ | ❌ | ❌ | ❌ |
+| **Web Suggester** | Web/Word/Vendor Checkout | Checked out by <platform/user> | ❌ | ❌ | ❌ | (self only) ✅ |
+| **Web Vendor** | Available | Available for checkout | ✅ | ❌ | ❌ | ❌ |
+| **Web Vendor** | Web/Word/Vendor Checkout | Checked out by <platform/user> | ❌ | ❌ | ❌ | (self only) ✅ |
 
 ---
 
 ## 📝 Word Add-in State Matrix
 
-| Word User Role | Document State | Banner Message | Checkout Btn | Override Btn | Send Vendor Btn | Checked-In Btns |
-|----------------|----------------|----------------|--------------|-------------|-----------------|-----------------|
-| **Word Viewer** | Available | "u no change this" | ❌ | ❌ | ❌ | ❌ |
-| **Word Viewer** | Web Checkout | "web has the doc locked up" | ❌ | ❌ | ❌ | ❌ |
-| **Word Viewer** | Word Checkout (other) | "another word user has doc" | ❌ | ❌ | ❌ | ❌ |
-| **Word Viewer** | Vendor Checkout | "vendor be redlining" | ❌ | ❌ | ❌ | ❌ |
-| **Word Editor** | Available | ❌ | ✅ | ❌ | ✅ | ❌ |
-| **Word Editor** | Web Checkout | "web viewer has doc locked" | ❌ | ✅ | ❌ | ❌ |
-| **Word Editor** | Word Checkout (self) | ❌ | ❌ | ❌ | ❌ | ✅ |
-| **Word Editor** | Word Checkout (other) | "another word user has doc" | ❌ | ✅ | ❌ | ❌ |
-| **Word Editor** | Vendor Checkout | "vendor be redlining" | ❌ | ✅ | ❌ | ❌ |
-| **Word Suggester** | Available | ❌ | ✅ | ❌ | ❌ | ❌ |
-| **Word Suggester** | Web Checkout | Same banner as Word Editor | ❌ | ❌ | ❌ | ❌ |
-| **Word Suggester** | Word Checkout (self) | ❌ | ❌ | ❌ | ❌ | ✅ |
-| **Word Suggester** | Word Checkout (other) | Same banner as Word Editor | ❌ | ❌ | ❌ | ❌ |
-| **Word Suggester** | Vendor Checkout | Same banner as Word Editor | ❌ | ❌ | ❌ | ❌ |
-| **Word Vendor** | Available | ❌ | ✅ | ❌ | ❌ | ❌ |
-| **Word Vendor** | Web Checkout | Same banner as Word Editor | ❌ | ❌ | ❌ | ❌ |
-| **Word Vendor** | Word Checkout (self) | ❌ | ❌ | ❌ | ❌ | ✅ |
-| **Word Vendor** | Word Checkout (other) | Same banner as Word Editor | ❌ | ❌ | ❌ | ❌ |
-| **Word Vendor** | Vendor Checkout | Same banner as Word Editor | ❌ | ❌ | ❌ | ❌ |
+| Word User Role | Document State | Banner | Checkout Btn | Override Btn | Send Vendor Btn | Checked-In Btns |
+|----------------|----------------|--------|--------------|-------------|-----------------|-----------------|
+| **Word Viewer** | Any | Viewer Read-Only | ❌ | ❌ | ❌ | ❌ |
+| **Word Editor** | Available | Available for checkout | ✅ | ❌ | ✅ | ❌ |
+| **Word Editor** | Word Checkout (self) | Checked out by you | ❌ | ❌ | ❌ | ✅ |
+| **Word Editor** | Web/Word/Vendor Checkout (other) | Checked out by <platform/user> | ❌ | ✅ | ❌ | ❌ |
+| **Word Suggester** | Available | Available for checkout | ✅ | ❌ | ❌ | ❌ |
+| **Word Suggester** | Web/Word/Vendor Checkout | Checked out by <platform/user> | ❌ | ❌ | ❌ | (self only) ✅ |
+| **Word Vendor** | Available | Available for checkout | ✅ | ❌ | ❌ | ❌ |
+| **Word Vendor** | Web/Word/Vendor Checkout | Checked out by <platform/user> | ❌ | ❌ | ❌ | (self only) ✅ |
 
 ---
 

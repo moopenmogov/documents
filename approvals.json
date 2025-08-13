@@ -1,0 +1,46 @@
+{
+  "default-doc": {
+    "user1": {
+      "status": "approved",
+      "approvedBy": "user1",
+      "approvedAt": "2025-08-13T18:45:58.579Z"
+    },
+    "user3": {
+      "status": "approved",
+      "approvedBy": "user1",
+      "approvedAt": "2025-08-13T18:46:00.745Z"
+    },
+    "user5": {
+      "status": "approved",
+      "approvedBy": "user5",
+      "approvedAt": "2025-08-13T20:40:34.012Z"
+    },
+    "user2": {
+      "status": "approved",
+      "approvedBy": "user2",
+      "approvedAt": "2025-08-13T18:54:54.621Z"
+    },
+    "vendor1": {
+      "status": "approved",
+      "approvedBy": "user1",
+      "approvedAt": "2025-08-13T20:40:54.808Z"
+    }
+  },
+  "doc-1755112511679": {
+    "user2": {
+      "status": "rejected",
+      "approvedBy": "user2",
+      "approvedAt": "2025-08-13T19:26:10.201Z"
+    },
+    "user3": {
+      "status": "rejected",
+      "approvedBy": "user1",
+      "approvedAt": "2025-08-13T20:27:46.059Z"
+    },
+    "user1": {
+      "status": "rejected",
+      "approvedBy": "user1",
+      "approvedAt": "2025-08-13T20:27:45.480Z"
+    }
+  }
+}
