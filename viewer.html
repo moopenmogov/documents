@@ -365,9 +365,9 @@
             border-radius: 4px;
             font-size: 13px;
             font-style: italic;
-        }/* Checkout Status Banner */
+        }        /* Checkout Status Banner - unified pink colors to match Word add-in */
         .checkout-banner {
-            background: #dc3545;
+            background: #ffc1d9;
             color: white;
             padding: 12px 20px;
             text-align: center;
@@ -742,9 +742,9 @@
             text-align: center !important;
         }
         
-        /* Checkout Status Banner - default transparent to avoid teal flash */
+        /* Checkout Status Banner - unified pink to match Word add-in */
         div#checkoutStatus.checkout-status {
-            background: transparent !important;
+            background: #ffc1d9 !important;
             color: white !important;
             padding: 8px 16px !important;
             text-align: center !important;
@@ -755,9 +755,9 @@
             display: block !important;
         }
         
-        /* Checked out state - unified red */
+        /* Checked out state - unified pink to match Word add-in */
         div#checkoutStatus.checkout-status.checked-out {
-            background: #dc3545 !important;
+            background: #ff6fa5 !important;
         }
         
         .main-content-3col .right-column {
@@ -3463,7 +3463,7 @@
                 
                 // Debug function to test checkout banner colors
                 window.debugCheckoutColors = function() {
-                    console.log('🎨 Checkout Banner Color Debug:');
+                    console.log('🎨 WEB VIEWER Banner Color Debug:');
                     const banner = document.getElementById('checkoutStatus');
                     if (!banner) {
                         console.log('❌ Checkout banner not found');
@@ -3474,21 +3474,21 @@
                     console.log('📝 Current text:', banner.textContent);
                     console.log('🎨 Current classes:', banner.classList.toString());
                     console.log('🖌️ Computed background color:', getComputedStyle(banner).backgroundColor);
-                    console.log('🖌️ All computed styles:', getComputedStyle(banner));
+                    console.log('🖌️ Expected: Available=#ffc1d9, Checked-out=#ff6fa5');
                     
-                    // Force styles directly as a test
-                    console.log('🧪 Forcing styles directly:');
-                    banner.style.backgroundColor = '#dc3545';
+                    // Test unified pink colors
+                    console.log('🧪 Testing unified pink colors:');
+                    banner.style.backgroundColor = '#ffc1d9';
                     banner.style.color = 'white';
                     banner.style.padding = '8px 16px';
                     banner.style.borderRadius = '4px';
-                    console.log('🔴 Forced red background directly');
-                    console.log('🖌️ Background after force:', getComputedStyle(banner).backgroundColor);
+                    console.log('🌸 Applied unified available pink (#ffc1d9)');
+                    console.log('🖌️ Background after unified style:', getComputedStyle(banner).backgroundColor);
                     
                     setTimeout(() => {
-                        banner.style.backgroundColor = '#17a2b8';
-                        console.log('🔵 Forced teal background');
-                        console.log('🖌️ Background after teal force:', getComputedStyle(banner).backgroundColor);
+                        banner.style.backgroundColor = '#ff6fa5';
+                        console.log('🌸 Applied unified checked-out pink (#ff6fa5)');
+                        console.log('🖌️ Background after checked-out pink:', getComputedStyle(banner).backgroundColor);
                         
                         setTimeout(() => {
                             banner.style.backgroundColor = '';

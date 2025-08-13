@@ -1712,6 +1712,31 @@
             };
         }
         
+        // DEBUG: Test banner colors specifically
+        window.debugCheckoutColors = function() {
+            console.log('🎨 WORD ADD-IN Banner Color Debug:');
+            const banner = document.getElementById('checkoutStatus');
+            if (!banner) {
+                console.log('❌ Checkout banner not found');
+                return;
+            }
+            
+            console.log('📋 Banner element:', banner);
+            console.log('📝 Current text:', banner.textContent);
+            console.log('🎨 Current classes:', banner.classList.toString());
+            console.log('🖌️ Computed background color:', getComputedStyle(banner).backgroundColor);
+            console.log('🖌️ Expected: Available=#ffc1d9, Checked-out=#ff6fa5');
+            
+            // Test state matrix styling
+            console.log('🧪 Testing state matrix colors:');
+            banner.style.backgroundColor = '#ffc1d9';
+            banner.style.color = 'white';
+            banner.style.padding = '8px 16px';
+            banner.style.borderRadius = '4px';
+            console.log('🌸 Applied unified available pink (#ffc1d9)');
+            console.log('🖌️ Background after unified style:', getComputedStyle(banner).backgroundColor);
+        };
+
         // DEBUG: Test banner specifically
         window.debugBannerIssue = async () => {
             console.log('🚨 DEBUGGING BANNER ISSUE');
