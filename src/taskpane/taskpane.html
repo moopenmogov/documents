@@ -3299,7 +3299,27 @@
                         if (config.viewerMessage.show) { viewerMsg.textContent = config.viewerMessage.text || ''; viewerMsg.style.display = 'block'; }
                         else { viewerMsg.textContent = ''; viewerMsg.style.display = 'none'; }
                     }
-                    // Force banner hidden in add-in to avoid duplication; use checkoutStatus element instead
+                    // Manage checkoutStatus as the single source of truth
+                    try {
+                        const cs = document.getElementById('checkoutStatus');
+                        if (cs) {
+                            if (config && config.viewerMessage && config.viewerMessage.show) {
+                                cs.textContent = '';
+                                cs.style.display = 'none';
+                            } else if (config && config.checkoutStatus && config.checkoutStatus.show) {
+                                cs.textContent = config.checkoutStatus.text || '';
+                                cs.style.display = 'block';
+                                // Reset any forced colors from prior runs
+                                cs.style.backgroundColor = 'transparent';
+                                cs.style.color = '#495057';
+                            } else {
+                                cs.textContent = '';
+                                cs.style.display = 'none';
+                            }
+                        }
+                    } catch(_) {}
+
+                    // Force banner hidden in add-in to avoid duplication
                     banner.textContent = '';
                     banner.style.display = 'none';
                     banner.classList.remove('checked-out');
@@ -4567,7 +4587,11 @@ window.__forceOpenApprovalsTest = function() {
         function updateCheckoutBanner() {
             try {
                 const cs = document.getElementById('checkoutStatus');
+                const vm = document.getElementById('viewerMessage');
                 if (!cs) return;
+                // Hide checkoutStatus when viewerMessage is visible
+                const viewerVisible = !!(vm && vm.style && vm.style.display !== 'none' && (vm.textContent || '').trim().length);
+                if (viewerVisible) { cs.textContent = ''; cs.style.display = 'none'; return; }
                 const isCheckedOut = !!currentDocumentState.isCheckedOut;
                 const by = currentDocumentState.checkedOutBy;
                 if (!isCheckedOut) {
