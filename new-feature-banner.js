@@ -291,9 +291,7 @@
       if (!strings) { log('strings-load-failed'); return; }
       log('strings-loaded', { platform, features: (strings.features||[]).length });
 
-      // Update badge label if present
-      const badge = document.querySelector('.coming-soon-badge');
-      if (badge) { badge.textContent = strings.banner.label || 'Coming soon'; log('badge-set', { text: badge.textContent }); }
+
 
       const header = document.querySelector('.opengov-header') || document.body;
       const btn = document.createElement('button');

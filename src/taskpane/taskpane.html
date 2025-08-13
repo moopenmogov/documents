@@ -4683,17 +4683,7 @@ window.__forceOpenApprovalsTest = function() {
             };
         };
         
-        // Load shared banner strings (single source of truth)
-        (async function loadBannerStrings(){
-            try {
-                const resp = await fetch('banner-strings.json');
-                if (resp.ok) {
-                    const s = await resp.json();
-                    if (s && s.comingSoon) { const pill = document.getElementById('comingSoonBadge'); if (pill) pill.textContent = s.comingSoon; }
-                    if (s && s.subtitle) { const vm = document.getElementById('viewerMessage'); if (vm) { vm.textContent = s.subtitle; vm.style.display = 'block'; } }
-                }
-            } catch(_) {}
-        })();
+
 
         // Apply theme from server so add-in matches web
         (async function applyServerTheme(){
