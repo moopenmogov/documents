@@ -4563,60 +4563,21 @@ window.__forceOpenApprovalsTest = function() {
         };
         
         // ===== CHECKOUT BANNER SYSTEM =====
-        
+        // Removed custom checkoutBanner logic in favor of single checkoutStatus element
         function updateCheckoutBanner() {
-            const banner = document.getElementById('checkoutBanner');
-            const isCheckedOut = currentDocumentState.isCheckedOut || false;
-            const checkedOutBy = currentDocumentState.checkedOutBy;
-            const userRole = getCurrentUserRole();
-            
-            let bannerText = '';
-            let shouldShow = false;
-            
-            if (userRole === 'viewer') {
-                // Viewers ALWAYS see banner
-            if (!isCheckedOut) {
-                    bannerText = 'u no change this';
-                } else if (checkedOutBy === 'web') {
-                    bannerText = 'u no change this - also checked out by web';
+            try {
+                const cs = document.getElementById('checkoutStatus');
+                if (!cs) return;
+                const isCheckedOut = !!currentDocumentState.isCheckedOut;
+                const by = currentDocumentState.checkedOutBy;
+                if (!isCheckedOut) {
+                    cs.textContent = 'Available for check-out';
+                    cs.style.display = 'block';
+                } else {
+                    cs.textContent = by === 'web' ? 'Checked out by Web' : 'Checked out in Word';
+                    cs.style.display = 'block';
                 }
-                // Note: checkedOutBy === 'word' is impossible for word viewers
-                shouldShow = true;
-            } else if (userRole === 'editor') {
-                // Editors see banner when checked out (by them or others)
-                if (isCheckedOut) {
-            if (checkedOutBy === 'word') {
-                        bannerText = 'doc doc u ... right here right meow';
-            } else if (checkedOutBy === 'web') {
-                        bannerText = "YA CAN'T SAVE HERE FORREST -- THE WEB GOT YA DOC!";
-                    }
-                    shouldShow = true;
-                }
-                // Hidden when document is available for editors
-            } else if (userRole === 'suggester') {
-                // Suggesters see banner when checked out (same as editors)
-                if (isCheckedOut) {
-                    if (checkedOutBy === 'word') {
-                        bannerText = 'doc doc u ... right here right meow';
-                    } else if (checkedOutBy === 'web') {
-                        bannerText = "YA CAN'T SAVE HERE FORREST -- THE WEB GOT YA DOC!";
-                    }
-                    shouldShow = true;
-                }
-                // Hidden when document is available for suggesters
-            }
-            
-            if (shouldShow && bannerText) {
-            banner.textContent = bannerText;
-            banner.style.display = 'block';
-                console.log(`🚨 WORD: Banner updated: ${bannerText}`);
-            } else {
-                // Don't hide the new-feature-banner, only hide checkout banner
-                if (banner.id !== 'new-feature-banner') {
-                    banner.style.display = 'none';
-                }
-                console.log(`🚨 WORD: Banner hidden`);
-            }
+            } catch(_) {}
         }
         
         // Test function for checkout banner
