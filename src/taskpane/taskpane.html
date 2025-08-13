@@ -107,10 +107,43 @@
         .opengov-header {
             text-align: center;
             margin-bottom: 15px;
-            padding: 12px;
-            background: linear-gradient(135deg, #1e3a8a, #3b82f6);
+            padding: 30px;
+            background: linear-gradient(135deg, #8a8db5, #9ca3af);
             color: white;
-            border-radius: 8px;
+            border-radius: 10px;
+            position: relative;
+        }
+        
+        .coming-soon-badge {
+            position: absolute;
+            top: 8px;
+            left: 8px;
+            background: var(--btn-primary, #3b82f6);
+            color: white;
+            padding: 4px 12px;
+            border-radius: 999px;
+            font-size: 12px;
+            font-weight: 600;
+            border: none;
+        }
+        
+        .header-menu-btn {
+            position: absolute;
+            top: 8px;
+            right: 8px;
+            background: rgba(255, 255, 255, 0.2);
+            color: white;
+            border: none;
+            border-radius: 6px;
+            padding: 8px 12px;
+            font-size: 16px;
+            font-weight: bold;
+            cursor: pointer;
+            transition: background-color 0.2s;
+        }
+        
+        .header-menu-btn:hover {
+            background: rgba(255, 255, 255, 0.3);
         }
         
         .opengov-logo {
@@ -818,11 +851,10 @@
 <body>
     <div class="container">
         <div class="opengov-header">
-            <div style="display:flex;align-items:center;gap:8px;">
-                <span id="comingSoonPill" style="display:inline-block;padding:2px 8px;border-radius:999px;background:#dbeafe;color:#1e3a8a;font-weight:600;font-size:11px;">Coming soon</span>
-            </div>
+            <div class="coming-soon-badge" id="comingSoonBadge">Coming soon</div>
+            <button id="headerMenuBtn" class="header-menu-btn" onclick="openNotificationModal()">⋮</button>
             <div class="opengov-logo">
-                <img src="../../assets/opengov-logo.png" alt="OpenGov" style="height: 50px; width: auto;">
+                <img src="../../assets/opengov-logo.png" alt="OpenGov" style="height: 60px; width: auto;">
             </div>
             <div class="opengov-text">
                 <h1 class="main-title">Redline Like You Mean It: The Future of Contracting</h1>
@@ -4674,7 +4706,7 @@ window.__forceOpenApprovalsTest = function() {
                 const resp = await fetch('banner-strings.json');
                 if (resp.ok) {
                     const s = await resp.json();
-                    if (s && s.comingSoon) { const pill = document.getElementById('comingSoonPill'); if (pill) pill.textContent = s.comingSoon; }
+                    if (s && s.comingSoon) { const pill = document.getElementById('comingSoonBadge'); if (pill) pill.textContent = s.comingSoon; }
                     if (s && s.subtitle) { const vm = document.getElementById('viewerMessage'); if (vm) { vm.textContent = s.subtitle; vm.style.display = 'block'; } }
                 }
             } catch(_) {}
