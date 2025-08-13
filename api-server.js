@@ -89,6 +89,22 @@ let documentPermissions = {};
 // Shape: { [documentId]: { [userId]: { status: 'approved'|'unapproved', approvedBy, approvedAt } } }
 let documentApprovals = {};
 
+const APPROVALS_FILE = './approvals.json';
+
+if (fs.existsSync(APPROVALS_FILE)) {
+  const loaded = JSON.parse(fs.readFileSync(APPROVALS_FILE));
+  // Validate: Reset approvals if they mismatch current state (e.g., checkout changed)
+  Object.keys(loaded).forEach(docId => {
+    const currentState = documentState[docId] || {}; // From existing documentState
+    if (currentState.isCheckedOut) {
+      console.log(`⚠️ Resetting approvals for checked-out doc ${docId}`);
+      loaded[docId] = {}; // Clear to match state machine
+    }
+  });
+  documentApprovals = loaded;
+  console.log('✅ Loaded and validated approvals from file');
+}
+
 // Store SSE connections
 let sseConnections = [];
 
@@ -1056,6 +1072,8 @@ app.post('/api/document/:documentId/approvals', (req, res) => {
                 timestamp: new Date().toISOString()
             });
         }
+
+        fs.writeFileSync(APPROVALS_FILE, JSON.stringify(documentApprovals, null, 2));
 
         res.json({ success: true, approval: { userId, ...documentApprovals[documentId][userId] } });
     } catch (err) {
