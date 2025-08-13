@@ -1,0 +1,17 @@
+{
+  "title": "Approvals",
+  "labels": {
+    "approved": "Approved",
+    "rejected": "Rejected",
+    "no": "No"
+  },
+  "colors": {
+    "pillApprovedBg": "#d4edda",
+    "pillApprovedText": "#155724",
+    "pillRejectedBg": "#f8d7da",
+    "pillRejectedText": "#721c24",
+    "pillNoBg": "#e9ecef",
+    "pillNoText": "#6c757d"
+  }
+}
+

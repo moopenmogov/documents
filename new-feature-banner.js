@@ -78,44 +78,61 @@
         margin: 0 !important;
         letter-spacing: 0.3px !important;
         display: inline-block !important;
-        position: relative !important;
+        position: relative;
       }
       .nfb-btn:not(.nfb-pulse):hover { background: #3b82f6 !important; color: white !important; }
       .nfb-btn[disabled] { opacity: .55 !important; cursor: default !important; }
       .nfb-btn-inactive { opacity: .55 !important; }
       .nfb-btn-active { background: #3b82f6 !important; color: white !important; }
       
-      /* Pulsing animation - matches checkout banner colors */
+      /* Pulsing animation - fixed: no !important in keyframes, use background-color */
       @keyframes nfb-pulse {
-        0% { 
-          background: #bfdbfe !important; 
-          color: #1e40af !important;
-          box-shadow: 0 0 0 0 rgba(59, 130, 246, 0.7) !important;
-          transform: scale(1) !important;
+        0% {
+          background-color: #bfdbfe;
+          box-shadow: 0 0 0 0 rgba(59,130,246,.7);
+          transform: scale(1);
         }
-        50% { 
-          background: #3b82f6 !important; 
-          color: white !important;
-          box-shadow: 0 0 0 8px rgba(59, 130, 246, 0.2) !important;
-          transform: scale(1.05) !important;
+        50% {
+          background-color: #3b82f6;
+          box-shadow: 0 0 0 8px rgba(59,130,246,.2);
+          transform: scale(1.05);
         }
-        100% { 
-          background: #bfdbfe !important; 
-          color: #1e40af !important;
-          box-shadow: 0 0 0 0 rgba(59, 130, 246, 0) !important;
-          transform: scale(1) !important;
+        100% {
+          background-color: #bfdbfe;
+          box-shadow: 0 0 0 0 rgba(59,130,246,0);
+          transform: scale(1);
         }
       }
       
+      /* Remove animation from button itself - let only ::before animate */
       .nfb-btn.nfb-pulse {
-        animation: nfb-pulse 1.5s infinite ease-in-out !important;
-        animation-fill-mode: both !important;
+        /* animation removed - handled by ::before pseudo-element */
       }
       
       .nfb-btn.nfb-pulse:hover {
-        animation-play-state: paused !important;
+        animation-play-state: running !important;
         background: #3b82f6 !important;
         color: white !important;
+      }
+
+      /* Fix positioning and pulsing with pseudo-element approach */
+      #newFeaturesBtn { 
+        position: absolute !important;
+        top: 8px !important;
+        right: 8px !important;
+        background: transparent !important;
+        color: white !important;
+        z-index: 1;
+      }
+      #newFeaturesBtn::before {
+        content: "";
+        position: absolute;
+        inset: 0;
+        border-radius: inherit;
+        pointer-events: none;
+        animation: nfb-pulse 1.5s ease-in-out infinite;
+        will-change: transform, box-shadow, background-color;
+        z-index: -1;
       }
       /* Use extreme z-index to appear above any stacking contexts */
       .nfb-modal-backdrop { position: fixed; inset: 0; background: rgba(0,0,0,0.35); display: none; z-index: 2147483646; }
