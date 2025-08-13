@@ -5,6 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>OpenGov Contract Redlining - Web Viewer</title>
     <link rel="stylesheet" href="./node_modules/@harbour-enterprises/superdoc/dist/style.css">
+    <link rel="stylesheet" href="theme.css">
     <style>
         body {
             font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
@@ -977,7 +978,7 @@
                 <select id="webDocActionsSelect" class="user-select" style="margin-top:6px">
                     <option value="">Document actions…</option>
                 </select>
-                <span id="approvalsPillWeb" style="display:inline-block; padding:4px 10px; border-radius:999px; background:#e9f5ee; color:#0f5132; font-weight:600; font-size:12px;">—/— approved</span>
+                <span id="approvalsPillWeb" class="pill-blue" style="display:inline-block; padding:4px 10px; border-radius:999px; font-weight:600; font-size:12px;">—/— approved</span>
                 <button type="button" id="btnApprovalsDetailsWeb" class="btn btn-secondary" style="padding:4px 10px; font-size:12px; margin-left:5px;">Approval details</button>
             </div>
             <div id="docActionsDropdown_grid" class="dropdown" style="display:none;"></div>

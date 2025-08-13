@@ -1,0 +1,56 @@
+:root {
+    --bg-surface: #ffffff;
+    --bg-muted: #f8fafc;          /* light gray-blue */
+    --text-primary: #0f172a;      /* slate-900 */
+    --text-muted: #475569;        /* slate-600 */
+    --border: #e2e8f0;            /* slate-200 */
+    --accent: #64748b;            /* slate-500 */
+
+    /* Status/Pills */
+    --status-bg: #eef2ff;         /* indigo-100 */
+    --status-text: #3730a3;       /* indigo-800 */
+    --pill-blue-bg: #eef2ff;
+    --pill-blue-text: #3730a3;
+
+    /* New features pink (kept) */
+    --nfb-pink: #ff6fa5;
+    --nfb-pink-soft: #ffc1d9;
+
+    /* Viewer message (muted purple) */
+    --viewer-bg: #ede9fe;         /* violet-100 */
+    --viewer-text: #3730a3;       /* indigo-800 */
+}
+
+.checkout-status {
+    background: var(--status-bg);
+    color: var(--status-text);
+    border: 1px solid var(--border);
+    padding: 8px 16px;
+    border-radius: 6px;
+    font-weight: 600;
+    display: inline-block;
+}
+
+.viewer-message {
+    background: var(--viewer-bg);
+    color: var(--viewer-text);
+    padding: 6px 12px;
+    text-align: center;
+    font-weight: 500;
+    border-radius: 6px;
+}
+
+.pill-blue {
+    background: var(--pill-blue-bg);
+    color: var(--pill-blue-text);
+}
+
+.notification-window {
+    background: var(--bg-muted);
+    border: 1px solid var(--border);
+}
+
+.notification-window-header {
+    color: var(--text-muted);
+}
+
