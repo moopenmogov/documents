@@ -299,14 +299,14 @@
       const btn = document.createElement('button');
       btn.className = 'nfb-btn nfb-pulse';
       btn.id = 'newFeaturesBtn';
-      btn.textContent = 'click me';
+      btn.textContent = 'See New Features';
       btn.style.marginLeft = '8px';
       btn.style.marginTop = '8px';
       // Anchor inside header to avoid overflowing taskpane width
       try { if (header && getComputedStyle(header).position === 'static') header.style.position = 'relative'; } catch (_) {}
       btn.style.position = 'absolute';
       btn.style.top = '8px';
-      btn.style.right = '60px'; // Move left to avoid menu button conflict
+      btn.style.right = '8px'; // Back to right edge since menu button removed
       btn.style.zIndex = '1000002';
       btn.style.pointerEvents = 'auto';
       log('button-created');
