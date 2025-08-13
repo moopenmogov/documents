@@ -868,7 +868,7 @@
                         <label for="userSwitcher" style="width:120px;">Switch user:</label>
                         <select id="userSwitcher" class="shared-dropdown user-select" onchange="switchUser(this.value)" style="width:190px;">
                             <option value="">no change</option>
-                        </select>
+                    </select>
                     </div>
                 </div>
             </div>
@@ -1534,7 +1534,7 @@
                             // Update current user role
                             currentUser.role = data.role;
                             updateCurrentUserDisplay();
-                            updateButtonStates();
+                            updateUIFromStateMatrix('word', getCurrentUser, getCurrentUserRole, currentDocumentState);
                             addNotification(`Your access level changed to ${data.role}`, 'info');
                         }
                     }
@@ -1659,7 +1659,7 @@
                     await loadApprovalsSection();
                     
                     // Keep legacy button logic in sync (no-ops if hidden)
-                    await updateButtonStates();
+                    await updateUIFromStateMatrix('word', getCurrentUser, getCurrentUserRole, currentDocumentState);
                     
                     // Notify
                     addNotification(`Word user switched to ${currentUser.name} (${currentUser.role})`, 'info');
@@ -1748,7 +1748,7 @@
             console.log('🔵 Applied unified available light blue (#bfdbfe)');
             console.log('🖌️ Background after unified style:', getComputedStyle(banner).backgroundColor);
         };
-
+        
         // DEBUG: Test banner specifically
         window.debugBannerIssue = async () => {
             console.log('🚨 DEBUGGING BANNER ISSUE');
@@ -2055,40 +2055,7 @@
             }
         }
 
-        // Update button visibility based on document state (now using multi-layer protection)
-        async function updateButtonStates() {
-            console.log('🔄 Updating button states with multi-layer protection...');
-            
-            // Get comprehensive access information
-            const accessInfo = await determineDocumentAccess();
-            
-            // Update document actions dropdown when button states change
-            setTimeout(() => populateDocumentActions(), 100);
-            
-            // Apply visual feedback based on access level
-            await updateUIForAccessLevel(accessInfo);
-            
-            // REMOVED: updateCheckoutBanner() call - state matrix now handles all banner updates
-            
-            // Control user selection based on checkout state
-            if (currentDocumentState.isCheckedOut && currentDocumentState.checkedOutBy === 'word') {} else {}
-            
-            // Apply shared state matrix (replaces scenario logic)
-            await updateUIFromStateMatrix('word', getCurrentUser, getCurrentUserRole, currentDocumentState);
 
-            
-            // Continue with existing logic for editors
-            if (accessInfo.canEdit) {
-                // Update status messages for editors
-            if (!currentDocumentState.isCheckedOut) {
-                showStatus('documentStatus', '📄 Document available for checkout', 'info');
-            } else if (currentDocumentState.checkedOutBy === 'word') {
-                showStatus('documentStatus', '🔒 Document checked out by you', 'success');
-            } else {
-                showStatus('documentStatus', `🔒 Document checked out by ${currentDocumentState.checkedOutBy}`, 'error');
-                }
-            }
-        }
         
         // Fetch current document status
         async function fetchDocumentStatus() {
@@ -2105,7 +2072,7 @@
                     // Update document title display
                     updateDocumentTitle();
                     
-                    updateButtonStates();
+                    updateUIFromStateMatrix('word', getCurrentUser, getCurrentUserRole, currentDocumentState);
                     
                     // Auto-load document if newly available and checked out by web viewer
                     const hasNewDocument = data.currentDocument?.id && data.currentDocument.id !== wasDocumentAvailable;
@@ -2137,8 +2104,8 @@
                     // Immediately refresh local state/UI so controls reflect checkout
                     try {
                         await fetchDocumentStatus();
-                        populateDocumentActions();
-                        await updateButtonStates();
+
+                        await updateUIFromStateMatrix('word', getCurrentUser, getCurrentUserRole, currentDocumentState);
                         if (window.updateQuickActionsVisibility) updateQuickActionsVisibility();
                     } catch(_) {}
                     // Load document content using working method
@@ -2279,7 +2246,7 @@
                         await fetchDocumentStatus();
                         await updateUIFromStateMatrix('word', getCurrentUser, getCurrentUserRole, currentDocumentState);
 
-                        try { populateDocumentActions(); } catch(_) {}
+
                         if (window.updateQuickActionsVisibility) updateQuickActionsVisibility();
                     } catch(_) {}
                 } else {
@@ -2320,20 +2287,20 @@
                     try {
                         await fetchDocumentStatus();
                         await updateUIFromStateMatrix('word', getCurrentUser, getCurrentUserRole, currentDocumentState);
-                            populateDocumentActions();
+    
                         if (window.updateQuickActionsVisibility) updateQuickActionsVisibility();
                     } catch(_) {}
                 } else {
                     const error = await response.json();
                     showStatus('documentStatus', `❌ ${error.error}`, 'error');
                     // Re-lock on error
-                    await updateButtonStates();
+                    await updateUIFromStateMatrix('word', getCurrentUser, getCurrentUserRole, currentDocumentState);
                 }
             } catch (error) {
                 console.error('Checkin error:', error);
                 showStatus('documentStatus', '❌ Check-in failed: ' + error.message, 'error');
                 // Re-lock on error
-                await updateButtonStates();
+                await updateUIFromStateMatrix('word', getCurrentUser, getCurrentUserRole, currentDocumentState);
             }
         }
         
@@ -2351,8 +2318,8 @@
                     // Refresh local state/UI immediately so controls reflect unlock
                     try {
                         await fetchDocumentStatus();
-                        populateDocumentActions();
-                        await updateButtonStates();
+
+                        await updateUIFromStateMatrix('word', getCurrentUser, getCurrentUserRole, currentDocumentState);
                         if (window.updateQuickActionsVisibility) updateQuickActionsVisibility();
                     } catch(_) {}
                     
@@ -2508,7 +2475,7 @@
                     try {
                         await fetchDocumentStatus();
                         await updateUIFromStateMatrix('word', getCurrentUser, getCurrentUserRole, currentDocumentState);
-                            populateDocumentActions();
+    
                         if (window.updateQuickActionsVisibility) updateQuickActionsVisibility();
                     } catch(_) {}
                 } else {
@@ -4019,8 +3986,8 @@ window.__forceOpenApprovalsTest = function() {
                         window.initNewFeatureBanner('word');
                     }
                     loadApprovalsSection();
-                    populateDocumentActions();
-                    setTimeout(() => populateDocumentActions(), 3000);
+
+
                     // Ensure Approvals Details button opens modal (no inline dependency)
                     try {
                         const btnDetails = document.getElementById('btnApprovalsDetailsWord');
@@ -4108,7 +4075,7 @@ window.__forceOpenApprovalsTest = function() {
                     closeVendorModal();
                     // Show confirmation modal
                     openVendorConfirmationModal();
-                    updateButtonStates();
+                    updateUIFromStateMatrix('word', getCurrentUser, getCurrentUserRole, currentDocumentState);
                 } else {
                     addNotification(`Failed to send to vendor: ${result.error}`, 'error');
                 }
@@ -4790,7 +4757,7 @@ window.__forceOpenApprovalsTest = function() {
                     console.log('📎 Detected existing document content; syncing state without modifying doc');
                     showStatus('documentStatus', '🔄 Attached to current document', 'info');
                     fetchDocumentStatus();
-                    populateDocumentActions();
+
                     loadApprovalsSection();
                 } else {
                     console.log('ℹ️ No content detected; waiting for user to open a file');
@@ -4883,7 +4850,7 @@ window.__forceOpenApprovalsTest = function() {
 
                     console.log('🔄 DROPDOWN DEBUG: final actions to be added:', actions.map(a => ({ id: a.id, label: a.label, hasFunction: !!a.fn, functionName: a.fn?.name })));
                     console.log('🔄 DROPDOWN DEBUG: actions details:', actions);
-                    
+
                     actions.forEach(a => { const opt = document.createElement('option'); opt.value = a.id; opt.textContent = a.label; select.appendChild(opt); });
                     select.onchange = (e) => { 
                         const val = e.target.value; 
@@ -4916,15 +4883,15 @@ window.__forceOpenApprovalsTest = function() {
                         // Auto-render dropdown when state matrix is available
                 function kickRenderMatrixDropdownOnce(){
             try {
-                                        const doKick = () => {
+                const doKick = () => {
                             console.log('🔄 DROPDOWN DEBUG: doKick called, __lastStateMatrix:', !!window.__lastStateMatrix, 'renderMatrixActionsDropdown exists:', typeof window.renderMatrixActionsDropdown === 'function');
-                            if (window.__lastStateMatrix && typeof window.renderMatrixActionsDropdown === 'function') {
-                                window.renderMatrixActionsDropdown(window.__lastStateMatrix);
+                    if (window.__lastStateMatrix && typeof window.renderMatrixActionsDropdown === 'function') {
+                        window.renderMatrixActionsDropdown(window.__lastStateMatrix);
                                 console.log('🔄 Word dropdown auto-populated from state matrix');
                             } else {
                                 console.log('🔄 DROPDOWN DEBUG: Not calling renderMatrixActionsDropdown - missing state matrix or function');
-                            }
-                        };
+                    }
+                };
                 if (document.readyState === 'loading') {
                     document.addEventListener('DOMContentLoaded', doKick, { once: true });
                 } else {
@@ -4996,12 +4963,12 @@ window.__forceOpenApprovalsTest = function() {
                                 {
                                     name: 'body.insertFileFromBase64',
                                     fn: async () => {
-                                        await Word.run(async (ctx) => {
+                        await Word.run(async (ctx) => {
                                             const body = ctx.document.body;
                                             body.clear();
                                             body.insertFileFromBase64(b64Data, Word.InsertLocation.start);
-                                            await ctx.sync();
-                                        });
+                            await ctx.sync();
+                        });
                                     }
                                 },
                                 {
@@ -5020,7 +4987,7 @@ window.__forceOpenApprovalsTest = function() {
                                     console.log(`🔄 Trying in-document strategy: ${strategy.name}`);
                                     await strategy.fn();
                                     showStatus('documentStatus', `✅ Loaded latest in current document (${strategy.name})`, 'success');
-                                    return;
+                        return;
                                 } catch (stratErr) {
                                     console.warn(`❌ Strategy ${strategy.name} failed:`, stratErr?.message || stratErr);
                                 }
