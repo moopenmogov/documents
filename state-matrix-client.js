@@ -8,25 +8,10 @@
  * Copied exactly from viewer.html applyStateMatrixToUI function
  */
 function applyStateMatrixToUI(config) {
-    // Apply button visibility - EXACT copy from web viewer
-    const buttonMap = {
-        checkoutBtn: config.buttons.checkoutBtn,
-        overrideBtn: config.buttons.overrideBtn,
-        sendVendorBtn: config.buttons.sendVendorBtn,
-        saveProgressBtn: config.buttons.checkedInBtns,
-        checkinBtn: config.buttons.checkedInBtns,
-        cancelBtn: config.buttons.checkedInBtns,
-        viewOnlyBtn: config.buttons.viewOnlyBtn,
-        replaceDefaultBtn: config.buttons.replaceDefaultBtn,
-        approvalsBtn: true // Always show approvals via matrix
-    };
+    // SIMPLIFIED: Only handle dropdowns and banners, no individual buttons
+    // Individual buttons are handled by renderMatrixActionsDropdown() instead
     
-    Object.entries(buttonMap).forEach(([buttonId, shouldShow]) => {
-        const button = document.getElementById(buttonId);
-        if (button) {
-            button.style.display = shouldShow ? 'inline-block' : 'none';
-        }
-    });
+    console.log('📋 Applying state matrix to UI:', config);
     // Disable View Latest when no document is loaded
     const viewOnlyBtn = document.getElementById('viewOnlyBtn');
     if (viewOnlyBtn && config.checkoutStatus) {
@@ -156,15 +141,22 @@ async function updateUIFromStateMatrix(platform, getCurrentUser, getCurrentUserR
             
             // Expose last state for UI components (e.g., approvals modal)
             window.__lastStateMatrix = config;
+            
+            // Trigger dropdown render for Word add-in when state matrix is ready
+            if (platform === 'word' && typeof window.renderMatrixActionsDropdown === 'function') {
+                try {
+                    window.renderMatrixActionsDropdown(config);
+                    console.log('🔄 TIMING FIX: Dropdown rendered immediately when state matrix loaded');
+                } catch (e) {
+                    console.warn('Dropdown render failed:', e);
+                }
+            }
+            
             // Apply matrix to UI
             applyStateMatrixToUI(config);
             
-            // After applying, update the single toolbar (source of truth)
-            try { if (platform === 'word' && typeof window.updateToolbarFromMatrix === 'function') window.updateToolbarFromMatrix(config); } catch (e) {}
-            // Update banner parity
-            try { if (platform === 'word' && typeof window.updateBannerFromMatrix === 'function') window.updateBannerFromMatrix(config); } catch (e) {}
-    // Legacy renderers removed for Word platform to avoid UI duplication
-            try { if (platform === 'web') refreshActionsDropdownFromMatrix('webDocActionsSelect', config); } catch (e) {}
+            // SIMPLIFIED: Only use the unified dropdown approach
+            // No more platform-specific renderers or legacy button systems
             
             console.log(`✅ ${platform.toUpperCase()}: State matrix applied to UI`);
         } else {

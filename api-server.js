@@ -64,8 +64,16 @@ let wordUsers = { ...webUsers };
 let allUsers = { ...webUsers, ...wordUsers };
 
 // Current active users per platform
-let currentWebUser = webUsers['user1']; // Default to Warren Peace
-let currentWordUser = wordUsers['user1']; // Default to Warren Peace
+let currentWebUser = webUsers['user1']; // Default to Warren Peace (editor)
+let currentWordUser = wordUsers['user1']; // Default to Warren Peace (editor)
+
+// DEBUG: Verify default users have editor role
+console.log('🐛 USER SETUP DEBUG:', {
+    webUser: currentWebUser,
+    wordUser: currentWordUser,
+    webUserRole: currentWebUser?.role,
+    wordUserRole: currentWordUser?.role
+});
 
 // Legacy support - points to web user for backward compatibility
 let currentUser = currentWebUser;
@@ -1237,6 +1245,16 @@ app.get('/api/state-matrix', (req, res) => {
     
     // Calculate state matrix configuration
     const config = getStateMatrixConfig(userRole, platform, docState, currentUser);
+    
+    // DEBUG: Log state matrix decisions
+    console.log(`🐛 STATE MATRIX DEBUG - ${platform.toUpperCase()}:`, {
+        userRole,
+        userId,
+        platform,
+        docState,
+        currentUser: currentUser?.name,
+        resultButtons: config.buttons
+    });
     
     res.json({
         success: true,

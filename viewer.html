@@ -16,8 +16,8 @@
         }
         
         .opengov-header {
-            /* Softer pink themed banner */
-            background: linear-gradient(135deg, #ff6fa5, #ffc1d9);
+            /* Low-saturation gradient theme */
+            background: linear-gradient(135deg, #8a8db5, #9ca3af);
             color: white;
             padding: 30px;
             border-radius: 10px;
@@ -32,7 +32,7 @@
             position: absolute;
             top: 8px;
             left: 8px;
-            background: #ff6fa5;
+            background: var(--btn-primary);
             color: white;
             padding: 4px 10px;
             border-radius: 999px;
@@ -72,10 +72,9 @@
             margin: 30px 20px;
         }
         
-        /* Unified softer pink buttons */
-        :root { --btn-pink:#ff6fa5; --btn-pink-hover:#ff8fbd; --btn-pink-soft:#ffe3ee; }
+        /* Unified low-saturation theme buttons */
         button, .btn, .button, .doc-action, .btn-open, .btn-secondary {
-            background: var(--btn-pink) !important;
+            background: var(--btn-primary) !important;
             color: #fff !important;
             border: none !important;
             border-radius: 8px !important;
@@ -83,7 +82,7 @@
             font-weight: 600 !important;
             box-shadow: none !important;
         }
-        button:hover, .btn:hover, .button:hover, .doc-action:hover, .btn-open:hover, .btn-secondary:hover { background: var(--btn-pink-hover) !important; }
+        button:hover, .btn:hover, .button:hover, .doc-action:hover, .btn-open:hover, .btn-secondary:hover { background: var(--btn-primary-hover) !important; }
         
         .viewer-container {
             background: white;
@@ -824,11 +823,37 @@
             z-index: 1000;
         }
         .dropdown-menu button { width: 100%; text-align: left; }
-        /* Unified button styling (pink theme) */
+        /* Unified button styling (low-saturation theme) */
         :root {
-            --btn-pink: #e91e63;       /* base */
-            --btn-pink-hover: #d81b60; /* hover */
+            --btn-primary: #6c7db8;        /* muted blue */
+            --btn-primary-hover: #5a6ba1;  /* darker blue */
+            --btn-secondary: #8a8db5;      /* muted purple */
+            --btn-secondary-hover: #7a7da8; /* darker purple */
+            --btn-neutral: #9ca3af;        /* light grey */
+            --btn-neutral-hover: #6b7280;  /* darker grey */
         }
+        /* === Shared dropdown component styles === */
+        .shared-dropdown {
+            border: 1px solid #dee2e6;
+            border-radius: 6px;
+            padding: 8px 12px;
+            font-size: 14px;
+            background: white;
+            color: var(--text-primary);
+            min-width: 160px;
+            transition: border-color 0.2s ease;
+        }
+        
+        .shared-dropdown:hover {
+            border-color: #0078d4;
+        }
+        
+        .shared-dropdown:focus {
+            outline: none;
+            border-color: #0078d4;
+            box-shadow: 0 0 0 2px rgba(0, 120, 212, 0.1);
+        }
+        
         /* Apply to all buttons within the new grid and common button classes */
         /* Primary controls in grid (top-left/bottom-left) */
         .controls-grid .grid-actions > button,
@@ -836,7 +861,7 @@
         button.btn, .btn, .button,
         .btn-open, .btn-secondary, .btn-vendor, .btn-view-latest,
         .doc-action {
-            background: var(--btn-pink) !important;
+            background: var(--btn-primary) !important;
             color: #ffffff !important;
             border: none !important;
             padding: 10px 16px !important;
@@ -857,12 +882,12 @@
         .controls-grid .grid-actions > .dropdown > button:hover,
         .btn:hover, .button:hover,
         .dropdown-menu button:hover, .btn-open:hover, .btn-secondary:hover, .btn-vendor:hover,
-        .doc-action:hover { background: var(--btn-pink-hover) !important; }
+        .doc-action:hover { background: var(--btn-primary-hover) !important; }
 
-        /* Dropdown menu items: lighter pink shade, uniform sizing */
+        /* Dropdown menu items: secondary theme, uniform sizing */
         .controls-grid .dropdown .dropdown-menu button,
         .controls-grid .dropdown .dropdown-menu .doc-action {
-            background: var(--btn-pink) !important;
+            background: var(--btn-secondary) !important;
             color: #ffffff !important;
             border: none !important;
             padding: 10px 16px !important;
@@ -876,7 +901,7 @@
             box-shadow: none !important;
         }
         .controls-grid .dropdown .dropdown-menu button:hover,
-        .controls-grid .dropdown .dropdown-menu .doc-action:hover { background: var(--btn-pink-hover) !important; }
+        .controls-grid .dropdown .dropdown-menu .doc-action:hover { background: var(--btn-secondary-hover) !important; }
 
         /* Plain style for approvals table action buttons (match add-in) */
         #usersInlineContainer table button.btn {
@@ -1001,8 +1026,8 @@
             <div class="grid-actions" style="align-items:center; gap:8px;">
                 <span>Current user: <strong id="currentUserDisplay">Loading...</strong> <span id="currentUserRole">(editor)</span></span>
                 <label for="userSwitcher">Switch User (Demo):</label>
-                <select id="userSwitcher" class="user-select" onchange="switchUser(this.value)" style="margin-top:6px"></select>
-                <select id="webDocActionsSelect" class="user-select" style="margin-top:6px">
+                <select id="userSwitcher" class="shared-dropdown user-select" onchange="switchUser(this.value)" style="margin-top:6px"></select>
+                <select id="webDocActionsSelect" class="shared-dropdown user-select" style="margin-top:6px">
                     <option value="">Document actions…</option>
                 </select>
                 <span id="approvalsPillWeb" class="pill-blue" style="display:inline-block; padding:4px 10px; border-radius:999px; font-weight:600; font-size:12px;">—/— approved</span>
@@ -3218,9 +3243,27 @@
             setTimeout(async () => {
                 await initializeUserSystem();
                 fetchDocumentStatus();
-                // Ensure state matrix runs and populates actions/doc dropdown
-                setTimeout(() => {
-                    try { updateUIFromStateMatrix('web', getCurrentUser, getCurrentUserRole, currentDocumentState); } catch(_) {}
+                // Fixed timing: populate dropdown BEFORE hiding legacy buttons
+                setTimeout(async () => {
+                    console.log('🔄 UI CONSOLIDATION FIX: Syncing web state matrix and dropdowns...');
+                    
+                    // Step 1: Get state matrix config
+                    try { 
+                        await updateUIFromStateMatrix('web', getCurrentUser, getCurrentUserRole, currentDocumentState); 
+                    } catch(e) { 
+                        console.warn('Web state matrix update failed:', e); 
+                    }
+                    
+                    // Step 2: Immediately populate dropdown with matrix config
+                    if (window.__lastStateMatrix) {
+                        try {
+                            if (window.refreshActionsDropdownFromMatrix) {
+                                window.refreshActionsDropdownFromMatrix('webDocActionsSelect', window.__lastStateMatrix);
+                            }
+                        } catch(e) { console.warn('Web dropdown population failed:', e); }
+                    }
+                    
+                    console.log('✅ UI CONSOLIDATION: Web state matrix and dropdowns synchronized');
                 }, 50);
                 // Populate inline users table on load
                 try { await refreshUsersModal(); } catch (e) { /* ignore */ }
