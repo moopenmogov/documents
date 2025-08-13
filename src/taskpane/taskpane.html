@@ -813,7 +813,6 @@
             <p class="document-title" id="document-title" style="margin:0 0 6px 0; text-align:center;">No document loaded</p>
             <div id="viewerMessage" class="viewer-message" style="display: none; margin:0 0 6px 0;"></div>
             <div id="checkoutStatus" class="checkout-status" style="margin:0 0 8px 0; text-align:center; transform:scale(0.9); transform-origin:center;"></div>
-            <div id="checkoutBanner" class="checkout-banner" style="display: none;"></div>
         </div>
         
         <!-- Two-container layout for add-in: top (controls) + bottom (notifications) -->
@@ -3292,6 +3291,7 @@
                 window.updateBannerFromMatrix = function updateBannerFromMatrix(config) {
                     const banner = document.getElementById('checkoutBanner');
                     const viewerMsg = document.getElementById('viewerMessage');
+                    // If banner element is not present, do nothing (single source: checkoutStatus)
                     if (!banner) return;
                     const show = !!(config && config.checkoutStatus && config.checkoutStatus.show);
                     const text = (config && config.checkoutStatus && config.checkoutStatus.text) || '';
@@ -3299,15 +3299,10 @@
                         if (config.viewerMessage.show) { viewerMsg.textContent = config.viewerMessage.text || ''; viewerMsg.style.display = 'block'; }
                         else { viewerMsg.textContent = ''; viewerMsg.style.display = 'none'; }
                     }
-                    if (show && text) {
-                        banner.textContent = text;
-                        if (text.includes('Checked out by')) banner.classList.add('checked-out'); else banner.classList.remove('checked-out');
-                        banner.style.display = 'inline-block';
-                    } else {
-                        banner.textContent = '';
-                        banner.style.display = 'none';
-                        banner.classList.remove('checked-out');
-                    }
+                    // Force banner hidden in add-in to avoid duplication; use checkoutStatus element instead
+                    banner.textContent = '';
+                    banner.style.display = 'none';
+                    banner.classList.remove('checked-out');
                 };
 
                 const kick = () => { try { if (window.__lastStateMatrix) window.updateBannerFromMatrix(window.__lastStateMatrix); } catch(_) {} };
