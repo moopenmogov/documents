@@ -11,3 +11,13 @@ That's the problem. I've never built software in more than a recreational capaci
 But it just finished the state matrix. And it did a good job. Great, actually. I certainly wouldn't have been anywhere near specific enough, or comprehensive.
 
 It also sucked up more hours than I can count trying to debug and build extravagant logging systems to fix the core sync issue between the Word Add-In and the web viewer. Turned out we had a corrupt document and its base64 output was malformed. So we used a new document, and it 
+
+<<READ LESSONS LEARNED>>
+
+We all wear different hats, and AI does too. It wears a hat of insightful programmer, patient partner, and insanely fast developer. It also wears hats of sycophant, liar, junior developer, and saboteur. That latter one is the pits. I swear Claude got his rocks off every time he hit restore. The worst part was that there were so many damn bugs we just kept resolving them in different ways, and then creating more. State machine ftw 4eva
+
+When things worked well, it was a lot of fun. Seriously, vibing with an AI to build cool stuff is really fun. It's like having a super smart person completely attentive to anything you want them to do. Willing, eager, and (usually) well-intentioned.
+
+The quantity of superlatives is still a little off-putting, but oddly enough I'm getting comfortable with it. IDK if it's good to get praised as "Perfect!" for some gibberish that barely relates to the topic.
+
+There's a function  about getting updated state before loading a button dropdown and the AI obviously wrote it. But then they wrote a different one, which was constructed haphazardly and failed.

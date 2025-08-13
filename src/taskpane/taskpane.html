@@ -4650,6 +4650,8 @@ window.__forceOpenApprovalsTest = function() {
                         select.id = 'matrixActionsSelect';
                         select.className = 'shared-dropdown user-select';
                         select.style.width = '190px';
+                        // DYNAMIC: Check state matrix every time dropdown is opened
+                        select.onfocus = refreshWordDropdownFromMatrix;
                         host.appendChild(select);
                     }
                     return select;
@@ -4724,6 +4726,23 @@ window.__forceOpenApprovalsTest = function() {
                 console.warn('setupMatrixActionsDropdown failed:', e);
             }
         })();
+
+        // DYNAMIC DROPDOWN: Use same approach as web viewer
+        async function refreshWordDropdownFromMatrix() {
+            console.log('🔄 WORD: Dropdown opened - refreshing from live state matrix...');
+            try {
+                // Step 1: Get fresh state matrix (same as web viewer)
+                await updateUIFromStateMatrix('word', getCurrentUser, getCurrentUserRole, currentDocumentState);
+                
+                // Step 2: Use shared function to rebuild dropdown (same as web viewer)
+                if (window.__lastStateMatrix && typeof window.renderMatrixActionsDropdown === 'function') {
+                    window.renderMatrixActionsDropdown(window.__lastStateMatrix);
+                    console.log('🔄 WORD: Dropdown rebuilt with fresh state matrix data');
+                }
+            } catch (e) {
+                console.warn('⚠️ WORD: Failed to refresh dropdown from matrix:', e);
+            }
+        }
 
                         // Auto-render dropdown when state matrix is available
                 function kickRenderMatrixDropdownOnce(){
