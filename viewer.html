@@ -1424,8 +1424,10 @@
                 
                 console.log('✅ WEB: Independent user system initialized successfully');
                 
-                // Update button states after initialization
-                updateButtonStates();
+                // Use state matrix instead of legacy updateButtonStates
+                if (typeof window.updateUIFromStateMatrix === 'function') {
+                    window.updateUIFromStateMatrix('web', getCurrentUser, getCurrentUserRole, currentDocumentState);
+                }
             } catch (error) {
                 console.error('❌ WEB: Failed to initialize user system:', error);
                 try { populateUserSwitcher(); } catch (e) {}
@@ -1947,50 +1949,7 @@
             }
         }
 
-        // Update button visibility based on document state (now using multi-layer protection)
-        function updateButtonStates() {
-            console.log('🔄 WEB: Updating button states with multi-layer protection...');
-            
-            // Get comprehensive access information
-            const accessInfo = determineWebViewerAccess();
-            
-            console.log('📊 WEB: Final access determination:', {
-                canEdit: accessInfo.canEdit,
-                reason: accessInfo.reason,
-                layers: accessInfo.layers
-            });
-            
-            // Apply visual feedback based on access level
-            updateWebUIForAccessLevel(accessInfo);
-            
-            // Apply scenario-based button logic for all users (not just when canEdit)
-            updateButtonVisibilityFromMatrix();
-            
-            // Banner is now controlled by state matrix
-            
-            // Control user selection based on checkout state
-            if (currentDocumentState.isCheckedOut && currentDocumentState.checkedOutBy === 'web') {} else {}
-            
-            // Update status messages and SuperDoc mode
-            if (!currentDocumentState.isCheckedOut) {
-                showStatus('📄 Document available for checkout', 'info');
-                // Use role-based mode when document is available
-                const userRole = getCurrentUserRole();
-                const roleBased = getSuperdocMode(userRole);
-                console.log(' CHECKOUT: Document available, applying role-based mode:', roleBased, 'for role:', userRole);
-                updateSuperdocMode(roleBased);
-            } else if (currentDocumentState.checkedOutBy === 'web') {
-                showStatus('🔒 Document checked out by you', 'success');
-                // Use role-based mode when I have checkout
-                const userRole = getCurrentUserRole();
-                const roleBased = getSuperdocMode(userRole);
-                console.log(' CHECKOUT: Document checked out by me, applying role-based mode:', roleBased, 'for role:', userRole);
-                updateSuperdocMode(roleBased);
-            } else {
-                showStatus(`🔒 Document checked out by ${currentDocumentState.checkedOutBy} - Document is READ-ONLY`, 'error');
-                updateSuperdocMode('viewing'); // Lock to read-only when someone else has it
-            }
-        }
+
         
         // Update SuperDoc editing mode based on checkout state
         function updateSuperdocMode(mode) {
