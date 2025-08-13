@@ -2034,7 +2034,8 @@
                 if (response.ok) {
                     showStatus('✅ Document checked out successfully', 'success');
                     
-                    // Disable user selection during checkoutawait fetchDocumentStatus(); // Refresh UI
+                    // Disable user selection during checkout
+                    await fetchDocumentStatus(); // Refresh UI
                     
                     // Try to load the current document
                     if (currentDocumentState.currentDocument && currentDocumentState.currentDocument.id) {
@@ -2142,7 +2143,8 @@
                 if (response.ok) {
                     showStatus('✅ Document checked in successfully', 'success');
                     
-                    // Re-enable user selection after successful checkinawait fetchDocumentStatus(); // Refresh UI
+                    // Re-enable user selection after successful checkin
+                    await fetchDocumentStatus(); // Refresh UI
                 } else {
                     const error = await response.json();
                     showStatus(`❌ ${error.error}`, 'error');
@@ -2165,7 +2167,8 @@
                 if (response.ok) {
                     showStatus('✅ Checkout cancelled', 'success');
                     
-                    // Re-enable user selection after cancelling checkoutawait fetchDocumentStatus(); // Refresh UI
+                    // Re-enable user selection after cancelling checkout
+                    await fetchDocumentStatus(); // Refresh UI
                 } else {
                     const error = await response.json();
                     showStatus(`❌ ${error.error}`, 'error');
