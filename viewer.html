@@ -953,14 +953,14 @@
         .grid-notifications { grid-column: 2; grid-row: 1 / span 2; display: flex; flex-direction: column; }
         .status-bar { font-size: 14px; margin-bottom: 6px; color: #495057; }
         .title-banner-stack { padding: 8px 20px 0 20px; }
-        .title-banner-stack .document-title { margin: 4px 0 6px 0; font-weight: 600; font-size: 16px; color: #343a40; }
+        .title-banner-stack .document-title { margin: 4px 0 6px 0; font-weight: 600; font-size: 16px; color: #343a40; text-align:center; }
         .title-banner-stack #viewerMessage { margin: 0 0 6px 0; }
-        .title-banner-stack #checkoutStatus { margin: 0 0 10px 0; }
+        .title-banner-stack #checkoutStatus { margin: 0 0 10px 0; text-align:center; }
     </style>
 
     <!-- Title + banners above the two-column grid -->
     <div class="title-banner-stack">
-        <p class="document-title" id="document-title" style="margin-bottom:6px;">No document loaded</p>
+        <p class="document-title" id="document-title" style="margin-bottom:6px; text-align:center;">Title: No document loaded</p>
         <div id="viewerMessage" class="viewer-message" style="display: none;">You can look but don't touch</div>
         <div id="checkoutStatus" class="checkout-status">Available for check-out</div>
         <div id="checkoutBanner" class="checkout-banner" style="display: none;"></div>
@@ -995,20 +995,9 @@
         </div>
     </div>
 
-    <!-- CLEAN 3-COLUMN LAYOUT -->
+    <!-- CLEAN 3-COLUMN LAYOUT (legacy center banners removed; single source above) -->
     <div class="main-content-3col" style="display: flex !important; flex-direction: row !important; gap: 20px; padding: 20px; align-items: flex-start !important; width: 100% !important; box-sizing: border-box !important;">
-        <!-- Left Column intentionally empty to maximize editor space -->
         <div class="left-column buttons-column" style="width: 0 !important; flex-shrink: 0 !important; display: flex !important; flex-direction: column !important; gap: 5px;"></div>
-        
-        <!-- Center Column: TITLE + BANNERS -->
-        <div class="center-column title-banner-column" style="flex: 1 !important; text-align: center !important;">
-        <p class="document-title" id="document-title" style="margin-bottom:6px;">No document loaded</p>
-            <div id="checkoutStatus" class="checkout-status">Available for check-out</div>
-            <div id="viewerMessage" class="viewer-message" style="display: none;">You can look but don't touch</div>
-            <div id="checkoutBanner" class="checkout-banner" style="display: none;"></div>
-    </div>
-
-        <!-- Right Column removed; controls live in the grid above -->
         <div class="right-column" style="display:none;"></div>
     </div>
 
