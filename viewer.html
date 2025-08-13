@@ -959,6 +959,33 @@
         .title-banner-stack #checkoutStatus { margin: 0 0 10px 0; text-align:center; }
     </style>
 
+    <script>
+        // Load theme from server and set CSS variables
+        (async function applyServerTheme(){
+            try {
+                const r = await fetch('http://localhost:3001/api/theme');
+                const j = await r.json();
+                const c = j && j.theme && j.theme.colors;
+                if (!c) return;
+                const root = document.documentElement;
+                Object.entries({
+                    '--bg-surface': c.bgSurface,
+                    '--bg-muted': c.bgMuted,
+                    '--text-primary': c.textPrimary,
+                    '--text-muted': c.textMuted,
+                    '--border': c.border,
+                    '--accent': c.accent,
+                    '--status-bg': c.statusBg,
+                    '--status-text': c.statusText,
+                    '--pill-blue-bg': c.pillBg,
+                    '--pill-blue-text': c.pillText,
+                    '--viewer-bg': c.viewerBg,
+                    '--viewer-text': c.viewerText
+                }).forEach(([k,v]) => { if (v) root.style.setProperty(k, v); });
+            } catch(_) {}
+        })();
+    </script>
+
     <!-- Title + banners above the two-column grid -->
     <div class="title-banner-stack">
         <p class="document-title" id="document-title" style="margin-bottom:6px; text-align:center;">Title: No document loaded</p>

@@ -4586,6 +4586,31 @@ window.__forceOpenApprovalsTest = function() {
             } catch(_) {}
         })();
 
+        // Apply theme from server so add-in matches web
+        (async function applyServerTheme(){
+            try {
+                const r = await fetch('http://localhost:3001/api/theme');
+                const j = await r.json();
+                const c = j && j.theme && j.theme.colors;
+                if (!c) return;
+                const root = document.documentElement;
+                Object.entries({
+                    '--bg-surface': c.bgSurface,
+                    '--bg-muted': c.bgMuted,
+                    '--text-primary': c.textPrimary,
+                    '--text-muted': c.textMuted,
+                    '--border': c.border,
+                    '--accent': c.accent,
+                    '--status-bg': c.statusBg,
+                    '--status-text': c.statusText,
+                    '--pill-blue-bg': c.pillBg,
+                    '--pill-blue-text': c.pillText,
+                    '--viewer-bg': c.viewerBg,
+                    '--viewer-text': c.viewerText
+                }).forEach(([k,v]) => { if (v) root.style.setProperty(k, v); });
+            } catch(_) {}
+        })();
+
         // ===== CHECKOUT BANNER SYSTEM =====
         // Removed custom checkoutBanner logic in favor of single checkoutStatus element
         function updateCheckoutBanner() {

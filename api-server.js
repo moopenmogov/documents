@@ -1173,6 +1173,32 @@ app.post('/api/document/:documentId/permissions', (req, res) => {
     });
 });
 
+// ===== THEME API =====
+// Centralized theme so both web and add-in share muted grey/blue/purple palette
+const serverTheme = {
+  colors: {
+    bgSurface: '#ffffff',
+    bgMuted: '#f8fafc',
+    textPrimary: '#0f172a',
+    textMuted: '#475569',
+    border: '#e2e8f0',
+    accent: '#64748b',
+    statusBg: '#eef2ff',
+    statusText: '#3730a3',
+    pillBg: '#eef2ff',
+    pillText: '#3730a3',
+    viewerBg: '#ede9fe',
+    viewerText: '#3730a3',
+    // keep new-features pink as-is on client; included for completeness
+    nfbPink: '#ff6fa5',
+    nfbPinkSoft: '#ffc1d9'
+  }
+};
+
+app.get('/api/theme', (req, res) => {
+  res.json({ success: true, theme: serverTheme });
+});
+
 
 // ===== STATE MATRIX API =====
 
