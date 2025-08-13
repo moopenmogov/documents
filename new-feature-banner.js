@@ -68,7 +68,7 @@
     style.id = 'new-feature-banner-styles';
     style.textContent = `
       .nfb-btn { 
-        background: #f59e0b; 
+        background: #dc2626; 
         color: #fff; 
         border: none; 
         border-radius: 999px; 
@@ -78,24 +78,24 @@
         font-size: 12px;
         box-shadow: 0 2px 6px rgba(0,0,0,0.2);
       }
-      .nfb-btn:hover { background: #d97706; }
+      .nfb-btn:hover { background: #b91c1c; }
       .nfb-btn[disabled] { opacity: .55; cursor: default; }
       .nfb-btn-inactive { opacity: .55; }
-      .nfb-btn-active { background: #b45309 !important; }
+      .nfb-btn-active { background: #991b1b !important; }
       
       /* Pulsing animation */
       @keyframes nfb-pulse {
         0% { 
-          background: #f59e0b; 
-          box-shadow: 0 0 0 0 rgba(245, 158, 11, 0.7);
+          background: #dc2626; 
+          box-shadow: 0 0 0 0 rgba(220, 38, 38, 0.7);
         }
         50% { 
-          background: #d97706; 
-          box-shadow: 0 0 0 6px rgba(245, 158, 11, 0.3);
+          background: #991b1b; 
+          box-shadow: 0 0 0 6px rgba(220, 38, 38, 0.3);
         }
         100% { 
-          background: #f59e0b; 
-          box-shadow: 0 0 0 0 rgba(245, 158, 11, 0);
+          background: #dc2626; 
+          box-shadow: 0 0 0 0 rgba(220, 38, 38, 0);
         }
       }
       
