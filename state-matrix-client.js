@@ -205,7 +205,12 @@ window.refreshActionsDropdownFromMatrix = function(selectId, config) {
         },
         true
     );
-    add('replaceDefaultBtn', '⬆️ Replace default document', () => { try { document.getElementById('fileInput').click(); } catch(_) {} }, !!b.replaceDefaultBtn);
+    add('replaceDefaultBtn', '⬆️ Replace default document', () => {
+        try {
+            const fileEl = document.getElementById('fileInput') || document.getElementById('replaceCurrentDocFileInput') || document.getElementById('inputReplaceCurrent');
+            if (fileEl && typeof fileEl.click === 'function') fileEl.click();
+        } catch(_) {}
+    }, !!b.replaceDefaultBtn);
     actions.forEach(a => { const opt = document.createElement('option'); opt.value = a.id; opt.textContent = a.label; select.appendChild(opt); });
     const wrapper = select.parentElement || select;
     wrapper.style.display = actions.length ? 'block' : 'none';

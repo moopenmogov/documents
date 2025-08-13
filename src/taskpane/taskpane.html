@@ -824,6 +824,9 @@
             <div id="viewerMessage" class="viewer-message" style="display: none; margin:0 0 6px 0;"></div>
             <div id="checkoutStatus" class="checkout-status" style="margin:0 0 8px 0; text-align:center; transform:scale(0.9); transform-origin:center;"></div>
         </div>
+
+        <!-- Hidden file input for 'Replace default document' (used by dropdown action) -->
+        <input id="fileInput" type="file" accept=".docx,application/vnd.openxmlformats-officedocument.wordprocessingml.document" style="display:none;" />
         
         <!-- Two-container layout for add-in: top (controls) + bottom (notifications) -->
         <div class="user-controls" style="display:flex; flex-direction:column; gap:10px;">
@@ -3345,9 +3348,13 @@
                 function bind() {
                     const btn = document.getElementById('btnReplaceCurrent');
                     const input = document.getElementById('inputReplaceCurrent');
+                    const shared = document.getElementById('fileInput');
                     if (btn && input) {
                         btn.onclick = () => input.click();
                         input.onchange = () => { const f = input.files && input.files[0]; if (f) uploadDocxFile(f); input.value=''; };
+                    }
+                    if (shared) {
+                        shared.onchange = () => { const f = shared.files && shared.files[0]; if (f) uploadDocxFile(f); shared.value=''; };
                     }
                 }
                 if (document.readyState === 'loading') document.addEventListener('DOMContentLoaded', bind); else bind();
