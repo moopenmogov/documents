@@ -4803,10 +4803,11 @@ window.__forceOpenApprovalsTest = function() {
                         host = document.createElement('div');
                         host.id = 'matrixActionsDropdownHost';
                         host.style.margin = '8px 0';
-                        // Place dropdown next to the approvals pill
-                        const approvalsPill = document.getElementById('approvalsPillWord');
-                        if (approvalsPill && approvalsPill.parentElement) {
-                            approvalsPill.parentElement.appendChild(host);
+                        // Place dropdown at the bottom after the user switcher section-body
+                        const sectionBody = document.querySelector('.section-body');
+                        if (sectionBody) {
+                            // Insert after the section-body container
+                            sectionBody.parentElement.insertBefore(host, sectionBody.nextSibling);
                         } else {
                             (document.getElementById('documentActions') || document.body).appendChild(host);
                         }
