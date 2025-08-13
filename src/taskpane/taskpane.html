@@ -187,9 +187,9 @@
         }
         
         .user-select {
-            padding: 4px 8px;
+            padding: 6px 12px;
             border: 1px solid #ffc107;
-            border-radius: 3px;
+            border-radius: 4px;
             background: white;
             font-size: 11px;
             flex-grow: 1;
@@ -661,10 +661,8 @@
             background: rgba(23, 162, 184, 0.5);
         }
         
-        /* Checked out state - nice red color - high specificity to override duplicates */
-        .checkout-status.checked-out {
-            background: #dc3545 !important;
-        }
+        /* Checked out state - unified pink colors to match web viewer (removed red override) */
+        /* .checkout-status.checked-out rule removed - now uses shared state matrix colors */
 
         /* New Feature Banner */
         .new-feature-banner {
@@ -866,7 +864,6 @@
                     </select>
 
                     <span id="approvalsPillWord" class="pill-blue" style="display:inline-block; padding:4px 10px; border-radius:999px; font-weight:600; font-size:12px;">—/— approved</span>
-                    <button id="btnApprovalsDetailsWord" type="button" style="padding:4px 10px; font-size:12px; margin-left:5px;" onclick="window.openUsersModalWord && window.openUsersModalWord()">Approval details</button>
                 </div>
             </div>
         </div>
@@ -3322,6 +3319,8 @@
                 const css = `
                 .checkout-banner { background: #ffc1d9; color: #ffffff; padding: 8px 16px; border-radius: 4px; font-size: 18px; font-weight: 500; margin: 8px auto; display: inline-block; }
                 .checkout-banner.checked-out { background: #ff6fa5; }
+                /* Ensure checkout status uses unified colors (matches state-matrix-client.js) */
+                #checkoutStatus { background: #ffc1d9; color: white; padding: 8px 16px; border-radius: 4px; font-size: 18px; }
                 .viewer-message { color: #6c757d; font-size: 13px; margin-bottom: 4px; }
                 `;
                 const style = document.createElement('style'); style.textContent = css; document.head.appendChild(style);
@@ -4788,10 +4787,10 @@ window.__forceOpenApprovalsTest = function() {
                         host = document.createElement('div');
                         host.id = 'matrixActionsDropdownHost';
                         host.style.margin = '8px 0';
-                        // Place dropdown next to the approvals button
-                        const approvalsBtn = document.getElementById('btnApprovalsDetailsWord');
-                        if (approvalsBtn && approvalsBtn.parentElement) {
-                            approvalsBtn.parentElement.appendChild(host);
+                        // Place dropdown next to the approvals pill
+                        const approvalsPill = document.getElementById('approvalsPillWord');
+                        if (approvalsPill && approvalsPill.parentElement) {
+                            approvalsPill.parentElement.appendChild(host);
                         } else {
                             (document.getElementById('documentActions') || document.body).appendChild(host);
                         }
@@ -4800,7 +4799,7 @@ window.__forceOpenApprovalsTest = function() {
                     if (!select) {
                         select = document.createElement('select');
                         select.id = 'matrixActionsSelect';
-                        select.className = 'user-select';
+                        select.className = 'shared-dropdown user-select';
                         select.style.minWidth = '220px';
                         host.appendChild(select);
                     }
