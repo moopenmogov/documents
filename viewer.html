@@ -2286,21 +2286,7 @@
             // Make open function globally available for the state matrix client
             window.openUsersModalWeb = open;
             // Pill function moved earlier to be available when SSE connects
-            
-            setTimeout(() => {
-                try {
-                    const btn = document.getElementById('btnApprovalsDetailsWeb');
-                    console.log('🔔 WEB: Wiring approvals button...', !!btn);
-                    if (btn) {
-                        btn.onclick = open;
-                        console.log('🔔 WEB: Button onclick handler assigned');
-                    } else {
-                        console.error('❌ WEB: btnApprovalsDetailsWeb not found!');
-                    }
-                } catch(e) {
-                    console.error('❌ WEB: Error wiring button:', e);
-                }
-            }, 0);
+        
         })();
         
         function closeVendorModal() {
