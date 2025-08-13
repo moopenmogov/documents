@@ -2019,6 +2019,8 @@
                     currentDocumentState.currentDocument = data.currentDocument;
                     // Update state matrix after status change
                     updateButtonVisibilityFromMatrix();
+                    // Update banner after document status change
+                    updateCheckoutBanner();
                 }
             } catch (error) {
                 console.error('Failed to fetch document status:', error);
