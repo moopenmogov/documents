@@ -866,7 +866,7 @@
                 <div class="section-body" style="display:flex; flex-direction:column; gap:8px;">
                     <div style="display:flex; align-items:center; gap:8px;">
                         <label for="userSwitcher" style="width:120px;">Switch user:</label>
-                        <select id="userSwitcher" class="shared-dropdown user-select" onchange="switchUser(this.value)" style="width:200px;">
+                        <select id="userSwitcher" class="shared-dropdown user-select" onchange="switchUser(this.value)" style="width:190px;">
                             <option value="">no change</option>
                         </select>
                     </div>
@@ -4837,7 +4837,7 @@ window.__forceOpenApprovalsTest = function() {
                         select = document.createElement('select');
                         select.id = 'matrixActionsSelect';
                         select.className = 'shared-dropdown user-select';
-                        select.style.width = '200px';
+                        select.style.width = '190px';
                         host.appendChild(select);
                     }
                     return select;
