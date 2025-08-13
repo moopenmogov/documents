@@ -1493,6 +1493,9 @@
                     
                     // Update button states based on new user role
                     updateButtonVisibilityFromMatrix();
+                    
+                    // Update banner for new user role
+                    updateCheckoutBanner();
                     try { await refreshUsersModal(); } catch (e) { /* ignore */ }
                     
                     // Reinitialize SuperDoc with new role-based mode
@@ -2706,6 +2709,9 @@
                 window.refreshActionsDropdownFromMatrix('webDocActionsSelect', window.__lastStateMatrix);
                 console.log('🔄 WEB: Dropdown refreshed after state matrix update');
             }
+            
+            // CRITICAL: Update checkout banner after state changes
+            updateCheckoutBanner();
             
             renderNotifications();
         }
