@@ -914,25 +914,8 @@
     </div>
 
     <!-- User Controls (Demo Mode) -->
-    <div class="user-controls">
-        <div class="current-user">
-            <span class="user-label">Current User:</span>
-            <span id="currentUserDisplay" class="user-name">Loading...</span>
-            <span id="currentUserRole" class="user-role">(editor)</span>
-        </div>
-        <div class="user-switcher">
-            <label for="userSwitcher">Switch User (Demo):</label>
-            <select id="userSwitcher" class="user-select" onchange="switchUser(this.value)">
-                <option value="">Loading users...</option>
-            </select>
-            <!-- Document actions dropdown placed directly below user switcher -->
-            <div style="margin-top:6px;">
-                <select id="webDocActionsSelect" class="user-select">
-                    <option value="">Document actions…</option>
-            </select>
-            </div>
-        </div>
-    </div>
+    <!-- legacy user-controls block hidden; controls live in grid below -->
+    <div class="user-controls" style="display:none"></div>
 
     <!-- PRE-EDITOR 2x2 GRID LAYOUT -->
     <script>
@@ -976,6 +959,7 @@
         <div class="grid-card" style="grid-column:1; grid-row:1;">
             <div class="grid-title" id="approvalsTitleWeb">Workflows</div>
             <div class="grid-actions" style="align-items:center; gap:8px;">
+                <span>Current user: <strong id="currentUserDisplay">Loading...</strong> <span id="currentUserRole">(editor)</span></span>
                 <label for="userSwitcher">Switch User (Demo):</label>
                 <select id="userSwitcher" class="user-select" onchange="switchUser(this.value)"></select>
                 <select id="webDocActionsSelect" class="user-select">
