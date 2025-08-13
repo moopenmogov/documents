@@ -361,16 +361,15 @@
         
         /* Checkout Status Banner */
                 
-        /* New Standardized Banners */
+        /* Checkout Status Base Styles - Colors controlled by state matrix */
         .checkout-status {
-            background: #17a2b8;
-            color: white;
             padding: 8px 16px;
             text-align: center;
             font-weight: 500;
             margin: 8px 0;
             border-radius: 4px;
             font-size: 14px;
+            display: block;
         }
         
         .viewer-message {
@@ -811,17 +810,8 @@
             cursor: not-allowed;
         }
 
-        /* Fix default checkout status background to avoid teal */
-        /* Align add-in status bar with web viewer */
-        .checkout-status {
-            background: #f1f5f9 !important; /* light gray-blue */
-            color: #0f172a !important;      /* slate-900 */
-            border: 1px solid #e2e8f0 !important;
-            padding: 8px 16px !important;
-            border-radius: 6px !important;
-            font-weight: 600 !important;
-            display: inline-block;
-        }
+        /* REMOVED: Conflicting !important rule that was overriding state matrix colors */
+        /* State matrix now has full control over checkout-status colors */
         @import url("../../theme.css");
     </style>
 </head>
@@ -2056,8 +2046,7 @@
             // Apply visual feedback based on access level
             await updateUIForAccessLevel(accessInfo);
             
-            // Update checkout banner for ALL users (viewers and editors)
-            updateCheckoutBanner();
+            // REMOVED: updateCheckoutBanner() call - state matrix now handles all banner updates
             
             // Control user selection based on checkout state
             if (currentDocumentState.isCheckedOut && currentDocumentState.checkedOutBy === 'word') {} else {}
@@ -3341,11 +3330,9 @@
         // Web parity banner styling and logic
         (function setupBannerParity() {
             try {
+                /* REMOVED: Dynamic CSS injection - state matrix now controls all banner colors */
+                /* Keeping only viewer-message styling which is not handled by state matrix */
                 const css = `
-                .checkout-banner { background: #ffc1d9; color: #ffffff; padding: 8px 16px; border-radius: 4px; font-size: 18px; font-weight: 500; margin: 8px auto; display: inline-block; }
-                .checkout-banner.checked-out { background: #ff6fa5; }
-                /* Ensure checkout status uses unified colors (matches state-matrix-client.js) */
-                #checkoutStatus { background: #ffc1d9; color: white; padding: 8px 16px; border-radius: 4px; font-size: 18px; }
                 .viewer-message { color: #6c757d; font-size: 13px; margin-bottom: 4px; }
                 `;
                 const style = document.createElement('style'); style.textContent = css; document.head.appendChild(style);
