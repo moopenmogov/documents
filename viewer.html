@@ -11,7 +11,8 @@
             font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
             margin: 0;
             padding: 0;
-            background: #f8f9fa;
+            background: var(--bg-muted);
+            color: var(--text-primary);
         }
         
         .opengov-header {
@@ -576,26 +577,25 @@
             font-style: italic;
         }/* Transparent Notification Window Styles */
         .notification-window {
-            background: linear-gradient(145deg, rgba(248, 249, 250, 0.95), rgba(233, 236, 239, 0.9));
-            border: 2px solid rgba(108, 117, 125, 0.2);
-            border-left: 4px solid #17a2b8;
+            background: var(--bg-muted);
+            border: 1px solid var(--border);
+            border-left: 4px solid var(--accent);
             border-radius: 0;
             margin-top: 15px;
             max-height: 200px;
             overflow-y: auto;
-            backdrop-filter: blur(3px);
-            box-shadow: inset 0 1px 3px rgba(0, 0, 0, 0.1), 0 1px 3px rgba(0, 0, 0, 0.05);
+            box-shadow: inset 0 1px 3px rgba(0, 0, 0, 0.03), 0 1px 3px rgba(0, 0, 0, 0.04);
         }
 
         .notification-window-header {
-            background: linear-gradient(135deg, rgba(23, 162, 184, 0.15), rgba(23, 162, 184, 0.05));
-            color: #495057;
+            background: transparent;
+            color: var(--text-muted);
             padding: 6px 12px;
             border-radius: 0;
             font-size: 11px;
             font-weight: 500;
             text-align: left;
-            border-bottom: 1px solid rgba(23, 162, 184, 0.2);
+            border-bottom: 1px solid var(--border);
             text-transform: uppercase;
             letter-spacing: 0.5px;
         }
