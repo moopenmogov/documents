@@ -863,11 +863,13 @@
                     <span id="currentUserRole" class="user-role">(editor)</span>
                     <span id="approvalsPillWord" class="pill-blue" style="display:inline-block; padding:4px 10px; border-radius:999px; font-weight:600; font-size:12px; margin-left:8px;">—/— approved</span>
                 </div>
-                <div class="section-body" style="display:flex; align-items:center; gap:8px; flex-wrap:wrap;">
-                    <label for="userSwitcher">Switch User:</label>
-                    <select id="userSwitcher" class="shared-dropdown user-select" onchange="switchUser(this.value)">
-                        <option value="">Loading users...</option>
-                    </select>
+                <div class="section-body" style="display:flex; flex-direction:column; gap:8px;">
+                    <div style="display:flex; align-items:center; gap:8px;">
+                        <label for="userSwitcher">Switch user:</label>
+                        <select id="userSwitcher" class="shared-dropdown user-select" onchange="switchUser(this.value)">
+                            <option value="">no change</option>
+                        </select>
+                    </div>
                 </div>
             </div>
         </div>
@@ -1611,6 +1613,12 @@
             if (!switcher || !allUsers.length) return;
             
             switcher.innerHTML = '';
+            
+            // Add default "no change" option
+            const defaultOption = document.createElement('option');
+            defaultOption.value = '';
+            defaultOption.textContent = 'no change';
+            switcher.appendChild(defaultOption);
             
             allUsers.forEach(user => {
                 const option = document.createElement('option');
@@ -4803,11 +4811,22 @@ window.__forceOpenApprovalsTest = function() {
                         host = document.createElement('div');
                         host.id = 'matrixActionsDropdownHost';
                         host.style.margin = '8px 0';
-                        // Place dropdown at the bottom after the user switcher section-body
+                        // Place dropdown inside the section-body as second row
                         const sectionBody = document.querySelector('.section-body');
                         if (sectionBody) {
-                            // Insert after the section-body container
-                            sectionBody.parentElement.insertBefore(host, sectionBody.nextSibling);
+                            // Create wrapper div with label
+                            const wrapper = document.createElement('div');
+                            wrapper.style.display = 'flex';
+                            wrapper.style.alignItems = 'center';
+                            wrapper.style.gap = '8px';
+                            
+                            const label = document.createElement('label');
+                            label.textContent = 'Document actions:';
+                            label.setAttribute('for', 'matrixActionsSelect');
+                            
+                            wrapper.appendChild(label);
+                            wrapper.appendChild(host);
+                            sectionBody.appendChild(wrapper);
                         } else {
                             (document.getElementById('documentActions') || document.body).appendChild(host);
                         }
@@ -4840,7 +4859,7 @@ window.__forceOpenApprovalsTest = function() {
                     while (select.options.length) select.remove(0);
                     const placeholder = document.createElement('option');
                     placeholder.value = '';
-                    placeholder.textContent = 'Document actions...';
+                    placeholder.textContent = 'select';
                     select.appendChild(placeholder);
 
                     if (!config || !config.buttons) return;
