@@ -1494,8 +1494,7 @@
                     // Update button states based on new user role
                     updateButtonVisibilityFromMatrix();
                     
-                    // Update banner for new user role
-                    updateCheckoutBanner();
+
                     try { await refreshUsersModal(); } catch (e) { /* ignore */ }
                     
                     // Reinitialize SuperDoc with new role-based mode
@@ -2019,8 +2018,7 @@
                     currentDocumentState.currentDocument = data.currentDocument;
                     // Update state matrix after status change
                     updateButtonVisibilityFromMatrix();
-                    // Update banner after document status change
-                    updateCheckoutBanner();
+
                 }
             } catch (error) {
                 console.error('Failed to fetch document status:', error);
@@ -2465,64 +2463,9 @@
         
         // ===== CHECKOUT BANNER SYSTEM =====
         
-                function updateCheckoutBanner() {
-            const banner = document.getElementById('checkoutBanner');
-            const isCheckedOut = currentDocumentState.isCheckedOut || false;
-            const checkedOutUser = currentDocumentState.checkedOutUser;
-            const userRole = getCurrentUserRole();
-            
-            let bannerText = '';
-            let shouldShow = false;
-            
-            if (userRole === 'viewer') {
-                // Viewers ALWAYS see "You can look but don't touch"
-                bannerText = 'You can look but don\'t touch';
-                shouldShow = true;
-            } else {
-                // All other roles (editor, suggester, vendor)
-                if (!isCheckedOut) {
-                    // Document available for checkout
-                    bannerText = 'Available for check-out';
-                    shouldShow = true;
-                } else if (checkedOutUser) {
-                    // Document checked out by someone (show their name)
-                    bannerText = `Checked out by ${checkedOutUser.name}`;
-                    shouldShow = true;
-                }
-            }
-            
-            if (shouldShow && bannerText) {
-                banner.textContent = bannerText;
-                banner.style.display = 'block';
-                console.log(`🚨 WEB: Banner updated: ${bannerText}`);
-            } else {
-                banner.style.display = 'none';
-                console.log(`🚨 WEB: Banner hidden`);
-            }
-        }
         
-        // Test function for checkout banner
-        function testCheckoutBanner() {
-            console.log('🧪 Testing checkout banner scenarios...');
-            
-            // Test web checkout
-            currentDocumentState.isCheckedOut = true;
-            currentDocumentState.checkedOutBy = 'web';
-            updateCheckoutBanner();
-            
-            setTimeout(() => {
-                // Test word checkout
-                currentDocumentState.checkedOutBy = 'word';
-                updateCheckoutBanner();
-                
-                setTimeout(() => {
-                    // Test no checkout
-                    currentDocumentState.isCheckedOut = false;
-                    currentDocumentState.checkedOutBy = null;
-                    updateCheckoutBanner();
-                }, 2000);
-            }, 2000);
-        }
+        
+
         
         // Make test function globally available
         window.testCheckoutBanner = testCheckoutBanner;
@@ -2690,8 +2633,7 @@
                 console.log('🔄 WEB: Dropdown refreshed after state matrix update');
             }
             
-            // CRITICAL: Update checkout banner after state changes
-            updateCheckoutBanner();
+
             
             renderNotifications();
         }
