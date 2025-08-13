@@ -68,44 +68,51 @@
     style.id = 'new-feature-banner-styles';
     style.textContent = `
       .nfb-btn { 
-        background: #dc2626; 
-        color: #fff; 
-        border: none; 
-        border-radius: 999px; 
-        padding: 4px 12px; 
-        font-weight: 600; 
-        cursor: pointer; 
-        font-size: 12px;
-        box-shadow: 0 2px 6px rgba(0,0,0,0.2);
+        background: #bfdbfe !important; 
+        color: #1e40af !important; 
+        border: none !important; 
+        border-radius: 999px !important; 
+        padding: 4px 10px !important; 
+        font-weight: 700 !important; 
+        cursor: pointer !important; 
+        font-size: 12px !important;
+        box-shadow: 0 2px 6px rgba(0,0,0,0.2) !important;
       }
-      .nfb-btn:hover { background: #b91c1c; }
-      .nfb-btn[disabled] { opacity: .55; cursor: default; }
-      .nfb-btn-inactive { opacity: .55; }
-      .nfb-btn-active { background: #991b1b !important; }
+      .nfb-btn:hover { background: #3b82f6 !important; color: white !important; }
+      .nfb-btn[disabled] { opacity: .55 !important; cursor: default !important; }
+      .nfb-btn-inactive { opacity: .55 !important; }
+      .nfb-btn-active { background: #3b82f6 !important; color: white !important; }
       
-      /* Pulsing animation */
+      /* Pulsing animation - matches checkout banner colors */
       @keyframes nfb-pulse {
         0% { 
-          background: #dc2626; 
-          box-shadow: 0 0 0 0 rgba(220, 38, 38, 0.7);
+          background: #bfdbfe !important; 
+          color: #1e40af !important;
+          box-shadow: 0 0 0 0 rgba(59, 130, 246, 0.7) !important;
+          transform: scale(1) !important;
         }
         50% { 
-          background: #991b1b; 
-          box-shadow: 0 0 0 6px rgba(220, 38, 38, 0.3);
+          background: #3b82f6 !important; 
+          color: white !important;
+          box-shadow: 0 0 0 8px rgba(59, 130, 246, 0.2) !important;
+          transform: scale(1.05) !important;
         }
         100% { 
-          background: #dc2626; 
-          box-shadow: 0 0 0 0 rgba(220, 38, 38, 0);
+          background: #bfdbfe !important; 
+          color: #1e40af !important;
+          box-shadow: 0 0 0 0 rgba(59, 130, 246, 0) !important;
+          transform: scale(1) !important;
         }
       }
       
       .nfb-pulse {
-        animation: nfb-pulse 2s infinite ease-in-out;
+        animation: nfb-pulse 1.5s infinite ease-in-out !important;
       }
       
       .nfb-pulse:hover {
-        animation-play-state: paused;
-        background: #ff8fbd !important;
+        animation-play-state: paused !important;
+        background: #3b82f6 !important;
+        color: white !important;
       }
       /* Use extreme z-index to appear above any stacking contexts */
       .nfb-modal-backdrop { position: fixed; inset: 0; background: rgba(0,0,0,0.35); display: none; z-index: 2147483646; }
@@ -305,7 +312,7 @@
       btn.style.position = 'absolute';
       btn.style.top = '8px';
       btn.style.right = '8px'; // Back to right edge since menu button removed
-      btn.style.zIndex = '1000002';
+      btn.style.zIndex = '2147483647';
       btn.style.pointerEvents = 'auto';
       log('button-created');
 
