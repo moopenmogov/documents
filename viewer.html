@@ -1075,7 +1075,7 @@
                     </div>
                     <div style="display:flex; align-items:center; gap:8px;">
                         <label for="webDocActionsSelect" style="width:115px;">Document actions:</label>
-                        <select id="webDocActionsSelect" class="shared-dropdown user-select" style="width:200px; margin-left:5px;" onfocus="refreshDropdownFromCurrentState()">
+                        <select id="webDocActionsSelect" class="shared-dropdown user-select" style="width:200px; margin-left:5px;" onfocus="refreshWebDropdownFromMatrix()">
                             <option value="">select</option>
                         </select>
                     </div>
@@ -2707,22 +2707,20 @@
             renderNotifications();
         }
         
-        // DYNAMIC DROPDOWN: Check state matrix every time dropdown is opened
-        async function refreshDropdownFromCurrentState() {
-            console.log('🔄 WEB: Dropdown opened - checking current state matrix...');
+        // DYNAMIC DROPDOWN: Use same approach as Word add-in  
+        async function refreshWebDropdownFromMatrix() {
+            console.log('🔄 WEB: Dropdown opened - refreshing from live state matrix...');
             try {
-                // Step 1: Get fresh state matrix based on current state
+                // Step 1: Get fresh state matrix (same as Word add-in)
                 await updateUIFromStateMatrix('web', getCurrentUser, getCurrentUserRole, currentDocumentState);
                 
-                // Step 2: Immediately refresh dropdown with fresh data
+                // Step 2: Use shared function to rebuild dropdown (same as Word add-in)
                 if (window.__lastStateMatrix && typeof window.refreshActionsDropdownFromMatrix === 'function') {
                     window.refreshActionsDropdownFromMatrix('webDocActionsSelect', window.__lastStateMatrix);
-                    console.log('🔄 WEB: Dropdown refreshed with live state matrix data');
-                } else {
-                    console.warn('⚠️ WEB: State matrix or refresh function not available');
+                    console.log('🔄 WEB: Dropdown rebuilt with fresh state matrix data');
                 }
             } catch (e) {
-                console.warn('⚠️ WEB: Failed to refresh dropdown from current state:', e);
+                console.warn('⚠️ WEB: Failed to refresh dropdown from matrix:', e);
             }
         }
         
