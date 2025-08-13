@@ -1076,7 +1076,7 @@
                     </div>
                     <div style="display:flex; align-items:center; gap:8px;">
                         <label for="webDocActionsSelect" style="width:115px;">Document actions:</label>
-                        <select id="webDocActionsSelect" class="shared-dropdown user-select" style="width:200px; margin-left:5px;" onfocus="refreshWebDropdownFromMatrix()">
+                        <select id="webDocActionsSelect" class="shared-dropdown user-select" style="width:200px; margin-left:5px;" onclick="refreshWebDropdownFromMatrix()">
                             <option value="">select</option>
                         </select>
                     </div>
@@ -1285,20 +1285,20 @@
                         console.log(`📡 SSE: ${data.message}`);
                     } else if (data.type === 'document-checked-out') {
                         console.log(`📡 SSE: ${data.message}`);
-                        fetchDocumentStatus(); // Refresh UI when checkout state changes
+                        fetchDocumentStatus().then(() => updateUIFromStateMatrix('web', getCurrentUser, getCurrentUserRole, currentDocumentState)); // Refresh UI when checkout state changes
                     } else if (data.type === 'document-checked-in') {
                         console.log(`📡 SSE: ${data.message}`);
-                        fetchDocumentStatus(); // Refresh UI when checkout state changes
+                        fetchDocumentStatus().then(() => updateUIFromStateMatrix('web', getCurrentUser, getCurrentUserRole, currentDocumentState)); // Refresh UI when checkout state changes
                     } else if (data.type === 'document-saved') {
                         console.log(`📡 SSE: ${data.message}`);
                         // No need to refresh buttons for save progress (still checked out)
                     } else if (data.type === 'checkout-cancelled') {
                         console.log(`📡 SSE: ${data.message}`);
-                        fetchDocumentStatus(); // Refresh UI when checkout state changes
+                        fetchDocumentStatus().then(() => updateUIFromStateMatrix('web', getCurrentUser, getCurrentUserRole, currentDocumentState)); // Refresh UI when checkout state changes
                     } else if (data.type === 'document-uploaded') {
                         console.log(`📡 SSE: ${data.message}`);
                         console.log(`📄 Auto-loading document: ${data.filename} (ID: ${data.documentId})`);
-                        fetchDocumentStatus(); // Refresh UI when new document is available
+                        fetchDocumentStatus().then(() => updateUIFromStateMatrix('web', getCurrentUser, getCurrentUserRole, currentDocumentState)); // Refresh UI when new document is available
                         // Auto-load the uploaded document
                         if (data.documentId && data.filename) {
                             console.log(`🚀 Calling loadSuperdoc(${data.documentId}, ${data.filename})`);
@@ -1314,7 +1314,7 @@
                         addNotification(data.message || 'Vendor has been invited to redline', 'info');
                     } else if (data.type === 'vendor-checkout-overridden') {
                         console.log(`📡 SSE: ${data.message}`);
-                        fetchDocumentStatus(); // Refresh UI when vendor checkout overridden
+                        fetchDocumentStatus().then(() => updateUIFromStateMatrix('web', getCurrentUser, getCurrentUserRole, currentDocumentState)); // Refresh UI when vendor checkout overridden
                     } else if (data.type === 'user-switched') {
                         console.log(`📡 WEB SSE: User switched event received:`, data);
                         
@@ -2040,6 +2040,7 @@
                     
                     // Disable user selection during checkout
                     await fetchDocumentStatus(); // Refresh UI
+                    await updateUIFromStateMatrix('web', getCurrentUser, getCurrentUserRole, currentDocumentState);
                     
                     // Try to load the current document
                     if (currentDocumentState.currentDocument && currentDocumentState.currentDocument.id) {
@@ -2149,6 +2150,7 @@
                     
                     // Re-enable user selection after successful checkin
                     await fetchDocumentStatus(); // Refresh UI
+                    await updateUIFromStateMatrix('web', getCurrentUser, getCurrentUserRole, currentDocumentState);
                 } else {
                     const error = await response.json();
                     showStatus(`❌ ${error.error}`, 'error');
@@ -2173,6 +2175,7 @@
                     
                     // Re-enable user selection after cancelling checkout
                     await fetchDocumentStatus(); // Refresh UI
+                    await updateUIFromStateMatrix('web', getCurrentUser, getCurrentUserRole, currentDocumentState);
                 } else {
                     const error = await response.json();
                     showStatus(`❌ ${error.error}`, 'error');
@@ -2640,7 +2643,7 @@
         
         // DYNAMIC DROPDOWN: Use same approach as Word add-in  
         async function refreshWebDropdownFromMatrix() {
-            console.log('🔄 WEB: Dropdown opened - refreshing from live state matrix...');
+            console.log('🔄 WEB: Dropdown clicked - refreshing from live state matrix...');
             try {
                 // Step 1: Get fresh state matrix (same as Word add-in)
                 await updateUIFromStateMatrix('web', getCurrentUser, getCurrentUserRole, currentDocumentState);
