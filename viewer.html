@@ -961,12 +961,12 @@
             <div class="grid-actions" style="align-items:center; gap:8px;">
                 <span>Current user: <strong id="currentUserDisplay">Loading...</strong> <span id="currentUserRole">(editor)</span></span>
                 <label for="userSwitcher">Switch User (Demo):</label>
-                <select id="userSwitcher" class="user-select" onchange="switchUser(this.value)"></select>
-                <select id="webDocActionsSelect" class="user-select">
+                <select id="userSwitcher" class="user-select" onchange="switchUser(this.value)" style="margin-top:6px"></select>
+                <select id="webDocActionsSelect" class="user-select" style="margin-top:6px">
                     <option value="">Document actions…</option>
                 </select>
                 <span id="approvalsPillWeb" style="display:inline-block; padding:4px 10px; border-radius:999px; background:#e9f5ee; color:#0f5132; font-weight:600; font-size:12px;">—/— approved</span>
-                <button type="button" id="btnApprovalsDetailsWeb" class="btn btn-secondary" style="padding:4px 10px; font-size:12px;">Approval details</button>
+                <button type="button" id="btnApprovalsDetailsWeb" class="btn btn-secondary" style="padding:4px 10px; font-size:12px; margin-left:5px;">Approval details</button>
             </div>
             <div id="docActionsDropdown_grid" class="dropdown" style="display:none;"></div>
         </div>
