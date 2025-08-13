@@ -68,7 +68,7 @@
     style.id = 'new-feature-banner-styles';
     style.textContent = `
       .nfb-btn { 
-        background: #ff6fa5; 
+        background: #f59e0b; 
         color: #fff; 
         border: none; 
         border-radius: 999px; 
@@ -78,24 +78,24 @@
         font-size: 12px;
         box-shadow: 0 2px 6px rgba(0,0,0,0.2);
       }
-      .nfb-btn:hover { background: #ff8fbd; }
+      .nfb-btn:hover { background: #d97706; }
       .nfb-btn[disabled] { opacity: .55; cursor: default; }
       .nfb-btn-inactive { opacity: .55; }
-      .nfb-btn-active { background: #ff2d80 !important; }
+      .nfb-btn-active { background: #b45309 !important; }
       
       /* Pulsing animation */
       @keyframes nfb-pulse {
         0% { 
-          background: #ff6fa5; 
-          box-shadow: 0 0 0 0 rgba(255, 111, 165, 0.7);
+          background: #f59e0b; 
+          box-shadow: 0 0 0 0 rgba(245, 158, 11, 0.7);
         }
         50% { 
-          background: #ff2d80; 
-          box-shadow: 0 0 0 6px rgba(255, 111, 165, 0.3);
+          background: #d97706; 
+          box-shadow: 0 0 0 6px rgba(245, 158, 11, 0.3);
         }
         100% { 
-          background: #ff6fa5; 
-          box-shadow: 0 0 0 0 rgba(255, 111, 165, 0);
+          background: #f59e0b; 
+          box-shadow: 0 0 0 0 rgba(245, 158, 11, 0);
         }
       }
       
