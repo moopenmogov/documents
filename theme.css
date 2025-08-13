@@ -25,7 +25,7 @@
     background: var(--status-bg);
     color: var(--status-text);
     border: 1px solid var(--border);
-    padding: 8px 16px;
+    padding: 6px 11px;
     border-radius: 6px;
     font-weight: 600;
     display: inline-block;
