@@ -1837,6 +1837,27 @@
             border-color: black !important;
             color: white !important;
         }
+        /* Vendor modal explicit button styles to ensure visibility */
+        #vendorModal .notification-modal-body button[type="button"] {
+            background: #ffffff !important;
+            color: #111 !important;
+            border: 1px solid #cbd5e1 !important; /* slate-300 */
+            border-radius: 4px !important;
+        }
+        #vendorModal .notification-modal-body button[type="submit"] {
+            background: #0078d4 !important; /* OG blue */
+            color: #ffffff !important;
+            border: 1px solid #005ea2 !important; /* darker blue border */
+            border-radius: 4px !important;
+        }
+        #vendorModal .notification-modal-body button[type="button"]:hover {
+            background: #f8fafc !important;
+            border-color: #94a3b8 !important; /* slate-400 */
+        }
+        #vendorModal .notification-modal-body button[type="submit"]:hover {
+            background: #006cbe !important;
+            border-color: #00518c !important;
+        }
     </style>
 
     <script>
@@ -2038,10 +2059,10 @@
 
         <!-- Left: Users + Actions -->
 
-        <div class="grid-card" style="grid-column:1; grid-row:1;">
+        <div class="grid-card" style="grid-column:1; grid-row:1; background:#fff3cd; border:1px solid #ffeaa7; border-radius:6px;">
 
 
-            <div class="grid-actions" style="align-items:center; gap:8px;">
+            <div class="grid-actions" style="align-items:center; gap:8px; padding:8px;">
 
                 <div class="current-user">
                     <span class="user-label">User:</span>
@@ -2189,7 +2210,7 @@
 
                 </div>
 
-            <div class="notification-modal-body">
+            <div class="notification-modal-body" style="max-height:70vh; overflow:auto;">
 
                 <form id="vendorForm" onsubmit="sendToVendor(event)">
 
@@ -2233,11 +2254,11 @@
 
                 </div>
 
-                    <div style="display: flex; gap: 10px; justify-content: flex-end;">
+                    <div style="position:sticky; bottom:0; background:#fff; padding-top:10px; display: flex; gap: 10px; justify-content: flex-end; border-top: 1px solid #e5e7eb; z-index:2;">
 
                         <button type="button" onclick="closeVendorModal()" 
 
-                                style="padding: 8px 16px; border: 1px solid #ccc; background: white; border-radius: 4px; cursor: pointer;">
+                                style="padding: 8px 16px !important; border: 1px solid #cbd5e1 !important; background: #ffffff !important; color:#111 !important; border-radius: 4px !important; cursor: pointer !important;">
 
                             Cancel
 
@@ -2245,7 +2266,7 @@
 
                         <button type="submit" 
 
-                                style="padding: 8px 16px; border: none; background: #0078d4; color: white; border-radius: 4px; cursor: pointer;">
+                                style="padding: 8px 16px !important; border: 1px solid #005ea2 !important; background: #0078d4 !important; color: #ffffff !important; border-radius: 4px !important; cursor: pointer !important;">
 
                             Send to Vendor
 
