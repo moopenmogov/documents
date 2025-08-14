@@ -627,8 +627,8 @@ app.get('/api/default-document', (req, res) => {
         return res.json(currentDocument);
     }
 
-    // If there is already a current document, do not overwrite it; just report it
-    console.log('ℹ️ Default document present, but current document already set. Not overwriting.');
+    // If there is already a current document, return it (web viewer should show current doc)
+    console.log('✅ Returning current document to web viewer:', currentDocument.filename);
     return res.json(currentDocument);
 });
 
