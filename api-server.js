@@ -3,6 +3,7 @@ const cors = require('cors');
 const multer = require('multer');
 const fs = require('fs');
 const path = require('path');
+const { spawn } = require('child_process');
 let PDFLib = null; // lazy-loaded for compile endpoint
 
 const app = express();
@@ -29,6 +30,44 @@ const storage = multer.diskStorage({
     }
 });
 const upload = multer({ storage });
+
+// Helpers
+function writeFileAtomic(targetPath, buffer) {
+    const dir = path.dirname(targetPath);
+    const tmp = path.join(dir, `.${path.basename(targetPath)}.${Date.now()}.tmp`);
+    fs.writeFileSync(tmp, buffer);
+    if (fs.existsSync(targetPath)) {
+        try { fs.unlinkSync(targetPath); } catch (_) {}
+    }
+    fs.renameSync(tmp, targetPath);
+}
+
+async function convertDocxToPdf(docxPath) {
+    // If test stub enabled, return a minimal PDF built via pdf-lib
+    if (process.env.DOCX_PDF_STUB === '1') {
+        if (!PDFLib) PDFLib = require('pdf-lib');
+        const { PDFDocument, StandardFonts } = PDFLib;
+        const d = await PDFDocument.create();
+        const p = d.addPage([600, 800]);
+        const f = await d.embedFont(StandardFonts.Helvetica);
+        p.drawText('Stubbed DOCX->PDF', { x: 50, y: 750, size: 16, font: f });
+        p.drawText(`Source: ${path.basename(docxPath)}`, { x: 50, y: 720, size: 12, font: f });
+        return await d.save();
+    }
+    // Try LibreOffice (soffice) headless conversion
+    const outDir = path.dirname(docxPath);
+    const args = ['--headless', '--convert-to', 'pdf', '--outdir', outDir, docxPath];
+    const bin = process.env.SOFFICE_BIN || 'soffice';
+    await new Promise((resolve, reject) => {
+        const proc = spawn(bin, args, { stdio: 'ignore' });
+        proc.on('error', reject);
+        proc.on('exit', (code) => (code === 0 ? resolve() : reject(new Error('soffice failed'))));
+    });
+    const pdfPath = docxPath.replace(/\.docx$/i, '.pdf');
+    const bytes = fs.readFileSync(pdfPath);
+    try { fs.unlinkSync(pdfPath); } catch (_) {}
+    return bytes;
+}
 
 // Store current document info and checkout state
 let currentDocument = {
@@ -574,6 +613,47 @@ app.post('/api/upload-docx', (req, res) => {
     }
 });
 
+// Replace default document (DOCX) with atomic write
+// POST /api/replace-default { base64Docx, originalFilename }
+app.post('/api/replace-default', (req, res) => {
+    try {
+        const { base64Docx, originalFilename } = req.body || {};
+        if (!base64Docx) {
+            return res.status(400).json({ error: 'missing_body', message: 'base64Docx required' });
+        }
+        // Basic type validation by extension of provided filename
+        if (originalFilename && !/\.docx$/i.test(originalFilename)) {
+            return res.status(400).json({ error: 'unsupported_media_type', message: 'Upload a .docx file' });
+        }
+
+        const buffer = Buffer.from(base64Docx, 'base64');
+        const targetPath = path.join(defaultDocDir, 'current.docx');
+        writeFileAtomic(targetPath, buffer);
+
+        // Update currentDocument metadata
+        const ts = Date.now();
+        currentDocument = {
+            id: `doc-${ts}`,
+            filename: originalFilename || 'current.docx',
+            filePath: targetPath,
+            lastUpdated: new Date().toISOString()
+        };
+
+        broadcastSSE({
+            type: 'document-uploaded',
+            message: `Default document replaced: ${currentDocument.filename}`,
+            documentId: currentDocument.id,
+            filename: currentDocument.filename,
+            timestamp: new Date().toISOString()
+        });
+
+        res.json({ success: true, currentDocument });
+    } catch (e) {
+        console.error('replace-default error:', e);
+        res.status(500).json({ error: 'replace_default_failed' });
+    }
+});
+
 // Serve DOCX file to SuperDoc viewer
 app.get('/api/document/:documentId', (req, res) => {
     try {
@@ -740,17 +820,33 @@ app.get('/api/get-updated-docx', (req, res) => {
 });
 
 // ===== COMPILE API =====
-// Merge a client-provided PDF (from Word export) with exhibit PDFs
-// POST /api/compile { base64Pdf, exhibitPath, exhibits }
+// Merge a primary PDF (client-provided or generated from current DOCX) with exhibit PDFs
+// POST /api/compile { base64Pdf?, primary?, exhibitPath?, exhibits? }
 app.post('/api/compile', async (req, res) => {
     try {
-        const { base64Pdf, exhibitPath, exhibits } = req.body || {};
-        if (!base64Pdf) return res.status(400).json({ error: 'base64Pdf required' });
+        const { base64Pdf, primary, exhibitPath, exhibits } = req.body || {};
         if (!PDFLib) PDFLib = require('pdf-lib');
         const { PDFDocument } = PDFLib;
 
-        const primaryBytes = Buffer.from(base64Pdf, 'base64');
-        const primary = await PDFDocument.load(primaryBytes);
+        // Determine primary bytes
+        let primaryBytes = null;
+        let includePrimary = true;
+        if (primary && primary.type === 'current') {
+            // generate from default-document/current.docx
+            const currentPath = path.join(defaultDocDir, 'current.docx');
+            if (!fs.existsSync(currentPath)) {
+                return res.status(400).json({ error: 'default_document_missing', message: 'No default document found. Use “Replace default document” to upload a .docx, then try again.' });
+            }
+            includePrimary = primary.include !== false;
+            primaryBytes = await convertDocxToPdf(currentPath);
+        } else if (typeof base64Pdf === 'string' && base64Pdf.length > 0) {
+            includePrimary = true;
+            primaryBytes = Buffer.from(base64Pdf, 'base64');
+        } else {
+            return res.status(400).json({ error: 'base64Pdf_or_primary_required' });
+        }
+
+        const primaryDoc = await PDFDocument.load(primaryBytes);
 
         let merged = primary;
         const mergedDoc = await PDFDocument.create();
@@ -758,7 +854,9 @@ app.post('/api/compile', async (req, res) => {
             const pages = await mergedDoc.copyPages(doc, doc.getPageIndices());
             pages.forEach(p => mergedDoc.addPage(p));
         };
-        await addDocPages(primary);
+        if (includePrimary) {
+            await addDocPages(primaryDoc);
+        }
 
         // helper: resolve exhibit path
         const resolveExhibitPath = (inputPath) => path.resolve(inputPath);
@@ -803,6 +901,12 @@ app.post('/api/compile', async (req, res) => {
                 const ed = await PDFDocument.load(bytes);
                 await addDocPages(ed);
             }
+        }
+
+        // If primary excluded and no exhibits included → error
+        const anyExhibitsIncluded = Array.isArray(exhibits) && exhibits.some(a => a && a.include !== false && a.path);
+        if (!includePrimary && !exhibitPath && !anyExhibitsIncluded) {
+            return res.status(400).json({ error: 'no_inputs_selected', message: 'Include the primary document or at least one exhibit.' });
         }
 
         merged = mergedDoc;
