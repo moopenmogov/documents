@@ -63,13 +63,13 @@
         
         .opengov-header {
             text-align: center;
-            margin-bottom: 15px;
-            padding: 15px;
-            background: linear-gradient(135deg, #8a8db5, #9ca3af);
+			margin-bottom: 12px;
+			padding: 4px;
+			background: linear-gradient(135deg, #8a8db5, #9ca3af);
             color: white;
-            border-radius: 10px;
-            position: relative;
-        }
+			border-radius: 10px;
+			position: relative;
+		}
         
         .coming-soon-badge {
             position: absolute;
@@ -87,7 +87,8 @@
 
         
         .opengov-logo {
-            margin-bottom: 15px;
+			margin-top: 36px;
+            margin-bottom: 12px;
             display: flex;
             justify-content: center;
         }
@@ -119,6 +120,38 @@
             padding: 8px;
             margin-bottom: 10px;
             font-size: 12px;
+        }
+
+		/* Templates button */
+		.btn-templates {
+			background: #f3f4f6;
+			color: #111827;
+			border: 1px solid #d1d5db;
+			padding: 6px 12px;
+			border-radius: 6px;
+			font-size: 13px;
+			font-weight: 600;
+			cursor: pointer;
+			box-shadow: none;
+			transition: background-color 0.2s ease, border-color 0.2s ease;
+		}
+		.btn-templates:hover { background: #e5e7eb; border-color: #9ca3af; }
+
+		/* Shared dropdown-like button styling to match web */
+		.shared-dropdown {
+			border: 1px solid #dee2e6;
+			border-radius: 6px;
+			padding: 8px 12px;
+			background: #fff;
+			color: #111;
+			cursor: pointer;
+			transition: border-color 0.2s ease;
+		}
+		.shared-dropdown:hover { border-color: #6b7280; }
+		.shared-dropdown:focus {
+			outline: none;
+			border-color: #6b7280;
+			box-shadow: 0 0 0 2px rgba(107, 114, 128, 0.15);
         }
         
         .current-user {
@@ -813,6 +846,13 @@
         /* REMOVED: Conflicting !important rule that was overriding state matrix colors */
         /* State matrix now has full control over checkout-status colors */
         @import url("../../theme.css");
+        
+        /* Take Me Back to OpenGov button hover effect */
+        .btn-back-to-opengov:hover {
+            background: #e9d5ff !important;
+            border-color: black !important;
+            color: white !important;
+        }
 
         /* Add styles for web-like pill colors */
         .btn { border:none; border-radius:8px; padding:8px 12px; font-weight:600; cursor:pointer; color:#fff !important; }
@@ -864,6 +904,7 @@
         
         <!-- Title + banners stacked directly under the pink header -->
             <div class="title-banner-stack" style="padding:8px 0;">
+            <!-- Buttons moved to user-controls area -->
             <p class="document-title" id="document-title" style="margin:0 0 6px 0; text-align:center;">No document loaded</p>
             <div id="viewerMessage" class="viewer-message" style="display: none; margin:0 0 6px 0;"></div>
             <div id="checkoutStatus" class="checkout-status" style="margin:0 0 8px 0; text-align:center; transform:scale(0.9); transform-origin:center;"></div>
@@ -887,6 +928,14 @@
                         <select id="userSwitcher" class="shared-dropdown user-select" onchange="switchUser(this.value)" style="width:190px;">
                             <option value="">no change</option>
                     </select>
+                </div>
+                    <div style="display:flex; align-items:center; gap:8px;">
+                        <label style="width:120px; visibility:hidden;">spacer</label>
+                        <button id="templatesBtn" class="shared-dropdown" style="width:190px; text-align:left;">Templates</button>
+                    </div>
+                    <div style="display:flex; align-items:center; gap:8px;">
+                        <label style="width:120px; visibility:hidden;">spacer</label>
+                        <button id="backToOpenGovBtn" class="shared-dropdown" style="width:190px; text-align:left;">Take Me Back to OpenGov</button>
                     </div>
                 </div>
             </div>
@@ -913,6 +962,165 @@
         
         </div> <!-- End addin-controls-area -->
     </div>
+    
+    <!-- Templates Modal -->
+    <div id="templatesModal" style="display: none; position: fixed; inset: 0; background: rgba(0,0,0,0.5); z-index: 2147483647;">
+        <div style="position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); background: white; border-radius: 8px; padding: 16px; width: 560px; max-width: 92vw; box-shadow: 0 10px 30px rgba(0,0,0,0.2);">
+            <h2 style="margin: 0 0 12px 0; font-size: 16px;">Templates</h2>
+            <div style="overflow: auto; max-height: 60vh;">
+                <table style="width: 100%; border-collapse: collapse; font-size: 13px;">
+                    <thead>
+                        <tr style="background: #f8fafc; text-align: left;">
+                            <th style="padding: 8px; border-bottom: 1px solid #e5e7eb;">File name</th>
+                            <th style="padding: 8px; border-bottom: 1px solid #e5e7eb;">Status</th>
+                            <th style="padding: 8px; border-bottom: 1px solid #e5e7eb;">Owner</th>
+                            <th style="padding: 8px; border-bottom: 1px solid #e5e7eb;">Check-out</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr>
+                            <td style="padding: 8px; border-bottom: 1px solid #f1f5f9;">Services template</td>
+                            <td style="padding: 8px; border-bottom: 1px solid #f1f5f9;"><button class="badge-toggle" data-kind="status">Draft</button></td>
+                            <td style="padding: 8px; border-bottom: 1px solid #f1f5f9;">Mo-templates</td>
+                            <td style="padding: 8px; border-bottom: 1px solid #f1f5f9;"><button class="badge-toggle" data-kind="checkout">Free</button></td>
+                        </tr>
+                        <tr>
+                            <td style="padding: 8px; border-bottom: 1px solid #f1f5f9;">Public works template</td>
+                            <td style="padding: 8px; border-bottom: 1px solid #f1f5f9;"><button class="badge-toggle" data-kind="status">Draft</button></td>
+                            <td style="padding: 8px; border-bottom: 1px solid #f1f5f9;">Mo-templates</td>
+                            <td style="padding: 8px; border-bottom: 1px solid #f1f5f9;"><button class="badge-toggle" data-kind="checkout">Free</button></td>
+                        </tr>
+                        <tr>
+                            <td style="padding: 8px; border-bottom: 1px solid #f1f5f9;">Software renewal template</td>
+                            <td style="padding: 8px; border-bottom: 1px solid #f1f5f9;"><button class="badge-toggle" data-kind="status">Draft</button></td>
+                            <td style="padding: 8px; border-bottom: 1px solid #f1f5f9;">Mo-templates</td>
+                            <td style="padding: 8px; border-bottom: 1px solid #f1f5f9;"><button class="badge-toggle" data-kind="checkout">Free</button></td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+            <div style="display: flex; justify-content: flex-end; gap: 8px; margin-top: 12px;">
+                <button id="templatesCloseBtn" class="btn-templates">Close</button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Templates modal functionality
+        document.addEventListener('DOMContentLoaded', function() {
+            var btn = document.getElementById('templatesBtn');
+            var modal = document.getElementById('templatesModal');
+            var closeBtn = document.getElementById('templatesCloseBtn');
+            var toggleClass = 'badge-toggle';
+            var statusCycle = ['Draft','Live'];
+            var checkoutCycle = ['Free','Checked out'];
+            function open(){ if(modal) modal.style.display = 'block'; }
+            function close(){ if(modal) modal.style.display = 'none'; }
+            if (btn) btn.addEventListener('click', open);
+            if (closeBtn) closeBtn.addEventListener('click', close);
+            if (modal) {
+                modal.addEventListener('click', function(e){ if(e.target === modal) close(); });
+                document.addEventListener('keydown', function(e){ if(e.key === 'Escape' && modal.style.display === 'block') close(); });
+            }
+                document.addEventListener('click', function(e){
+                    var t = e.target;
+                    if (!(t && t.classList && t.classList.contains(toggleClass))) return;
+                    var kind = t.getAttribute('data-kind');
+                    if (kind === 'status') {
+                        t.textContent = (t.textContent === 'Draft') ? statusCycle[1] : statusCycle[0];
+                    } else if (kind === 'checkout') {
+                        var next = (t.textContent === 'Free') ? checkoutCycle[1] : checkoutCycle[0];
+                        var row = t.closest && t.closest('tr');
+                        var nameCell = row && row.cells && row.cells[0];
+                        var name = nameCell ? (nameCell.textContent || '').trim() : 'Template';
+                        if (next === 'Checked out') {
+                            // Show custom confirm modal in add-in
+                            (function confirmCheckout(){
+                                var backdropId = 'tmplConfirmBackdrop';
+                                var modalId = 'tmplConfirmModal';
+                                if (!document.getElementById(backdropId)) {
+                                    var bd = document.createElement('div');
+                                    bd.id = backdropId;
+                                    bd.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,.35);z-index:2147483646';
+                                    document.body.appendChild(bd);
+                                }
+                                if (!document.getElementById(modalId)) {
+                                    var m = document.createElement('div');
+                                    m.id = modalId;
+                                    m.setAttribute('role','dialog');
+                                    m.style.cssText = 'position:fixed;top:50%;left:50%;transform:translate(-50%,-50%);background:#fff;border-radius:10px;width:min(520px,92vw);padding:16px;box-shadow:0 8px 24px rgba(0,0,0,.25);z-index:2147483647';
+                                    m.innerHTML = '<div style="font-weight:700;font-size:16px;margin:0 0 8px">Confirm template checkout</div>'+
+                                                  '<div style="font-size:13px;margin:0 0 14px">In the future this button will open your template right here. </div>'+
+                                                  '<div style="display:flex;justify-content:flex-end;gap:8px">'+
+                                                  '<button id="tmplConfirmCancel" style="padding:6px 12px;border:1px solid #111;border-radius:6px;background:#f3f4f6;font-weight:600;cursor:pointer">Cancel</button>'+
+                                                  '<button id="tmplConfirmOk" style="padding:6px 12px;border:1px solid #0a0;background:#10b981;color:#fff;border-radius:6px;font-weight:700;cursor:pointer">Check out</button>'+
+                                                  '</div>';
+                                    document.body.appendChild(m);
+                                    var cleanup = function(){
+                                        try{ document.getElementById(modalId)?.remove(); document.getElementById(backdropId)?.remove(); }catch(_){ }
+                                    };
+                                    document.getElementById('tmplConfirmCancel').onclick = function(){ cleanup(); };
+                                    document.getElementById('tmplConfirmOk').onclick = function(){
+                                        try {
+                                            if (typeof addNotification === 'function') {
+                                                addNotification('📄 Checked out: ' + name, 'info');
+                                            } else {
+                                                console.log('Checked out: ' + name);
+                                            }
+                                        } finally {
+                                            cleanup();
+                                            t.textContent = next;
+                                        }
+                                    };
+                                }
+                                 // Ensure confirm elements are visible and handlers are bound even if already existed
+                                 try {
+                                     var __bd = document.getElementById('tmplConfirmBackdrop');
+                                     if (__bd) {
+                                         __bd.style.display = 'block';
+                                         __bd.style.pointerEvents = 'auto';
+                                         __bd.style.zIndex = '2147483646';
+                                     }
+                                 } catch(_) {}
+                                 try {
+                                     var __m = document.getElementById('tmplConfirmModal');
+                                     if (__m) {
+                                         __m.style.display = 'block';
+                                         __m.style.zIndex = '2147483647';
+                                         __m.style.position = 'fixed';
+                                         __m.style.top = '50%';
+                                         __m.style.left = '50%';
+                                         __m.style.transform = 'translate(-50%,-50%)';
+                                     }
+                                 } catch(_) {}
+                                 try {
+                                     var __cleanup = function(){
+                                         try { document.getElementById('tmplConfirmModal').style.display='none'; document.getElementById('tmplConfirmBackdrop').style.display='none'; } catch(_) {}
+                                     };
+                                     var __c = document.getElementById('tmplConfirmCancel');
+                                     if (__c) { __c.onclick = function(){ __cleanup(); }; }
+                                     var __o = document.getElementById('tmplConfirmOk');
+                                     if (__o) { __o.onclick = function(){
+                                         try {
+                                             if (typeof addNotification === 'function') {
+                                                 addNotification('📄 Checked out: ' + name, 'info');
+                                             } else {
+                                                 console.log('Checked out: ' + name);
+                                             }
+                                         } finally {
+                                             __cleanup();
+                                             t.textContent = next;
+                                         }
+                                     }; }
+                                 } catch(_) {}
+                            })();
+                            return;
+                        }
+                        t.textContent = next;
+                    }
+                });
+        });
+    </script>
     
     <!-- Notification Modal -->
     <div id="notificationModal" class="notification-modal" style="display: none;">
@@ -3904,11 +4112,11 @@
                     tr.setAttribute('data-user-id', u.id);
                     tr.innerHTML=`<td>${u.name}</td><td>${u.role}</td>`; tr.append(tdS, tdA); tbody.appendChild(tr);
                     // Track modal row mapping for reliable SSE updates
-                    try {
+                try {
                         const map = (window.__wordUserRowsById = window.__wordUserRowsById || {});
                         if (!Array.isArray(map[u.id])) map[u.id] = [];
                         map[u.id].push(tr);
-                    } catch(_) {}
+                } catch(_) {}
                 });
 
                 // REMOVED: Local pill calculation to prevent race condition with SSE events
@@ -5198,6 +5406,63 @@ window.__forceOpenApprovalsTest = function() {
             return { passed, failed, total: tests.length };
         };
     </script>
+    
+    <!-- Take Me Back to OpenGov Modal -->
+    <div id="backToOpenGovModal" style="display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.5); z-index: 2147483647;">
+        <div style="position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); background: white; border-radius: 8px; padding: 20px; max-width: 90vw; max-height: 90vh; box-shadow: 0 4px 20px rgba(0,0,0,0.15);">
+            <h2 style="margin: 0 0 15px 0; font-size: 18px; font-weight: 600; text-align: center;">We're not going back! We're going forward!</h2>
+            <div style="position: relative; width: 400px; height: 225px; max-width: 100%;">
+                <iframe id="backToOpenGovVideo" 
+                        width="400" 
+                        height="225" 
+                        src="https://www.youtube.com/embed/dQw4w9WgXcQ?autoplay=1&mute=0" 
+                        title="YouTube video player" 
+                        frameborder="0" 
+                        allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share" 
+                        allowfullscreen>
+                </iframe>
+            </div>
+        </div>
+    </div>
+    
+    <script>
+        // Take Me Back to OpenGov modal functionality
+        document.addEventListener('DOMContentLoaded', function() {
+            const button = document.getElementById('backToOpenGovBtn');
+            const modal = document.getElementById('backToOpenGovModal');
+            const video = document.getElementById('backToOpenGovVideo');
+            
+            if (button && modal) {
+                // Open modal on button click
+                button.addEventListener('click', function() {
+                    modal.style.display = 'block';
+                });
+                
+                // Close modal when clicking outside the content
+                modal.addEventListener('click', function(e) {
+                    if (e.target === modal) {
+                        modal.style.display = 'none';
+                        // Stop video by resetting src
+                        const currentSrc = video.src;
+                        video.src = '';
+                        video.src = currentSrc.replace('autoplay=1', 'autoplay=0');
+                    }
+                });
+                
+                // Close modal on Escape key
+                document.addEventListener('keydown', function(e) {
+                    if (e.key === 'Escape' && modal.style.display === 'block') {
+                        modal.style.display = 'none';
+                        // Stop video by resetting src
+                        const currentSrc = video.src;
+                        video.src = '';
+                        video.src = currentSrc.replace('autoplay=1', 'autoplay=0');
+                    }
+                });
+            }
+        });
+    </script>
+    
 </body>
 </html>
 

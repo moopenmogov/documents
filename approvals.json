@@ -16,9 +16,9 @@
       "approvedAt": "2025-08-13T21:01:16.066Z"
     },
     "user2": {
-      "status": "approved",
+      "status": "rejected",
       "approvedBy": "user1",
-      "approvedAt": "2025-08-13T21:01:20.743Z"
+      "approvedAt": "2025-08-14T01:03:04.745Z"
     },
     "vendor1": {
       "status": "approved",
