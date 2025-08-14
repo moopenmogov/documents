@@ -1,0 +1,32 @@
+Working with AI is wild. Absolutely and unbelievably wild.
+
+As I sit here I'm pairing with it to refactor a bunch of shoddy client side logic into a server side state matrix.
+
+I mean, it's my fault for hacking it all together without insanely detailed planning and just wanting to move fast. But hot damn that creates such a mess when you layer on more features and "justs" and "or what about" and...pm's, you hear me?
+
+But yeah that's how it works. And right now my assistant is doing the hard work to synthesize my contradictory logic and recursive click paths. It's working fairly quickly but it's also doing...who knows.
+
+That's the problem. I've never built software in more than a recreational capacity, so building enterprise software is quite a jump for me. So as long as I pay attention every step of the way, including injecting myself while I see the LLM think dumb thoughts, it's useful. And when I let it go roam free, or give it vague and grandiose direction, it stumbles. It creates duplicate objects, conflicting logic, and still just makes shit up.
+
+But it just finished the state matrix. And it did a good job. Great, actually. I certainly wouldn't have been anywhere near specific enough, or comprehensive.
+
+It also sucked up more hours than I can count trying to debug and build extravagant logging systems to fix the core sync issue between the Word Add-In and the web viewer. Turned out we had a corrupt document and its base64 output was malformed. So we used a new document, and it 
+
+<<READ LESSONS LEARNED about that>>
+
+We all wear different hats, and AI does too. It wears a hat of insightful programmer, patient partner, and insanely fast developer. It also wears hats of sycophant, liar, junior developer, and saboteur. That latter one is the pits. I swear Claude got his rocks off every time he hit restore. The worst part was that there were so many damn bugs we just kept resolving them in different ways, and then creating more. State machine ftw 4eva
+
+When things worked well, it was a lot of fun. Seriously, vibing with an AI to build cool stuff is really fun. It's like having a super smart person completely attentive to anything you want them to do. Willing, eager, and (usually) well-intentioned.
+
+The quantity of superlatives is still a little off-putting, but oddly enough I'm getting comfortable with it. IDK if it's good to get praised as "Perfect!" for some gibberish that barely relates to the topic.
+
+There's a function to retrieve updated state from the server, refreshActionsDropdownFromMatrix, before loading a button dropdown. The AI obviously wrote it. But then they wrote a different one, which was constructed haphazardly and failed.
+
+
+It's not clear why it forgets immediate context. We were rebuilding a dropdown menu to refresh with several methods, including SSE events and auto-refresh. There were also action triggers, based on clicking into the dropdown. The AI spent 10x the necessary time going back and forth between using onfocus vs onclick, and I continually told it to copy what existed in the Add-In. Since, after all, that was working. What's interesting is that it acknowledged but was largely centered 
+
+
+
+It loves to do everything custom. Custom banners, custom tables, custom fields, 
+
+Be patient. 
