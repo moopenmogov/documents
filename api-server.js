@@ -19,8 +19,12 @@ app.use('/exhibits', express.static(path.join(__dirname, 'exhibits')));
 // Create directories if they don't exist
 const defaultDocDir = './default-document';
 const exhibitsDir = './exhibits';
+const exhibitsUploadsDir = path.join(exhibitsDir, 'uploads');
+const exhibitsDefaultsDir = path.join(exhibitsDir, 'defaults');
 if (!fs.existsSync(defaultDocDir)) { fs.mkdirSync(defaultDocDir); }
 if (!fs.existsSync(exhibitsDir)) { fs.mkdirSync(exhibitsDir); }
+if (!fs.existsSync(exhibitsUploadsDir)) { fs.mkdirSync(exhibitsUploadsDir, { recursive: true }); }
+if (!fs.existsSync(exhibitsDefaultsDir)) { fs.mkdirSync(exhibitsDefaultsDir, { recursive: true }); }
 
 // Configure multer for file uploads (DOCX updates go to default document dir)
 const storage = multer.diskStorage({
@@ -68,6 +72,40 @@ async function convertDocxToPdf(docxPath) {
     try { fs.unlinkSync(pdfPath); } catch (_) {}
     return bytes;
 }
+
+// Exhibits index for uploads (ids -> metadata)
+const EXHIBITS_INDEX_FILE = path.join(exhibitsUploadsDir, 'index.json');
+let exhibitsIndex = {};
+try {
+    if (fs.existsSync(EXHIBITS_INDEX_FILE)) {
+        exhibitsIndex = JSON.parse(fs.readFileSync(EXHIBITS_INDEX_FILE, 'utf8')) || {};
+    }
+} catch (_) { exhibitsIndex = {}; }
+function saveExhibitsIndex() {
+    try { fs.writeFileSync(EXHIBITS_INDEX_FILE, JSON.stringify(exhibitsIndex, null, 2)); } catch (_) {}
+}
+function listDefaultExhibits() {
+    try {
+        const files = fs.readdirSync(exhibitsDefaultsDir).filter(f => f.toLowerCase().endsWith('.pdf'));
+        return files.map(f => ({ filename: f, path: path.join(exhibitsDefaultsDir, f) }));
+    } catch (_) { return []; }
+}
+function sweepOldUploads(ttlHours = 24) {
+    const cutoff = Date.now() - ttlHours * 3600 * 1000;
+    Object.entries(exhibitsIndex).forEach(([id, meta]) => {
+        try {
+            const t = new Date(meta.createdAt).getTime();
+            if (isFinite(t) && t < cutoff) {
+                if (fs.existsSync(meta.path)) { fs.unlinkSync(meta.path); }
+                delete exhibitsIndex[id];
+            }
+        } catch (_) {}
+    });
+    saveExhibitsIndex();
+}
+// Run sweep on start and hourly
+try { sweepOldUploads(Number(process.env.EXHIBITS_TTL_HOURS || 24)); } catch (_) {}
+setInterval(() => { try { sweepOldUploads(Number(process.env.EXHIBITS_TTL_HOURS || 24)); } catch (_) {} }, 3600 * 1000);
 
 // Store current document info and checkout state
 let currentDocument = {
@@ -654,6 +692,77 @@ app.post('/api/replace-default', (req, res) => {
     }
 });
 
+// Upload an exhibit (PDF only)
+// POST /api/upload-exhibit { base64Pdf, originalFilename }
+app.post('/api/upload-exhibit', (req, res) => {
+    try {
+        const { base64Pdf, originalFilename, userId } = req.body || {};
+        if (!base64Pdf) return res.status(400).json({ error: 'missing_body', message: 'base64Pdf required' });
+        if (originalFilename && !/\.pdf$/i.test(originalFilename)) return res.status(400).json({ error: 'unsupported_media_type', message: 'Upload a .pdf file' });
+        const buffer = Buffer.from(base64Pdf, 'base64');
+        // Per-file size cap: 20 MB
+        if (buffer.length > 20 * 1024 * 1024) return res.status(400).json({ error: 'file_too_large', maxBytes: 20 * 1024 * 1024 });
+        // Per-user quotas (defaults aligned to prototype limits)
+        const maxFiles = Number(process.env.EXHIBITS_MAX_FILES_PER_USER || 2);
+        const maxBytes = Number(process.env.EXHIBITS_MAX_BYTES_PER_USER || (100 * 1024 * 1024));
+        const owner = (userId && String(userId)) || 'anonymous';
+        let userFiles = 0; let userBytes = 0;
+        Object.values(exhibitsIndex).forEach((m) => { if ((m.userId || 'anonymous') === owner) { userFiles += 1; userBytes += Number(m.size || 0); } });
+        if (userFiles + 1 > maxFiles) return res.status(400).json({ error: 'quota_exceeded', reason: 'max_files', maxFiles });
+        if (userBytes + buffer.length > maxBytes) return res.status(400).json({ error: 'quota_exceeded', reason: 'max_bytes', maxBytes });
+        const id = `exh_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`;
+        const filename = originalFilename || `${id}.pdf`;
+        const p = path.join(exhibitsUploadsDir, filename);
+        writeFileAtomic(p, buffer);
+        const meta = { id, path: p, filename, originalFilename: originalFilename || filename, size: buffer.length, createdAt: new Date().toISOString(), userId: owner };
+        exhibitsIndex[id] = meta;
+        saveExhibitsIndex();
+        res.json({ success: true, exhibit: meta });
+    } catch (e) {
+        res.status(500).json({ error: 'upload_exhibit_failed' });
+    }
+});
+
+// List exhibits
+// GET /api/exhibits/list
+app.get('/api/exhibits/list', (req, res) => {
+    try {
+        const defaults = listDefaultExhibits();
+        const uploads = Object.values(exhibitsIndex).sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
+        res.json({ success: true, defaults, uploads });
+    } catch (e) {
+        res.status(500).json({ error: 'list_exhibits_failed' });
+    }
+});
+
+// GET /api/exhibits/limits
+app.get('/api/exhibits/limits', (req, res) => {
+    try {
+        const maxFiles = Number(process.env.EXHIBITS_MAX_FILES_PER_USER || 2);
+        const maxBytes = Number(process.env.EXHIBITS_MAX_BYTES_PER_USER || (100 * 1024 * 1024));
+        const perFileMax = 20 * 1024 * 1024;
+        const ttlHours = Number(process.env.EXHIBITS_TTL_HOURS || 24);
+        res.json({ success: true, limits: { maxFiles, maxBytes, perFileMax, ttlHours } });
+    } catch (e) {
+        res.status(500).json({ error: 'limits_failed' });
+    }
+});
+
+// Delete an uploaded exhibit by id
+// POST /api/exhibits/delete { id }
+app.post('/api/exhibits/delete', (req, res) => {
+    try {
+        const { id } = req.body || {};
+        if (!id || !exhibitsIndex[id]) return res.status(404).json({ error: 'exhibit_not_found' });
+        const meta = exhibitsIndex[id];
+        try { if (fs.existsSync(meta.path)) fs.unlinkSync(meta.path); } catch (_) {}
+        delete exhibitsIndex[id];
+        saveExhibitsIndex();
+        res.json({ success: true });
+    } catch (e) {
+        res.status(500).json({ error: 'delete_exhibit_failed' });
+    }
+});
 // Serve DOCX file to SuperDoc viewer
 app.get('/api/document/:documentId', (req, res) => {
     try {
@@ -824,7 +933,7 @@ app.get('/api/get-updated-docx', (req, res) => {
 // POST /api/compile { base64Pdf?, primary?, exhibitPath?, exhibits? }
 app.post('/api/compile', async (req, res) => {
     try {
-        const { base64Pdf, primary, exhibitPath, exhibits } = req.body || {};
+        const { base64Pdf, primary, exhibitPath, exhibits, exhibitsById } = req.body || {};
         if (!PDFLib) PDFLib = require('pdf-lib');
         const { PDFDocument } = PDFLib;
 
@@ -872,14 +981,29 @@ app.post('/api/compile', async (req, res) => {
             await addDocPages(exhibitDoc);
         }
 
+        // If exhibitsById provided, resolve ids -> paths using uploads index and defaults directory
+        let resolvedExhibits = Array.isArray(exhibits) ? exhibits.slice() : [];
+        if (!Array.isArray(exhibits) && Array.isArray(exhibitsById)) {
+            // Build from IDs only when explicit exhibits not provided
+            resolvedExhibits = exhibitsById
+                .filter(e => e && e.id)
+                .map(e => {
+                    const meta = exhibitsIndex[e.id];
+                    if (meta && meta.path) return { path: meta.path, include: e.include !== false, order: e.order };
+                    // attempt defaults lookup by filename id as fallback
+                    const defPath = path.join(exhibitsDefaultsDir, `${e.id}.pdf`);
+                    return { path: defPath, include: e.include !== false, order: e.order };
+                });
+        }
+
         // handle multiple exhibits
-        if (Array.isArray(exhibits)) {
+        if (Array.isArray(resolvedExhibits) && resolvedExhibits.length > 0) {
             // enforce server-side max 2 exhibits
-            const includedCount = exhibits.filter(a => a && a.include !== false && a.path).length;
+            const includedCount = resolvedExhibits.filter(a => a && a.include !== false && a.path).length;
             if (includedCount > 2) {
                 return res.status(400).json({ error: 'too_many_exhibits', max: 2, message: 'At most 2 exhibits allowed in this prototype.' });
             }
-            const sorted = exhibits
+            const sorted = resolvedExhibits
                 .filter(a => a && a.include !== false && a.path)
                 .sort((a,b) => (Number(a.order)||0) - (Number(b.order)||0));
 
@@ -904,7 +1028,8 @@ app.post('/api/compile', async (req, res) => {
         }
 
         // If primary excluded and no exhibits included → error
-        const anyExhibitsIncluded = Array.isArray(exhibits) && exhibits.some(a => a && a.include !== false && a.path);
+        const anyExhibitsIncluded = (Array.isArray(exhibits) && exhibits.some(a => a && a.include !== false && a.path))
+            || (Array.isArray(exhibitsById) && exhibitsById.some(e => e && e.include !== false));
         if (!includePrimary && !exhibitPath && !anyExhibitsIncluded) {
             return res.status(400).json({ error: 'no_inputs_selected', message: 'Include the primary document or at least one exhibit.' });
         }
