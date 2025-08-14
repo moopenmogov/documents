@@ -5140,6 +5140,7 @@ window.__forceOpenApprovalsTest = function() {
                     add(!!b.overrideBtn, 'overrideBtn', 'Override Check-out', window.overrideCheckout);
                     add(!!b.sendVendorBtn, 'sendVendorBtn', 'Send to Vendor', window.openVendorModal);
                     add(!!b.replaceDefaultBtn, 'replaceDefaultBtn', 'Replace Default Document', window.replaceDefaultDocument || window.showFileDialog);
+                    add(!!b.compileBtn, 'compileBtn', 'COMPILE', window.openCompileModal);
                     add(true, 'approvalsBtn', 'Approval details', window.openUsersModalWord || window.openUsersModal || window.openUsersModalWeb);
 
                     console.log('🔄 DROPDOWN DEBUG: final actions to be added:', actions.map(a => ({ id: a.id, label: a.label, hasFunction: !!a.fn, functionName: a.fn?.name })));

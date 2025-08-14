@@ -1,0 +1,87 @@
+add another entry in the "document actions" dropdown
+
+the name of the entry will be COMPILE
+
+the purpose of this feature is to allow users to append documents onto their word document
+
+so someone will click compile and a modal will appear
+
+in the modal there should be a table;
+in the table:
+rows are files
+columns are: file name, include, and order
+
+columns:
+file name: strings
+include: checkbox in yes/no state, default to yes
+order: integers, where each person has their own and default to 1
+
+the files to use (exhibits):
+1 - pre-seed (user can select or de-select)
+2 - user can upload (optional, they can upload or upload a replacement, then select or de-select)
+
+On the modal there will be two buttons:
+cancel, which cancels the modal and is the secondary action
+
+and
+
+compile, which generates a preview of a pdf, created from the word document and exhibits (pdfs) that i will provide.
+from that preview, the user can scroll and view or they can download. 
+
+
+to reiterate the process:
+
+the compile process does the following:
+
+-take comethe docx file in the "view latest" or most recent state (this is default, right?)
+-whatever exhibits the user will choose from the modal
+-the modal will pre-seed a default exhibit
+-users will be able to upload additional exhibits
+-then we will compile whatever they have chosen
+-I should be able to add max of 2 exhibits to be compiled
+-I can remove any (including the default)
+
+Validation errors must accompany informative error message with an actionable resolution, if possible.
+
+maximize server-side work since it will simplify both clients
+
+store the exhibits in an easy to find place, and don't hard-code them
+
+
+Default document and Replace Default (clarification)
+
+- Default document location: `default-document/current.docx` (single source of truth).
+- View Latest: always streams `default-document/current.docx`.
+- Replace Default (user action): opens a file picker (DOCX only), then sends the file to the server to overwrite the default.
+- Server behavior on replace:
+  - Atomic write (write temp + rename) to `default-document/current.docx`.
+  - No history retained in the prototype (old copies are removed so only one file exists).
+  - Preserve the user's original filename in responses (used in Content-Disposition) while keeping the on-disk stable path.
+- Compile primary: always generated from the current default DOCX on the server (DOCX → PDF), then merged with selected exhibits.
+- Ordering: primary first, then first exhibit, then second exhibit. New exhibits add at the bottom. Max 2 exhibits included.
+
+
+Summarized specs (implementation guide)
+
+- Storage
+  - Default DOCX lives at `default-document/current.docx` (stable path).
+  - Exhibits (PDFs) live under `exhibits/` and are served at `/exhibits`.
+
+- Replace Default
+  - Client: file picker (DOCX only), uploads base64 to server.
+  - Server: atomic write to `default-document/current.docx` (temp + rename), no history retained. Save original filename in metadata for Content-Disposition.
+
+- Compile API
+  - Endpoint: `POST /api/compile`
+  - Primary: server converts current DOCX → PDF when `primary.type = 'current'` (or accept `base64Pdf` for fallback during transition).
+  - Exhibits: pass `exhibitPath` or `exhibits: [{ path, include, order }]`.
+  - Server enforces: ≤ 2 included exhibits; primary first; sort by `order`.
+  - Errors: `exhibit_not_found`, `exhibits_missing`, `too_many_exhibits`, `default_document_missing`.
+
+- Exhibits management
+  - Upload endpoint (PDF only) and list endpoint will be provided to avoid hard-coding and make exhibits discoverable.
+  - Optional TTL/quotas for uploaded exhibits to prevent accumulation in prototype.
+
+- UX rules
+  - If user tries to add a 3rd exhibit: show “Testing 1, 2...but no more in the prototype”.
+  - Primary can be excluded, but at least one exhibit must be included overall.

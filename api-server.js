@@ -3,6 +3,7 @@ const cors = require('cors');
 const multer = require('multer');
 const fs = require('fs');
 const path = require('path');
+let PDFLib = null; // lazy-loaded for compile endpoint
 
 const app = express();
 const PORT = 3001;
@@ -11,18 +12,18 @@ const PORT = 3001;
 app.use(cors());
 app.use(express.json({ limit: '50mb' }));
 
-// Serve static files from uploads directory
-app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
+// Serve static files for exhibits (repo-seeded and user uploads of PDFs)
+app.use('/exhibits', express.static(path.join(__dirname, 'exhibits')));
 
-// Create uploads directory if it doesn't exist
-const uploadsDir = './uploads';
-if (!fs.existsSync(uploadsDir)) {
-    fs.mkdirSync(uploadsDir);
-}
+// Create directories if they don't exist
+const defaultDocDir = './default-document';
+const exhibitsDir = './exhibits';
+if (!fs.existsSync(defaultDocDir)) { fs.mkdirSync(defaultDocDir); }
+if (!fs.existsSync(exhibitsDir)) { fs.mkdirSync(exhibitsDir); }
 
-// Configure multer for file uploads
+// Configure multer for file uploads (DOCX updates go to default document dir)
 const storage = multer.diskStorage({
-    destination: uploadsDir,
+    destination: defaultDocDir,
     filename: (req, file, cb) => {
         cb(null, `${Date.now()}-${file.originalname}`);
     }
@@ -285,7 +286,7 @@ app.post('/api/save-progress', (req, res) => {
         if (docx) {
             const timestamp = Date.now();
             const fileName = filename || `progress-save-${timestamp}.docx`;
-            const filePath = path.join(uploadsDir, fileName);
+            const filePath = path.join(defaultDocDir, fileName);
             
             // Write base64 data to file
             const buffer = Buffer.from(docx, 'base64');
@@ -363,7 +364,7 @@ app.post('/api/checkin', (req, res) => {
         if (docx) {
             const timestamp = Date.now();
             const fileName = filename || `checkin-${timestamp}.docx`;
-            const filePath = path.join(uploadsDir, fileName);
+            const filePath = path.join(defaultDocDir, fileName);
             
             // Write base64 data to file
             const buffer = Buffer.from(docx, 'base64');
@@ -535,7 +536,7 @@ app.post('/api/upload-docx', (req, res) => {
         // Convert base64 to file
         const timestamp = Date.now();
         const fileName = filename || `word-document-${timestamp}.docx`;
-        const filePath = path.join(uploadsDir, fileName);
+        const filePath = path.join(defaultDocDir, fileName);
         
         // Write base64 data to file
         const buffer = Buffer.from(docx, 'base64');
@@ -600,7 +601,7 @@ app.get('/api/current-document', (req, res) => {
 // Get default document endpoint
 app.get('/api/default-document', (req, res) => {
     const defaultFile = 'CONTRACT FOR CONTRACTS.docx';
-    const defaultPath = path.join(uploadsDir, defaultFile);
+    const defaultPath = path.join(defaultDocDir, defaultFile);
 
     if (!fs.existsSync(defaultPath)) {
         return res.status(404).json({ error: 'Default document not found' });
@@ -709,7 +710,7 @@ app.get('/api/get-updated-docx', (req, res) => {
         if (!currentDocument.filePath || !fs.existsSync(currentDocument.filePath)) {
             // Fallback: attempt to load default document automatically
             const defaultFile = 'CONTRACT FOR CONTRACTS.docx';
-            const defaultPath = path.join(uploadsDir, defaultFile);
+            const defaultPath = path.join(defaultDocDir, defaultFile);
             if (fs.existsSync(defaultPath)) {
                 currentDocument = {
                     id: 'default-doc',
@@ -735,6 +736,83 @@ app.get('/api/get-updated-docx', (req, res) => {
     } catch (error) {
         console.error('❌ Get document error:', error);
         res.status(500).json({ error: error.message });
+    }
+});
+
+// ===== COMPILE API =====
+// Merge a client-provided PDF (from Word export) with exhibit PDFs
+// POST /api/compile { base64Pdf, exhibitPath, exhibits }
+app.post('/api/compile', async (req, res) => {
+    try {
+        const { base64Pdf, exhibitPath, exhibits } = req.body || {};
+        if (!base64Pdf) return res.status(400).json({ error: 'base64Pdf required' });
+        if (!PDFLib) PDFLib = require('pdf-lib');
+        const { PDFDocument } = PDFLib;
+
+        const primaryBytes = Buffer.from(base64Pdf, 'base64');
+        const primary = await PDFDocument.load(primaryBytes);
+
+        let merged = primary;
+        const mergedDoc = await PDFDocument.create();
+        const addDocPages = async (doc) => {
+            const pages = await mergedDoc.copyPages(doc, doc.getPageIndices());
+            pages.forEach(p => mergedDoc.addPage(p));
+        };
+        await addDocPages(primary);
+
+        // helper: resolve exhibit path
+        const resolveExhibitPath = (inputPath) => path.resolve(inputPath);
+
+        // single exhibitPath for backward compatibility with earlier clients
+        if (exhibitPath && !exhibits) {
+            const abs = resolveExhibitPath(exhibitPath);
+            if (!fs.existsSync(abs)) {
+                return res.status(400).json({ error: 'exhibit_not_found', path: abs });
+            }
+            const exhibitBytes = await fs.promises.readFile(abs);
+            const exhibitDoc = await PDFDocument.load(exhibitBytes);
+            await addDocPages(exhibitDoc);
+        }
+
+        // handle multiple exhibits
+        if (Array.isArray(exhibits)) {
+            // enforce server-side max 2 exhibits
+            const includedCount = exhibits.filter(a => a && a.include !== false && a.path).length;
+            if (includedCount > 2) {
+                return res.status(400).json({ error: 'too_many_exhibits', max: 2, message: 'At most 2 exhibits allowed in this prototype.' });
+            }
+            const sorted = exhibits
+                .filter(a => a && a.include !== false && a.path)
+                .sort((a,b) => (Number(a.order)||0) - (Number(b.order)||0));
+
+            // Validate that all included exhibits exist
+            const missing = [];
+            for (const a of sorted) {
+                const abs = resolveExhibitPath(a.path);
+                if (!fs.existsSync(abs)) {
+                    missing.push(abs);
+                }
+            }
+            if (missing.length > 0) {
+                return res.status(400).json({ error: 'exhibits_missing', missing });
+            }
+
+            for (const a of sorted) {
+                const abs = resolveExhibitPath(a.path);
+                const bytes = await fs.promises.readFile(abs);
+                const ed = await PDFDocument.load(bytes);
+                await addDocPages(ed);
+            }
+        }
+
+        merged = mergedDoc;
+
+        const bytes = await merged.save();
+        res.setHeader('Content-Type', 'application/pdf');
+        res.send(Buffer.from(bytes));
+    } catch (e) {
+        console.error('Compile merge failed:', e);
+        res.status(500).json({ error: 'compile_failed' });
     }
 });
 
@@ -1307,8 +1385,9 @@ function getStateMatrixConfig(userRole, platform, docState, currentUser) {
             overrideBtn: false, 
             sendVendorBtn: false,
             checkedInBtns: false, // saveProgressBtn, checkinBtn, cancelBtn
-            viewOnlyBtn: true, // View Latest is always available
-            replaceDefaultBtn: true // Everyone can replace the default/current document
+                viewOnlyBtn: true, // View Latest is always available
+                replaceDefaultBtn: true, // Everyone can replace the default/current document
+                compileBtn: true // Everyone sees COMPILE action
         },
         approvals: {
             canApproveSelf: userRole !== 'viewer',
@@ -1379,9 +1458,13 @@ function getStateMatrixConfig(userRole, platform, docState, currentUser) {
     return result;
 }
 
-app.listen(PORT, () => {
-    console.log(`🔧 API Server running on http://localhost:${PORT}`);
-});
+if (require.main === module) {
+    app.listen(PORT, () => {
+        console.log(`🔧 API Server running on http://localhost:${PORT}`);
+    });
+}
+
+module.exports = app;
 
 
 

@@ -42,10 +42,10 @@ References
 ## 2) Auto‑Loading Default Document on Startup
 
 Server responsibilities
-- Serve a known default DOCX from uploads/CONTRACT FOR CONTRACTS.docx via /api/default-document.
+- Serve a known default DOCX from default-document/CONTRACT FOR CONTRACTS.docx via /api/default-document.
 - When hit, set currentDocument on the server to that file (id, filename, filePath, lastUpdated) for downstream routes to use.
 - Serve the active document bytes from /api/document/:documentId with correct Content-Type.
-- Expose uploads/ statically (app.use('/uploads', express.static(...))) for direct file inspection when needed.
+- Expose exhibits/ statically (app.use('/exhibits', express.static(...))) for direct file inspection when needed.
 
 Client responsibilities (web viewer)
 - On window.load, call /api/default-document; if 200, pass returned object to a single loadSuperdoc(documentData) initializer.
@@ -59,7 +59,7 @@ Why
 - Keeping a single endpoint (/api/default-document) to establish currentDocument avoids racing different paths (uploads vs active doc endpoint), stabilizes SuperDoc loads, and aligns both platforms.
 
 Operational note
-- Replacing uploads/CONTRACT FOR CONTRACTS.docx on disk updates the default for the next init without code changes. Saves/check‑ins write timestamped copies; they do not overwrite the default unless explicitly asked.
+- Replacing default-document/CONTRACT FOR CONTRACTS.docx on disk updates the default for the next init without code changes. Saves/check‑ins write timestamped copies; they do not overwrite the default unless explicitly asked.
 
 ---
 
