@@ -2082,7 +2082,7 @@
                          <label for="webDocActionsSelect" style="width:115px;">Document actions:</label>
                          <select id="webDocActionsSelect" class="shared-dropdown user-select" style="width:200px; margin-left:5px;" onfocus="refreshWebDropdownFromMatrix()" onchange="onWebDocActionChange(this.value)">
                              <option value="">select</option>
-                             <option value="compile">COMPILE</option>
+                             <option value="compile">Compile</option>
                          </select>
                          <button id="backToOpenGovBtn" class="shared-dropdown" onclick="window.openOpenGovModal && window.openOpenGovModal();" style="margin-left:8px; cursor:pointer; background:#fff !important; color:#111 !important; border:1px solid #dee2e6 !important; border-radius:6px !important; padding:8px 12px !important; display:inline-flex; align-items:center; justify-content:flex-start; text-align:left; width:200px;">Take Me Back to OpenGov</button>
                      </div>
@@ -2161,19 +2161,15 @@
 
     </div>
 
-    <!-- Static COMPILE modal (placeholder) -->
+    <!-- COMPILE modal (full) -->
     <div id="compileModal" style="display:none; position:fixed; inset:0; z-index:2147483647;">
         <div onclick="closeCompileModal()" style="position:absolute; inset:0; background: rgba(0,0,0,0.35);"></div>
-        <div style="position:absolute; top:50%; left:50%; transform: translate(-50%, -50%); background:#fff; border-radius:10px; width:min(600px, 92vw); max-height:80vh; overflow:auto; padding:16px; box-shadow:0 8px 24px rgba(0,0,0,0.25);">
-            <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:8px;">
-                <h3 style="margin:0; font-size:18px;">Compile (Prototype)</h3>
-                <button onclick="closeCompileModal()" style="border:none; background:#fff; font-size:18px; cursor:pointer;">×</button>
+        <div style="position:absolute; top:50%; left:50%; transform: translate(-50%, -50%); background:#fff; border-radius:10px; width:min(640px, 92vw); max-height:80vh; overflow:auto; padding:16px; box-shadow:0 8px 24px rgba(0,0,0,0.25);">
+            <div style="display:flex; align-items:center; justify-content:space-between; margin-bottom:10px;">
+                <div style="font-size:16px; font-weight:600;">Compile</div>
+                <button onclick="closeCompileModal()" class="btn btn-cancel">Close</button>
             </div>
-            <div style="font-size:13px; color:#6c757d; margin-bottom:12px;">Static modal to confirm dropdown->modal mechanics. No actions yet.</div>
-            <div style="display:flex; gap:8px; justify-content:flex-end;">
-                <button onclick="closeCompileModal()" style="border:1px solid #dee2e6; background:#fff; border-radius:6px; padding:8px 12px;">Cancel</button>
-                <button onclick="closeCompileModal()" style="border:none; background:#3b82f6; color:#fff; border-radius:6px; padding:8px 12px;">Continue</button>
-            </div>
+            <div id="compileBodyWeb"></div>
         </div>
     </div>
 
@@ -5222,14 +5218,84 @@
          window.openVendorModal = openVendorModal;
          window.onWebDocActionChange = function(val){
              if (val === 'compile') {
-                 try { document.getElementById('compileModal').style.display = 'block'; } catch(_){}
-                 // reset selection back to placeholder
+                 try { document.getElementById('compileModal').style.display = 'block'; buildCompileModalWeb(); } catch(_){}
                  const sel = document.getElementById('webDocActionsSelect');
                  if (sel) sel.value = '';
              }
          };
          window.closeCompileModal = function(){ try { document.getElementById('compileModal').style.display = 'none'; } catch(_){} };
-         
+
+         // ===== Web COMPILE modal: client + builder (mirrors add-in) =====
+         // Fallback CompileClient for web if shared client not loaded
+         (function ensureWebCompileClient(){
+             if (window.CompileClient) return;
+             try {
+                 const BASE = 'http://localhost:3001';
+                 const join = (p) => BASE + p;
+                 const normalize = (err) => ({ code: (err && err.error) || 'unknown_error', message: (err && err.message) || '' });
+                 async function ok(resp){ const ct = resp.headers.get('content-type') || ''; const isJson = ct.includes('application/json'); if (!resp.ok){ let b={}; try{ b=await resp.json(); }catch(_){} throw normalize(b); } return isJson ? resp.json() : resp; }
+                 window.CompileClient = {
+                     async getLimits(){ return (await ok(await fetch(join('/api/exhibits/limits')))).limits; },
+                     async listExhibits(){ const d = await ok(await fetch(join('/api/exhibits/list'))); return { defaults: d.defaults || [], uploads: d.uploads || [] }; },
+                     async uploadExhibit(file, userId){ const b64 = await new Promise((res, rej) => { const fr = new FileReader(); fr.onload = () => { const s = fr.result || ''; const c = s.indexOf(','); res(c >= 0 ? s.slice(c+1) : s); }; fr.onerror = rej; fr.readAsDataURL(file); }); const payload = { base64Pdf: b64, originalFilename: file && file.name, userId: userId || 'anonymous' }; const d = await ok(await fetch(join('/api/upload-exhibit'), { method:'POST', headers:{ 'Content-Type':'application/json' }, body: JSON.stringify(payload) })); return d.exhibit; },
+                     async deleteExhibit(id){ await ok(await fetch(join('/api/exhibits/delete'), { method:'POST', headers:{ 'Content-Type':'application/json' }, body: JSON.stringify({ id }) })); return true; },
+                     async compilePdf(params){ const payload = {}; if (params.primary === 'current' || (params.primary && params.primary.type === 'current')) { payload.primary = { type:'current', include: params.primary?.include !== false }; } else if (params.base64Pdf) { payload.base64Pdf = params.base64Pdf; } else { payload.primary = { type:'current', include:true }; } if (Array.isArray(params.exhibitsById)) payload.exhibitsById = params.exhibitsById; const r = await fetch(join('/api/compile'), { method:'POST', headers:{ 'Content-Type':'application/json' }, body: JSON.stringify(payload) }); if (!r.ok) { let b={}; try{ b = await r.json(); } catch(_){} throw normalize(b); } return await r.blob(); }
+                 };
+             } catch(_) {}
+         })();
+
+         function buildCompileModalWeb(){
+             const host = document.getElementById('compileBodyWeb'); if (!host) return; host.innerHTML = '';
+             const styleEl = document.createElement('style'); styleEl.textContent = '#compileModal .btn{background:#374151 !important;color:#fff !important;border:none !important;border-radius:6px !important;padding:8px 12px !important;} #compileModal .btn-cancel{background:#bfdbfe !important;color:#1e40af !important;} #compileModal .btn-danger{background:#dc2626 !important;color:#fff !important;}'; host.appendChild(styleEl);
+             const status = document.createElement('div'); status.id='compileStatusWeb'; status.style.display='none'; status.style.marginBottom='8px'; status.textContent='⏳ Compiling…'; host.appendChild(status);
+             const section = document.createElement('div'); section.style.border='1px solid #e5e7eb'; section.style.borderRadius='6px'; section.style.padding='10px'; section.style.marginBottom='10px'; host.appendChild(section);
+             const hdr = document.createElement('div'); hdr.style.display='flex'; hdr.style.alignItems='center'; hdr.style.justifyContent='space-between'; hdr.style.marginBottom='8px'; hdr.innerHTML = '<div style="font-weight:600">Exhibits</div>'; section.appendChild(hdr);
+             const list = document.createElement('div'); list.id='exhibitsListWeb'; list.style.display='flex'; list.style.flexDirection='column'; list.style.gap='6px'; section.appendChild(list);
+             const upInput = document.createElement('input'); upInput.type='file'; upInput.accept='application/pdf,.pdf'; upInput.style.display='none'; upInput.id='uploadExhibitInputWeb'; section.appendChild(upInput);
+             const hint = document.createElement('div'); hint.style.color='#64748b'; hint.style.fontSize='12px'; hint.style.marginTop='6px'; hint.textContent='Testing 1, 2… but no more in the prototype (max 2 exhibits).'; section.appendChild(hint);
+             const footer = document.createElement('div'); footer.style.display='flex'; footer.style.alignItems='center'; footer.style.justifyContent='space-between'; footer.style.gap='10px'; footer.innerHTML = (
+                 '<div style="display:flex;align-items:center;gap:10px;">'
+               + '  <button id="uploadBtnWeb" class="btn">Upload PDF</button>'
+               + '</div>'
+               + '<div style="display:flex;align-items:center;gap:8px;">'
+               + '  <button id="cancelCompileWeb" class="btn btn-cancel" style="color:#000 !important;">Cancel</button>'
+               + '  <button id="goCompileWeb" class="btn">Compile</button>'
+               + '</div>'
+             ); host.appendChild(footer);
+
+             const uploadBtn = document.getElementById('uploadBtnWeb');
+             const cancelBtn = document.getElementById('cancelCompileWeb');
+             const goBtn = document.getElementById('goCompileWeb');
+             const dl = null;
+             let lastUrl = null; const limits = { maxFiles: 2 }; const items = [];
+
+             function addRow(meta, kind){
+                 const base = String(meta.id || meta.filename || Math.random().toString(36).slice(2,8)); const safe = base.replace(/[^a-z0-9_-]/gi, '_'); const id = `w_${safe}`;
+                 const row = document.createElement('div'); row.style.display='flex'; row.style.alignItems='center'; row.style.gap='8px';
+                 const inp = document.createElement('input'); inp.type='checkbox'; inp.id=id;
+                 const lab = document.createElement('label'); lab.setAttribute('for', id); lab.textContent = meta.originalFilename || meta.filename || meta.title || meta.name; lab.style.flex='1';
+                 row.appendChild(inp); row.appendChild(lab);
+                 if (kind === 'upload') { const del = document.createElement('button'); del.className='btn btn-danger'; del.textContent='Delete'; del.onclick = async () => { try { await CompileClient.deleteExhibit(meta.id); const idx = items.findIndex(x => x.meta.id === meta.id); if (idx >= 0) items.splice(idx,1); row.remove(); } catch(e){ console.warn(e); } }; row.appendChild(del); }
+                 list.appendChild(row);
+                 items.push({ meta, kind, inp });
+             }
+
+             async function refresh(){
+                 list.innerHTML = ''; items.length = 0;
+                 const data = await CompileClient.listExhibits();
+                 const defs = (data.defaults || []); if (defs.length) addRow(defs[0], 'default');
+                 const uid = (window.currentWebUser && window.currentWebUser.id) || 'user1';
+                 (data.uploads || []).filter(u => (u.userId || 'anonymous') === uid).forEach(u => addRow(u, 'upload'));
+             }
+
+             uploadBtn.onclick = () => upInput.click();
+             upInput.onchange = async (e) => { const f = e.target.files && e.target.files[0]; if (!f) return; const currentUploads = items.filter(x => x.kind === 'upload').length; if (currentUploads >= limits.maxFiles) { alert('Testing 1, 2… but no more in the prototype'); return; } const uid = (window.currentWebUser && window.currentWebUser.id) || 'user1'; try { await CompileClient.uploadExhibit(f, uid); await refresh(); } catch(err){ console.warn(err); } finally { upInput.value=''; } };
+             cancelBtn.onclick = () => closeCompileModal();
+             let busy = false;
+             goBtn.onclick = async () => { if (busy) return; busy = true; const prev = goBtn.textContent; try { goBtn.disabled=true; cancelBtn.disabled=true; uploadBtn.disabled=true; status.style.display='block'; goBtn.textContent='Compiling…'; const exhibitsById = items.filter(x => x.inp.checked).map((x,i) => ({ id: x.meta.id || (x.meta.filename && x.meta.filename.replace(/\.pdf$/i,'')), include: true, order: i+1 })); const blob = await CompileClient.compilePdf({ primary:{ type:'current', include:true }, exhibitsById }); if (lastUrl) { try { URL.revokeObjectURL(lastUrl); } catch(_){} } const url = URL.createObjectURL(blob); lastUrl = url; dl.href = url; dl.style.display = 'inline-block'; try { dl.click(); } catch(_){} } catch(err){ console.warn(err); alert((err && err.message) || 'Compile failed'); } finally { status.style.display='none'; goBtn.disabled=false; cancelBtn.disabled=false; uploadBtn.disabled=false; goBtn.textContent=prev; busy=false; } };
+
+             refresh();
+         }
         
         // Make debugging functions globally available
 

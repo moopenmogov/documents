@@ -92,7 +92,7 @@ Document project/
 ├── viewer.html               # ← Main web editor interface
 ├── src/taskpane/             # ← Word add-in source code
 ├── assets/                   # ← Images and static files
-├── exhibits/                 # ← Where pre-seeded and uploaded exhibit PDFs are stored
+├── uploads/                  # ← Where documents are stored
 └── docs/                     # ← Documentation (this file!)
 ```
 
@@ -167,7 +167,7 @@ No - the add-in only affects documents when you explicitly use it.
 Each computer needs its own copy. Documents don't sync between different installations.
 
 ### **"What happens to my documents?"**
-The current DOCX is stored in `default-document/`. Exhibits (PDFs) live under `exhibits/`.
+They're stored in the `uploads/` folder as regular DOCX files. You can copy them anywhere.
 
 ### **"Do I need internet?"**
 No - after initial setup (downloading Node.js), everything works offline.
