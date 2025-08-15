@@ -93,6 +93,55 @@
         } catch(_) {}
     })();
     </script>
+
+    <script src="../../shared/approvals-client.js"></script>
+    <script>
+    // Fallback: define ApprovalsClient if external script not available in dev host
+    (function(){
+        try {
+            if (window.ApprovalsClient) return;
+            const DEFAULT_BASE_URL = 'http://localhost:3001';
+            function joinUrl(base, path) { return (base || DEFAULT_BASE_URL).replace(/\/$/, '') + path; }
+            async function handleJsonResponse(resp) {
+                const ct = resp.headers.get('content-type') || ''; const isJson = ct.includes('application/json');
+                if (!resp.ok) { let body = {}; try { body = await resp.json(); } catch (_) {} throw (body || {}); }
+                return isJson ? resp.json() : resp;
+            }
+            window.ApprovalsClient = {
+                getState: (params = {}, opts = {}) => {
+                    const qs = new URLSearchParams(); if (params.documentId) qs.set('documentId', params.documentId);
+                    return fetch(joinUrl(opts.baseUrl, '/api/approvals/state' + (qs.toString() ? ('?' + qs.toString()) : '')), { cache: 'no-store' }).then(handleJsonResponse);
+                },
+                approve: ({ documentId, targetUserId, actorId, comment }, opts = {}) => fetch(joinUrl(opts.baseUrl, '/api/approvals/approve'), { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({ documentId, targetUserId, actorId, comment }) }).then(handleJsonResponse),
+                reject: ({ documentId, targetUserId, actorId, comment }, opts = {}) => fetch(joinUrl(opts.baseUrl, '/api/approvals/reject'), { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({ documentId, targetUserId, actorId, comment }) }).then(handleJsonResponse),
+                remind: ({ documentId, targetUserId, actorId }, opts = {}) => fetch(joinUrl(opts.baseUrl, '/api/approvals/remind'), { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({ documentId, targetUserId, actorId }) }).then(handleJsonResponse),
+                addUser: ({ documentId, name, email, actorId }, opts = {}) => fetch(joinUrl(opts.baseUrl, '/api/approvals/add-user'), { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({ documentId, name, email, actorId }) }).then(handleJsonResponse),
+                deleteUser: ({ documentId, targetUserId, actorId }, opts = {}) => fetch(joinUrl(opts.baseUrl, '/api/approvals/delete-user'), { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({ documentId, targetUserId, actorId }) }).then(handleJsonResponse),
+                reorder: ({ documentId, order, actorId }, opts = {}) => fetch(joinUrl(opts.baseUrl, '/api/approvals/reorder'), { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({ documentId, order, actorId }) }).then(handleJsonResponse),
+                updateNotes: ({ documentId, targetUserId, notes, actorId }, opts = {}) => fetch(joinUrl(opts.baseUrl, '/api/approvals/update-notes'), { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({ documentId, targetUserId, notes, actorId }) }).then(handleJsonResponse)
+            };
+            console.log('🔧 Fallback ApprovalsClient installed');
+        } catch(_) {}
+    })();
+    </script>
+    <script>
+        // Word add-in Approvals opener placeholder (UI to be implemented next)
+        window.openApprovalsModalWord = async function() {
+            try {
+                const state = await (window.ApprovalsClient && ApprovalsClient.getState());
+                console.log('WORD approvals state:', state);
+                Office.context.ui.displayDialogAsync('about:blank', { height: 30, width: 30 }, function (asyncResult) {
+                    if (asyncResult.status === Office.AsyncResultStatus.Succeeded) {
+                        const dlg = asyncResult.value;
+                        dlg.messageParent('Approvals UI coming next.');
+                        setTimeout(() => { try { dlg.close(); } catch(_){} }, 1200);
+                    }
+                });
+            } catch (e) {
+                console.error('Approvals open error (word):', e);
+            }
+        };
+    </script>
     <script src="../../new-feature-banner.js"></script>
 
     <style>
@@ -1366,7 +1415,7 @@
                                 + '    <button id="uploadExhibitBtn" class="btn" style="background:#374151;color:#ffffff;">Upload PDF</button>'
                                 + '  </div>'
                                 + '  <div style="display:flex; align-items:center; gap:8px;">'
-                                + '    <button id="compileCancel" class="btn" style="background:#bfdbfe;color:#000;">Cancel</button>'
+                                + '    <button id="compileCancel" class="btn" style="background:#e9ecef;color:#000;border:1px solid #ced4da;">Cancel</button>'
                                 + '    <button id="compileGo" class="btn" style="background:#1f2937;color:#ffffff;">Compile</button>'
                                 + '  </div>'
                                 + '</div>';
@@ -1513,12 +1562,17 @@
                                     try { if (lastDownloadUrl) { URL.revokeObjectURL(lastDownloadUrl); lastDownloadUrl = null; } } catch(_) {}
                                     const url = URL.createObjectURL(blob);
                                     lastDownloadUrl = url;
-                                    const dl = document.getElementById('compileDownload');
-                                    if (dl) {
-                                        dl.href = url;
-                                        dl.style.display = 'inline-block';
-                                        try { dl.click(); } catch(_) {}
+                                    let dl = document.getElementById('compileDownload');
+                                    if (!dl) {
+                                        dl = document.createElement('a');
+                                        dl.id = 'compileDownload';
+                                        dl.style.display = 'none';
+                                        dl.download = 'compiled.pdf';
+                                        document.body.appendChild(dl);
                                     }
+                                    dl.href = url;
+                                    dl.style.display = 'inline-block';
+                                    try { dl.click(); } catch(_) {}
                                     addNotification('✅ Compiled successfully', 'success');
                                 } catch (e) {
                                     if (status) { status.style.display = 'none'; }
@@ -1937,7 +1991,7 @@
                     setTimeout(() => { try { fetchUnifiedStateWord(); } catch(_) {} }, 300);
                 };
                 
-                eventSource.onmessage = function(event) {
+                eventSource.onmessage = async function(event) {
                     const data = JSON.parse(event.data);
                     console.log('SSE event received:', data);
                     
@@ -1958,31 +2012,56 @@
                             updateUserApprovalStatusWord(data.userId, data.status);
                         }
                         
-                        // Existing: Update pill if counts provided
+                        // Update pill from event if present; otherwise recalc from latest server snapshot
                         if (typeof data.approved === 'number' && typeof data.total === 'number') {
                             window.__updateApprovalsPillWord(data.approved, data.total);
+                        } else {
+                            try {
+                                const curId = (window.currentDocumentState && window.currentDocumentState.currentDocument && window.currentDocumentState.currentDocument.id) || 'default-doc';
+                                const st = await ApprovalsClient.getState({ documentId: curId });
+                                const appr = Array.isArray(st && st.approvers) ? st.approvers : [];
+                                const a = appr.filter(x => x.status === 'approved').length;
+                                window.__updateApprovalsPillWord(a, appr.length);
+                            } catch(_) {}
                         }
-                        
-                        // NEW: If modal is open, update its sub-title count
+
+                        // If modal is open, update its sub-title count using checkboxes
                         const modal = document.getElementById('approvalsModalWord');
                         if (modal && modal.style.display !== 'none') {
-                            // Recalculate from current rows to avoid re-fetch
-                            const rows = modal.querySelectorAll('tbody tr');
-                            let approvedCount = 0;
-                            rows.forEach(row => {
-                                const statusSpan = row.querySelector('.pill');
-                                if (statusSpan && statusSpan.textContent === 'Approved') approvedCount++;
-                            });
-                            const total = rows.length;
-                            const sub = modal.querySelector('.sub');
-                            if (sub) {
-                                sub.textContent = `${approvedCount}/${total} approved`;
+                            const tbody = modal.querySelector('tbody.tbody');
+                            if (tbody) {
+                                const total = tbody.querySelectorAll('tr').length;
+                                const approved = Array.from(tbody.querySelectorAll('.approved-checkbox')).filter(x => x.checked).length;
+                                const sub = modal.querySelector('.sub'); if (sub) sub.textContent = `${approved}/${total} approved`;
                             }
                         }
                         
                         // Existing unified state call
                         try { fetchUnifiedStateWord(); } catch(_) {}
                         console.log('📡 WORD: Unified state reconciled after approvals-updated');
+                    } else if (data.type === 'approvals-list-updated' || data.type === 'approvals-notes-updated' || data.type === 'approvals-reminder-sent') {
+                        console.log('📡 WORD SSE: approvals-change received:', data);
+                        // Update pill from payload if present; otherwise query state
+                        try {
+                            if (typeof data.approved === 'number' && typeof data.total === 'number') {
+                                if (typeof window.__updateApprovalsPillWord === 'function') window.__updateApprovalsPillWord(data.approved, data.total);
+                            } else if (window.ApprovalsClient && typeof window.ApprovalsClient.getState === 'function') {
+                                const st = await window.ApprovalsClient.getState();
+                                const a = st && st.summary ? st.summary.approvedCount : 0;
+                                const t = st && st.summary ? st.summary.totalUsers : 0;
+                                if (typeof window.__updateApprovalsPillWord === 'function') window.__updateApprovalsPillWord(a, t);
+                            }
+                        } catch(_) {}
+                        // Refresh the side approvals section and modal only for structural changes; skip on reminder to preserve inline feedback
+                        if (data.type !== 'approvals-reminder-sent') {
+                            try { loadApprovalsSection && loadApprovalsSection(); } catch(_) {}
+                            const modal = document.getElementById('approvalsModalWord');
+                            if (modal && getComputedStyle(modal).display !== 'none') {
+                                try { if (typeof window.__openUsersModalWordImpl === 'function') await window.__openUsersModalWordImpl(); } catch(_) {}
+                            }
+                        }
+                        // Also reconcile unified state (state matrix, etc.)
+                        try { fetchUnifiedStateWord(); } catch(_) {}
                     } else if (data.type === 'document-checked-out') {
                         showStatus('sseStatus', `📡 ${data.message}`, 'info');
                         fetchDocumentStatus().then(() => {
@@ -3965,10 +4044,17 @@
 					return;
 				}
 				rows.forEach((row) => {
-					const statusCell = row.children[2];
-					if (statusCell) statusCell.innerHTML = pillHtml;
-					const actionsCell = row.children[3];
-					if (actionsCell) {
+					// If new modal row (checkbox exists), toggle it instead of injecting legacy pill
+					const chk = row.querySelector('.approved-checkbox');
+					if (chk) { chk.checked = (newStatus === 'approved'); return; }
+					// Legacy list row: update pill and enable/disable approve/reject
+					const pillHtml = newStatus === 'approved'
+						? `<span style="display:inline-block;padding:2px 8px;border-radius:12px;font-size:12px;font-weight:600;color:${uiCfg?.colors?.pillApprovedText || '#155724'};background:${uiCfg?.colors?.pillApprovedBg || '#d4edda'};">${uiCfg?.labels?.approved || 'Approved'}</span>`
+						: newStatus === 'rejected'
+						? `<span style=\"display:inline-block;padding:2px 8px;border-radius:12px;font-size:12px;font-weight:600;color:${uiCfg?.colors?.pillRejectedText || '#721c24'};background:${uiCfg?.colors?.pillRejectedBg || '#f8d7da'};\">${uiCfg?.labels?.rejected || 'Rejected'}</span>`
+						: `<span style="display:inline-block;padding:2px 8px;border-radius:12px;font-size:12px;font-weight:600;color:#6c757d;background:#e9ecef;">${uiCfg?.labels?.no || 'No'}</span>`;
+					const statusCell = row.children[2]; if (statusCell) statusCell.innerHTML = pillHtml;
+					const actionsCell = row.children[3]; if (actionsCell) {
 						const buttons = actionsCell.querySelectorAll('button');
 						buttons.forEach(btn => {
 							if (btn.textContent.includes('Approve')) btn.disabled = newStatus === 'approved';
@@ -4111,8 +4197,8 @@
                 const documentId = 'default-doc';
                 
                 const response = await fetch(`http://localhost:3001/api/approval-matrix?actorPlatform=word&actorId=${currentUser.id}&documentId=${documentId}`);
-                
-                if (!data.success) {
+                const data = await response.json();
+                if (!data || !data.success) {
                     if (approvalsList) approvalsList.innerHTML = '<tr><td colspan="4" style="color:#dc3545; font-size:12px; padding:6px;">Failed to load approvals</td></tr>';
                     // REMOVED: Don't update pill on error - was setting to 0/0
                     return;
@@ -4361,12 +4447,30 @@
                         #approvalsModalWord .title{font-size:18px;font-weight:700;margin:0 0 6px}
                         #approvalsModalWord .sub{font-size:12px;color:#6c757d;margin:0 0 12px}
                         #approvalsModalWord table{width:100%;border-collapse:collapse}
-                        #approvalsModalWord th,#approvalsModalWord td{border-bottom:1px solid #eee;padding:8px;text-align:left;font-size:14px}
+                        #approvalsModalWord th,#approvalsModalWord td{border-bottom:1px solid #eee;padding:6px 8px;text-align:left;font-size:14px; vertical-align: middle; overflow: visible}
                         #approvalsModalWord .pill{display:inline-block;padding:2px 8px;border-radius:999px;font-size:12px;font-weight:600}
                         #approvalsModalWord .actions{display:flex;gap:8px;flex-wrap:wrap;justify-content:flex-end;margin-top:10px}
-                        #approvalsModalWord .btn{border:none;border-radius:8px;padding:8px 12px;font-weight:600;cursor:pointer; color:#fff !important;}
-                        #approvalsModalWord .btn[data-action="approve"] { background: #d4edda !important; color: #155724 !important; border: 1px solid #c3e6cb !important; }
-                        #approvalsModalWord .btn[data-action="reject"] { background: #f8d7da !important; color: #721c24 !important; border: 1px solid #f5c6cb !important; }`;
+                        #approvalsModalWord .icon-trash{ display:inline-block; transform: scale(0.5, 0.7); transform-origin:center; }
+                        /* Align button styles with web */
+                        #approvalsModalWord .btn{background:#374151 !important;color:#fff !important;border:none !important;border-radius:6px !important;padding:8px 12px !important;cursor:pointer}
+                        #approvalsModalWord .btn-secondary{background:#bfdbfe !important;color:#1e40af !important}
+                        #approvalsModalWord .btn-danger{background:#dc2626 !important;color:#fff !important}
+                        #approvalsModalWord .btn-ghost{background:transparent !important;color:#374151 !important;border:1px solid #e5e7eb !important}
+                        #approvalsModalWord .notes-input{ width:50% !important; font-size:12px !important; height:24px !important; line-height:24px !important; padding:2px 0 !important; box-sizing:border-box !important; border:none !important; background:transparent !important }
+                        #approvalsModalWord select.order-input{
+                            font-size:13px !important;
+                            height:auto !important;
+                            line-height:normal !important;
+                            padding:0 2px !important;
+                            box-sizing:border-box !important;
+                            border:none !important;
+                            background:transparent !important;
+                            min-width:30px !important;
+                            appearance: menulist; -webkit-appearance: menulist; -moz-appearance: menulist;
+                            outline:none !important;
+                        }
+                        #approvalsModalWord .btn-trash{ background:#dc2626 !important; color:#fff !important; border:1px solid #b91c1c !important; padding:2px 4px !important; line-height:1 !important; border-radius:4px !important }
+                    `;
                     document.head.appendChild(st);
                 }
 
@@ -4378,51 +4482,288 @@
 
                 // Fetch approvals data
                 const currentUser = window.getCurrentUser ? window.getCurrentUser() : null;
+                // Use actual current document id (fallback to default)
+                async function __getCurrentDocIdWord(){
+                    try {
+                        const idFromState = (window.currentDocumentState && window.currentDocumentState.currentDocument && window.currentDocumentState.currentDocument.id) || null;
+                        if (idFromState) return idFromState;
+                        const r = await fetch('http://localhost:3001/api/current-document', { cache: 'no-store' });
+                        const j = await r.json();
+                        return (j && (j.id || j.documentId)) || 'default-doc';
+                    } catch(_) { return 'default-doc'; }
+                }
+                const documentId = await __getCurrentDocIdWord();
                 
-                // FIXED: Standardize to fixed ID for consistency
-                const documentId = 'default-doc';
-                
-                const resp = await fetch(`http://localhost:3001/api/approval-matrix?actorPlatform=word&actorId=${currentUser?.id||''}&documentId=${documentId}`);
-                const data = await resp.json();
-                const users = Array.isArray(data.users) ? data.users : [];
-                const matrix = data.matrix || {};
-                const approvals = Array.isArray(data.approvals) ? data.approvals : [];
-                const approvedCount = approvals.filter(a => a.status==='approved').length;
+                // Align with web: use ApprovalsClient.getState for unified shape
+                const state = await ApprovalsClient.getState({ documentId });
+                const actorIdInitial = currentUser && currentUser.id;
+                async function __getActorIdWord(){
+                    if (actorIdInitial) return actorIdInitial;
+                    try {
+                        const r = await fetch('http://localhost:3001/api/user/word/current', { cache:'no-store' });
+                        const j = await r.json();
+                        return (j && j.user && j.user.id) || null;
+                    } catch(_) { return null; }
+                }
+                const isEditor = (currentUser && currentUser.role === 'editor');
+                const approvers = Array.isArray(state && state.approvers) ? state.approvers.slice().sort((a,b)=>(a.order||0)-(b.order||0)) : [];
+                const approvedCount = approvers.filter(a => a.status === 'approved').length;
 
                 modal.innerHTML = ''+
-                  `<div class="title">Approvals</div>`+
-                  `<div class="sub">${approvedCount}/${users.length} approved</div>`+
+                  `<div class="title" style="display:flex;align-items:center;justify-content:flex-start">`+
+                    `<span>Approvals</span>`+
+                  `</div>`+
+                  `<div class="sub">${approvedCount}/${approvers.length} approved</div>`+
                   `<table><thead><tr>`+
-                  `<th>User</th><th>Role</th><th>Approved</th><th>Actions</th>`+
+                  `${isEditor ? `<th></th>` : ''}`+
+                  `<th>Order</th><th>User</th><th>Approved</th><th>Remind</th><th>Notes</th>`+
                   `</tr></thead><tbody class="tbody"></tbody></table>`+
-                  `<div class="actions"><button class="btn" id="approvalsCloseWord" style="background:#e9ecef !important; color:#495057 !important; border:1px solid #ced4da !important; cursor:pointer !important;">Close</button></div>`; // Neutral gray to match web, clickable style
+                  `<div class="actions" style="display:flex;justify-content:space-between;align-items:center;border-top:1px solid #e5e7eb;margin-top:8px;padding-top:8px">`+
+                    `<div style="display:flex;gap:8px;align-items:center">`+
+                      `${isEditor ? `<button class=\"btn btn-secondary\" id=\"approvalsAddUserWord\">Add user</button>` : ''}`+
+                      `<button class="btn btn-ghost" id="approvalsRefreshWord" style="background:transparent !important; color:#374151 !important; border:1px solid #e5e7eb !important;">Refresh</button>`+
+                      `${isEditor ? `<button class=\"btn btn-danger\" id=\"approvalsResetWord\">Nuke it</button>` : ''}`+
+                    `</div>`+
+                    `<div>`+
+                      `<button class="btn btn-ghost" id="approvalsCloseWord" style="background:transparent !important; color:#374151 !important; border:1px solid #e5e7eb !important; cursor:pointer !important;">Close</button>`+
+                    `</div>`+
+                  `</div>`;
 
                 const tbody = modal.querySelector('tbody.tbody');
-                users.forEach(u => {
-                    const row = matrix[u.id] || { status:'no', showButtons:true, approveEnabled:true, rejectEnabled:true };
-                    const status = approvals.find(a => a.userId===u.id)?.status || row.status || 'no';
+                approvers.forEach((a, idx) => {
+                    const canAct = isEditor || a.userId === actorId;
                     const tr = document.createElement('tr');
-                    tr.setAttribute('data-user-id', u.id);
-                    const pill = document.createElement('span'); pill.className='pill';
-                    if (status==='approved'){ pill.style.background='#d4edda'; pill.style.color='#155724'; pill.textContent='Approved'; }
-                    else if (status==='rejected'){ pill.style.background='#f8d7da'; pill.style.color='#721c24'; pill.textContent='Rejected'; }
-                    else { pill.textContent='No'; pill.style.background='#e9ecef'; pill.style.color='#6c757d'; }
-                    const tdS=document.createElement('td'); tdS.appendChild(pill);
-                    const tdA=document.createElement('td');
-                    if (row.showButtons) {
-                        const a=document.createElement('button'); a.className='btn'; a.textContent='Approve'; a.disabled=!row.approveEnabled; a.onclick=()=>handleApprovalAction(u.id,'approve'); a.setAttribute('data-action', 'approve');
-                        const r=document.createElement('button'); r.className='btn'; r.textContent='Reject'; r.disabled=!row.rejectEnabled; r.onclick=()=>handleApprovalAction(u.id,'reject'); r.setAttribute('data-action', 'reject');
-                        tdA.append(a,r);
-                    } else { tdA.textContent='No actions'; tdA.style.opacity='.6'; }
-                    tr.setAttribute('data-user-id', u.id);
-                    tr.innerHTML=`<td>${u.name}</td><td>${u.role}</td>`; tr.append(tdS, tdA); tbody.appendChild(tr);
-                    // Track modal row mapping for reliable SSE updates
-                try {
-                        const map = (window.__wordUserRowsById = window.__wordUserRowsById || {});
-                        if (!Array.isArray(map[u.id])) map[u.id] = [];
-                        map[u.id].push(tr);
-                } catch(_) {}
+                    tr.setAttribute('data-user-id', a.userId);
+                    if (a && a.name) tr.setAttribute('data-user-name', a.name);
+                    const cells = [];
+                    if (isEditor) {
+                        const tdDel = document.createElement('td');
+                        const del = document.createElement('button'); del.className='btn btn-trash'; del.title='Delete'; del.innerHTML='<span class="icon-trash">🗑️</span>'; del.onclick = async () => {
+                            if (!(await wordConfirm(`Remove ${a.name || a.userId} from approvals?`))) return;
+                            try { const actorId = await __getActorIdWord(); await ApprovalsClient.deleteUser({ documentId, targetUserId: a.userId, actorId }); tr.remove(); updateSub(); } catch(e){ console.warn('delete error', e); }
+                        };
+                        tdDel.appendChild(del); cells.push(tdDel);
+                    }
+                    const tdOrder = document.createElement('td');
+                    const max = approvers.length || (idx+1);
+                    let sel = `<select class="order-input" ${isEditor?'':'disabled'} style="width:36px">`;
+                    for (let n=1; n<=max; n++) { sel += `<option value="${n}" ${((a.order||idx+1)===n)?'selected':''}>${n}</option>`; }
+                    sel += `</select>`;
+                    tdOrder.innerHTML = sel; cells.push(tdOrder);
+                    const tdUser = document.createElement('td'); tdUser.textContent = a.name || a.userId; cells.push(tdUser);
+                    const tdApproved = document.createElement('td');
+                    tdApproved.innerHTML = `<label style="display:flex;align-items:center;gap:6px"><input type="checkbox" class="approved-checkbox" ${a.status==='approved'?'checked':''} ${canAct?'':'disabled'}></label>`; cells.push(tdApproved);
+                    const tdRem = document.createElement('td'); const rem = document.createElement('button'); rem.className='btn btn-secondary'; rem.textContent='Remind'; rem.disabled=!canAct; rem.onclick = async ()=>{
+                        rem.disabled = true; const prev=rem.textContent; rem.textContent='Sending...';
+                        try { const actorId = await __getActorIdWord(); await ApprovalsClient.remind({ documentId, targetUserId: a.userId, actorId }); const displayName = a.name || a.userId; rem.textContent=`emailed ${displayName}`; try { window.addNotification && window.addNotification(`emailed ${displayName}`, 'info'); } catch(_) {} setTimeout(()=>{ rem.textContent=prev; rem.disabled=false; }, 5000); } catch(e){ rem.textContent=prev; rem.disabled=false; }
+                    }; tdRem.appendChild(rem); cells.push(tdRem);
+                    const tdNotes = document.createElement('td'); tdNotes.innerHTML = `<input type="text" maxlength="200" class="notes-input" value="${(a.notes||'').replace(/"/g,'&quot;')}" ${canAct?'':'disabled'}>`; cells.push(tdNotes);
+                    cells.forEach(td => tr.appendChild(td)); tbody.appendChild(tr);
                 });
+
+                function updateSub(){
+                    try {
+                        const rows = Array.from(tbody.querySelectorAll('tr'));
+                        const total = rows.length;
+                        const approved = rows.reduce((n, r)=> n + (r.querySelector('.approved-checkbox')?.checked ? 1 : 0), 0);
+                        const sub = modal.querySelector('.sub'); if (sub) sub.textContent = `${approved}/${total} approved`;
+                    } catch(_) {}
+                }
+
+                if (isEditor) {
+                    // Save order immediately on change using full list
+                    tbody.addEventListener('change', async (ev) => {
+                        const t = ev.target; if (!(t && t.classList && t.classList.contains('order-input'))) return;
+                        const order = Array.from(tbody.querySelectorAll('tr')).map((tr, i) => ({ userId: tr.getAttribute('data-user-id'), order: Number(tr.querySelector('.order-input')?.value || (i+1)) }));
+                        try { const actorId = await __getActorIdWord(); await ApprovalsClient.reorder({ documentId, order, actorId });
+                            // Re-sort DOM
+                            const rows = Array.from(tbody.querySelectorAll('tr'));
+                            rows.sort((r1, r2) => (Number(r1.querySelector('.order-input')?.value||0)) - (Number(r2.querySelector('.order-input')?.value||0)));
+                            rows.forEach(r => tbody.appendChild(r));
+                        } catch(e){ console.warn('reorder error', e); }
+                    });
+                }
+
+                // Checkbox approve/reject
+                tbody.addEventListener('change', async (ev) => {
+                    const t = ev.target; if (!(t && t.classList && t.classList.contains('approved-checkbox'))) return;
+                    const tr = t.closest('tr'); const userId = tr && tr.getAttribute('data-user-id');
+                    try {
+                        const actorId = await __getActorIdWord();
+                        const isOnBehalf = Boolean(isEditor && actorId && userId !== actorId);
+                        // If unchecking and it's self, do it immediately without confirmation
+                        if (!t.checked && actorId && userId === actorId) {
+                            await ApprovalsClient.reject({ documentId, targetUserId: userId, actorId, comment: '' });
+                            updateSub();
+                            try {
+                                const modalEl = document.getElementById('approvalsModalWord');
+                                const rows = modalEl ? Array.from(modalEl.querySelectorAll('tbody tr')) : [];
+                                const total = rows.length;
+                                const approvedNow = rows.reduce((n, r)=> n + (r.querySelector('.approved-checkbox')?.checked ? 1 : 0), 0);
+                                if (typeof window.__updateApprovalsPillWord === 'function') window.__updateApprovalsPillWord(approvedNow, total);
+                            } catch(_) {}
+                            return;
+                        }
+                        // Otherwise confirm before removing someone else's approval
+                        if (!t.checked) {
+                            t.checked = true;
+                            try { document.getElementById('approvalsConfirmRemoveWord')?.remove(); } catch(_) {}
+                            const bar = document.createElement('div');
+                            bar.id = 'approvalsConfirmRemoveWord';
+                            bar.style.margin = '8px 0'; bar.style.background = '#fff3cd'; bar.style.color = '#111827';
+                            bar.style.border = '1px solid #ffeeba'; bar.style.borderRadius = '6px'; bar.style.padding = '8px 12px';
+                            bar.style.display = 'flex'; bar.style.justifyContent = 'space-between'; bar.style.alignItems = 'center'; bar.style.gap = '8px';
+                            const displayName = tr?.getAttribute('data-user-name') || userId;
+                            bar.innerHTML = `<div>You're about to remove approval for <b>${displayName}</b>. Continue?</div>`+
+                                            `<div style=\"display:flex; gap:8px;\">`+
+                                            `<button id=\"confirmRemoveWord\" class=\"btn\">Confirm</button>`+
+                                            `<button id=\"cancelRemoveWord\" class=\"btn btn-ghost\" style=\"background:transparent !important; color:#374151 !important; border:1px solid #e5e7eb !important;\">Cancel</button>`+
+                                            `</div>`;
+                            const actions = document.querySelector('#approvalsModalWord .actions');
+                            actions && actions.parentNode.insertBefore(bar, actions);
+                            const btnRC = bar.querySelector('#confirmRemoveWord');
+                            const btnRX = bar.querySelector('#cancelRemoveWord');
+                            btnRC.onclick = async () => { try { btnRC.disabled=true; await ApprovalsClient.reject({ documentId, targetUserId: userId, actorId, comment: '' }); await window.__openUsersModalWordImpl(); } catch(e){ console.warn(e); } finally { try { bar.remove(); } catch(_) {} } };
+                            btnRX.onclick = () => { try { bar.remove(); } catch(_) {} };
+                            return;
+                        }
+                        if (t.checked && isOnBehalf) {
+                            // revert until confirmed
+                            t.checked = false;
+                            // inline confirmation (copy templates styling)
+                            try { document.getElementById('approvalsConfirmWord')?.remove(); } catch(_) {}
+                            const bar = document.createElement('div');
+                            bar.id = 'approvalsConfirmWord';
+                            bar.style.margin = '8px 0';
+                            bar.style.background = '#fff3cd';
+                            bar.style.color = '#111827';
+                            bar.style.border = '1px solid #ffeeba';
+                            bar.style.borderRadius = '6px';
+                            bar.style.padding = '8px 12px';
+                            bar.style.display = 'flex'; bar.style.justifyContent = 'space-between'; bar.style.alignItems = 'center'; bar.style.gap = '8px';
+                            const displayName = tr?.getAttribute('data-user-name') || userId;
+                            bar.innerHTML = `<div>You're about to approve on behalf of <b>${displayName}</b>. Continue?</div>`+
+                                            `<div style="display:flex; gap:8px;">`+
+                                            `<button id="confirmApproveWord" class="btn">Confirm</button>`+
+                                            `<button id="cancelApproveWord" class="btn btn-ghost" style="background:transparent !important; color:#374151 !important; border:1px solid #e5e7eb !important;">Cancel</button>`+
+                                            `</div>`;
+                            const actions = document.querySelector('#approvalsModalWord .actions');
+                            actions && actions.parentNode.insertBefore(bar, actions);
+                            const btnC = bar.querySelector('#confirmApproveWord');
+                            const btnX = bar.querySelector('#cancelApproveWord');
+                            btnC.onclick = async () => {
+                                try { btnC.disabled=true; await ApprovalsClient.approve({ documentId, targetUserId: userId, actorId }); await window.__openUsersModalWordImpl(); }
+                                catch(e){ console.warn(e); }
+                                finally { try { bar.remove(); } catch(_) {} }
+                            };
+                            btnX.onclick = () => { try { bar.remove(); } catch(_) {} };
+                            return;
+                        }
+                        if (t.checked) { await ApprovalsClient.approve({ documentId, targetUserId: userId, actorId }); }
+                        else { await ApprovalsClient.reject({ documentId, targetUserId: userId, actorId, comment: '' }); }
+                        updateSub();
+                        // Optimistically update top pill from current modal rows
+                        try {
+                            const modalEl = document.getElementById('approvalsModalWord');
+                            const rows = modalEl ? Array.from(modalEl.querySelectorAll('tbody tr')) : [];
+                            const total = rows.length;
+                            const approvedNow = rows.reduce((n, r)=> n + (r.querySelector('.approved-checkbox')?.checked ? 1 : 0), 0);
+                            if (typeof window.__updateApprovalsPillWord === 'function') window.__updateApprovalsPillWord(approvedNow, total);
+                        } catch(_) {}
+                    } catch(e){ console.warn('approve/reject error', e); }
+                });
+
+                // Notes change
+                tbody.addEventListener('change', async (ev) => {
+                    const t = ev.target; if (!(t && t.classList && t.classList.contains('notes-input'))) return;
+                    const tr = t.closest('tr'); const userId = tr && tr.getAttribute('data-user-id');
+                    try { const actorId = await __getActorIdWord(); await ApprovalsClient.updateNotes({ documentId, targetUserId: userId, notes: String(t.value||'').slice(0,200), actorId }); }
+                    catch(e){ console.warn('notes error', e); }
+                });
+
+                // Add user (editors) - inline form (no prompt/alert in Office)
+                const btnAdd = modal.querySelector('#approvalsAddUserWord');
+                if (btnAdd) {
+                    btnAdd.addEventListener('click', async () => {
+                        try {
+                            // Remove any existing inline form
+                            try { document.getElementById('addUserInlineWord')?.remove(); } catch(_) {}
+                            const inline = document.createElement('div');
+                            inline.id = 'addUserInlineWord';
+                            inline.style.margin = '8px 0';
+                            inline.style.padding = '8px';
+                            inline.style.border = '1px solid #e5e7eb';
+                            inline.style.borderRadius = '6px';
+                            inline.style.background = '#f9fafb';
+                            inline.innerHTML = `
+                                <div style="display:flex; gap:8px; align-items:center; flex-wrap:wrap;">
+                                    <input id="addUserNameWord" type="text" placeholder="Name" style="flex:1; min-width:180px; padding:6px 8px; border:1px solid #e5e7eb; border-radius:6px" />
+                                    <input id="addUserEmailWord" type="email" placeholder="Email" style="flex:1; min-width:220px; padding:6px 8px; border:1px solid #e5e7eb; border-radius:6px" />
+                                    <button id="addUserSaveWord" class="btn btn-secondary">Save</button>
+                                    <button id="addUserCancelWord" class="btn btn-ghost" style="background:transparent !important; color:#374151 !important; border:1px solid #e5e7eb !important;">Cancel</button>
+                                </div>
+                            `;
+                            // Insert above footer actions
+                            const actions = modal.querySelector('.actions');
+                            actions.parentNode.insertBefore(inline, actions);
+                            const inpName = inline.querySelector('#addUserNameWord');
+                            const inpEmail = inline.querySelector('#addUserEmailWord');
+                            const btnSave = inline.querySelector('#addUserSaveWord');
+                            const btnCancel = inline.querySelector('#addUserCancelWord');
+                            btnCancel.addEventListener('click', () => { try { inline.remove(); } catch(_) {} });
+                            btnSave.addEventListener('click', async () => {
+                                try {
+                                    const name = String(inpName.value || '').trim();
+                                    const email = String(inpEmail.value || '').trim();
+                                    if (!name || !email) { try { window.addNotification && window.addNotification('Enter name and email', 'error'); } catch(_) {}; return; }
+                                    btnSave.disabled = true; btnSave.textContent = 'Adding…';
+                                    const actorId = await __getActorIdWord();
+                                    await ApprovalsClient.addUser({ documentId, name, email, actorId });
+                                    try { window.addNotification && window.addNotification(`added ${name}`, 'success'); } catch(_) {}
+                                    await window.__openUsersModalWordImpl();
+                                } catch(e) {
+                                    try { window.addNotification && window.addNotification((e && e.message) || 'Add user failed', 'error'); } catch(_) {}
+                                }
+                            });
+                            try { inpName.focus(); } catch(_) {}
+                        } catch(_) {}
+                    });
+                }
+
+                // Explicit Save order / Refresh buttons
+                const btnSave = modal.querySelector('#approvalsSaveOrderWord');
+                if (btnSave) {
+                    btnSave.addEventListener('click', async () => {
+                        try {
+                            btnSave.disabled = true; const prev = btnSave.textContent; btnSave.textContent = 'Saving...';
+                            const order = Array.from(tbody.querySelectorAll('tr')).map((tr, i) => ({ userId: tr.getAttribute('data-user-id'), order: Number(tr.querySelector('.order-input')?.value || (i+1)) }));
+                            const actorId = await __getActorIdWord();
+                            await ApprovalsClient.reorder({ documentId, order, actorId });
+                            await window.__openUsersModalWordImpl();
+                        } catch(e){ console.warn('save order error', e); }
+                        finally { try { btnSave.disabled=false; btnSave.textContent='Save order'; } catch(_) {} }
+                    });
+                }
+                const btnRefresh = modal.querySelector('#approvalsRefreshWord');
+                if (btnRefresh) {
+                    btnRefresh.addEventListener('click', async () => {
+                        try { btnRefresh.disabled=true; const prev=btnRefresh.textContent; btnRefresh.textContent='Refreshing...'; await window.__openUsersModalWordImpl(); }
+                        finally { try { btnRefresh.disabled=false; btnRefresh.textContent='Refresh'; } catch(_) {} }
+                    });
+                }
+                const btnReset = modal.querySelector('#approvalsResetWord');
+                if (btnReset) {
+                    btnReset.addEventListener('click', async () => {
+                        try {
+                            if (!await wordConfirm('This will reset approvals to the canonical set and clear all statuses. Continue?')) return;
+                            btnReset.disabled = true; const prev=btnReset.textContent; btnReset.textContent='Nuking…';
+                            const actorId = await __getActorIdWord();
+                            await fetch('http://localhost:3001/api/approvals/reset', { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({ documentId, actorId }) });
+                            await window.__openUsersModalWordImpl();
+                        } catch(e){ console.warn('reset error', e); }
+                        finally { try { btnReset.disabled=false; btnReset.textContent='Nuke it'; } catch(_) {} }
+                    });
+                }
 
                 // REMOVED: Local pill calculation to prevent race condition with SSE events
                 // Only SSE events should update the pill to ensure consistency

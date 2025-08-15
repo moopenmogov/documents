@@ -3,7 +3,7 @@ const cors = require('cors');
 const multer = require('multer');
 const fs = require('fs');
 const path = require('path');
-const { spawn } = require('child_process');
+const { spawn, spawnSync } = require('child_process');
 let PDFLib = null; // lazy-loaded for compile endpoint
 
 const app = express();
@@ -71,7 +71,7 @@ async function convertDocxToPdf(docxPath) {
     // Try LibreOffice (soffice) headless conversion
     const outDir = path.dirname(docxPath);
     const args = ['--headless', '--convert-to', 'pdf', '--outdir', outDir, docxPath];
-    const bin = process.env.SOFFICE_BIN || 'soffice';
+    const bin = getSofficeBinOrNull() || 'soffice';
     await new Promise((resolve, reject) => {
         const proc = spawn(bin, args, { stdio: 'ignore' });
         proc.on('error', reject);
@@ -116,6 +116,57 @@ function sweepOldUploads(ttlHours = 24) {
 // Run sweep on start and hourly
 try { sweepOldUploads(Number(process.env.EXHIBITS_TTL_HOURS || 24)); } catch (_) {}
 setInterval(() => { try { sweepOldUploads(Number(process.env.EXHIBITS_TTL_HOURS || 24)); } catch (_) {} }, 3600 * 1000);
+
+// ===== LibreOffice (soffice) locator =====
+let resolvedSofficeBin = null;
+function resolveSofficePath() {
+    try {
+        // 1) Explicit env override
+        const envPath = process.env.SOFFICE_BIN;
+        if (envPath && fs.existsSync(envPath)) return envPath;
+
+        // 2) System PATH
+        if (process.platform === 'win32') {
+            try {
+                const res = spawnSync('where', ['soffice'], { encoding: 'utf8' });
+                const out = (res.stdout || '').split(/\r?\n/).map(s => s.trim()).filter(Boolean);
+                if (out.length && fs.existsSync(out[0])) return out[0];
+            } catch (_) {}
+        } else {
+            try {
+                const res = spawnSync('which', ['soffice'], { encoding: 'utf8' });
+                const p = (res.stdout || '').trim();
+                if (p && fs.existsSync(p)) return p;
+            } catch (_) {}
+        }
+
+        // 3) Known install paths (Windows)
+        const candidates = [];
+        if (process.platform === 'win32') {
+            candidates.push('C:\\Program Files\\LibreOffice\\program\\soffice.exe');
+            candidates.push('C:\\Program Files (x86)\\LibreOffice\\program\\soffice.exe');
+        } else {
+            candidates.push('/usr/bin/soffice');
+            candidates.push('/usr/local/bin/soffice');
+            candidates.push('/snap/bin/libreoffice');
+        }
+        for (const c of candidates) { if (fs.existsSync(c)) return c; }
+    } catch (_) {}
+    return null;
+}
+
+function getSofficeBinOrNull() {
+    if (resolvedSofficeBin && fs.existsSync(resolvedSofficeBin)) return resolvedSofficeBin;
+    resolvedSofficeBin = resolveSofficePath();
+    return resolvedSofficeBin && fs.existsSync(resolvedSofficeBin) ? resolvedSofficeBin : null;
+}
+
+// Resolve on boot and log
+try {
+    resolvedSofficeBin = getSofficeBinOrNull();
+    if (resolvedSofficeBin) console.log(`🧩 Using LibreOffice: ${resolvedSofficeBin}`);
+    else console.warn('⚠️ LibreOffice (soffice) not found. Set SOFFICE_BIN or install LibreOffice.');
+} catch (_) {}
 
 // Store current document info and checkout state
 let currentDocument = {
@@ -178,6 +229,7 @@ let documentPermissions = {};
 let documentApprovals = {};
 
 const APPROVALS_FILE = './approvals.json';
+const APPROVALS_STATE_FILE = './approvals-state.json';
 
 if (fs.existsSync(APPROVALS_FILE)) {
   const loaded = JSON.parse(fs.readFileSync(APPROVALS_FILE));
@@ -191,6 +243,49 @@ if (fs.existsSync(APPROVALS_FILE)) {
   });
   documentApprovals = loaded;
   console.log('✅ Loaded and validated approvals from file');
+}
+
+// Rich approvals-by-document state (routing order, notes, etc.)
+let approvalsByDocument = {};
+try {
+  if (fs.existsSync(APPROVALS_STATE_FILE)) {
+    approvalsByDocument = JSON.parse(fs.readFileSync(APPROVALS_STATE_FILE, 'utf8')) || {};
+  }
+} catch (_) { approvalsByDocument = {}; }
+function saveApprovalsState() {
+  try { fs.writeFileSync(APPROVALS_STATE_FILE, JSON.stringify(approvalsByDocument, null, 2)); } catch (_) {}
+}
+function seedApprovalsListIfMissing(docId) {
+  if (!docId) docId = currentDocument.id || 'default-doc';
+  if (!approvalsByDocument[docId]) {
+    const users = Object.values(webUsers || {});
+    approvalsByDocument[docId] = {
+      approvers: users.map((u, idx) => ({
+        userId: u.id,
+        name: u.name,
+        email: u.email,
+        order: idx + 1,
+        status: 'none',
+        updatedBy: null,
+        updatedAt: null,
+        notes: ''
+      })),
+      history: []
+    };
+    saveApprovalsState();
+  }
+  return docId;
+}
+function computeApprovedSummary(docId) {
+  const list = (approvalsByDocument[docId] && approvalsByDocument[docId].approvers) || [];
+  const approvedCount = list.filter(a => a.status === 'approved').length;
+  return { approvedCount, totalUsers: list.length };
+}
+function normalizeOrders(docId) {
+  const state = approvalsByDocument[docId];
+  if (!state) return;
+  state.approvers.sort((a, b) => (Number(a.order) || 0) - (Number(b.order) || 0));
+  state.approvers.forEach((a, i) => { a.order = i + 1; });
 }
 
 // Store SSE connections
@@ -798,6 +893,10 @@ app.post('/api/exhibits/delete', (req, res) => {
         res.status(500).json({ error: 'delete_exhibit_failed' });
     }
 });
+
+// Delete a default exhibit by filename (server-seeded defaults)
+// POST /api/exhibits/delete-default { filename }
+// (Removed) no server-side delete for defaults in this prototype
 // Serve DOCX file to SuperDoc viewer
 app.get('/api/document/:documentId', (req, res) => {
     try {
@@ -990,13 +1089,14 @@ app.post('/api/compile', async (req, res) => {
         let primaryBytes = null;
         let includePrimary = true;
         if (primary && primary.type === 'current') {
-            // generate from default-document/current.docx
-            const currentPath = path.join(defaultDocDir, 'current.docx');
-            if (!fs.existsSync(currentPath)) {
+            // Prefer the active currentDocument.filePath; fall back to default-document/current.docx
+            const fallbackPath = path.join(defaultDocDir, 'current.docx');
+            const curPath = (currentDocument && currentDocument.filePath) ? currentDocument.filePath : fallbackPath;
+            if (!fs.existsSync(curPath)) {
                 return res.status(400).json({ error: 'default_document_missing', message: 'No default document found. Use “Replace default document” to upload a .docx, then try again.' });
             }
             includePrimary = primary.include !== false;
-            primaryBytes = await convertDocxToPdf(currentPath);
+            primaryBytes = await convertDocxToPdf(curPath);
         } else if (typeof base64Pdf === 'string' && base64Pdf.length > 0) {
             includePrimary = true;
             primaryBytes = Buffer.from(base64Pdf, 'base64');
@@ -1364,77 +1464,219 @@ app.get('/api/document/:documentId/permissions', (req, res) => {
 
 // ===== APPROVALS API =====
 
-// Get approvals for a document
-app.get('/api/document/:documentId/approvals', (req, res) => {
-    const { documentId } = req.params;
-    const approvalsMap = documentApprovals[documentId] || {};
-    const approvals = Object.entries(approvalsMap).map(([userId, a]) => ({ userId, ...a }));
-    res.json({ success: true, approvals });
+// Snapshot state (routing order, notes, statuses)
+// GET /api/approvals/state?documentId=...
+app.get('/api/approvals/state', (req, res) => {
+    const docId = seedApprovalsListIfMissing(req.query.documentId || currentDocument.id || 'default-doc');
+    const state = approvalsByDocument[docId];
+    const summary = computeApprovedSummary(docId);
+    res.json({ success: true, documentId: docId, approvers: state.approvers.slice().sort((a,b)=>a.order-b.order), summary });
 });
 
-app.post('/api/document/:documentId/approvals', (req, res) => {
+// Approve
+// POST /api/approvals/approve { documentId, targetUserId, actorId, comment? }
+app.post('/api/approvals/approve', (req, res) => {
     try {
-        const { documentId } = req.params;
-        const { userId, action, actorId } = req.body;
-        if (!userId || !action || !actorId) {
-            return res.status(400).json({ success: false, error: 'Missing userId, action, or actorId' });
+        const { documentId, targetUserId, actorId, comment } = req.body || {};
+        const docId = seedApprovalsListIfMissing(documentId || currentDocument.id || 'default-doc');
+        const actor = webUsers[actorId] || wordUsers[actorId] || allUsers[actorId];
+        if (!actor) return res.status(404).json({ error: 'actor_not_found' });
+        const state = approvalsByDocument[docId];
+        const row = state.approvers.find(a => a.userId === targetUserId);
+        if (!row) return res.status(404).json({ error: 'target_not_found' });
+        const isSelf = actor.id === row.userId;
+        if (!(isSelf || actor.role === 'editor')) return res.status(403).json({ error: 'forbidden' });
+        if (row.status === 'approved') {
+            const summary = computeApprovedSummary(docId);
+            return res.json({ success: true, approver: row, summary, noop: true });
         }
-
-        // Initialize structure
-        if (!documentApprovals[documentId]) {
-            documentApprovals[documentId] = {};
-        }
-
-        // Map action to status
-        let status = 'no';
-        if (action === 'approve') status = 'approved';
-        if (action === 'unapprove' || action === 'reject') status = 'rejected';
-
-        const actor = allUsers[actorId] || webUsers[actorId] || wordUsers[actorId] || { id: actorId, name: actorId };
-        const target = allUsers[userId] || webUsers[userId] || wordUsers[userId] || { id: userId, name: userId };
-
-        documentApprovals[documentId][userId] = {
-            status,
-            approvedBy: actor.id,
-            approvedAt: new Date().toISOString()
-        };
-
-        // Broadcast SSE with counts for web pill updates
-        try {
-            const usersList = Object.values(webUsers || {});
-            const approvalsMap = documentApprovals[documentId] || {};
-            const approvalsArr = Object.entries(approvalsMap).map(([uid, a]) => ({ userId: uid, ...a }));
-            const approvedCount = approvalsArr.filter(a => a.status === 'approved').length;
-            const totalUsers = usersList.length;
-            broadcastSSE({
-                type: 'approvals-updated',
-                documentId,
-                userId,
-                status,
-                actorId,
-                approved: approvedCount,
-                total: totalUsers,
-                message: `${actor.name} ${status === 'approved' ? 'approved' : status === 'rejected' ? 'rejected' : 'set to no'} ${target.name}`,
-                timestamp: new Date().toISOString()
-            });
-        } catch (_e) {
-            broadcastSSE({
-                type: 'approvals-updated',
-                documentId,
-                userId,
-                status,
-                actorId,
-                message: `${actor.name} ${status === 'approved' ? 'approved' : status === 'rejected' ? 'rejected' : 'set to no'} ${target.name}`,
-                timestamp: new Date().toISOString()
-            });
-        }
-
+        row.status = 'approved';
+        row.updatedBy = actor.id;
+        row.updatedAt = new Date().toISOString();
+        if (comment) state.history.push({ type: 'approve', by: actor.id, target: row.userId, comment, at: row.updatedAt });
+        // keep legacy map in sync
+        if (!documentApprovals[docId]) documentApprovals[docId] = {};
+        documentApprovals[docId][row.userId] = { status: 'approved', approvedBy: actor.id, approvedAt: row.updatedAt };
         fs.writeFileSync(APPROVALS_FILE, JSON.stringify(documentApprovals, null, 2));
+        saveApprovalsState();
+        const { approvedCount, totalUsers } = computeApprovedSummary(docId);
+        broadcastSSE({ type: 'approvals-updated', documentId: docId, userId: row.userId, status: 'approved', actorId: actor.id, approved: approvedCount, total: totalUsers, message: `${actor.name} approved ${row.name}`, timestamp: new Date().toISOString() });
+        res.json({ success: true, approver: row, summary: { approvedCount, totalUsers } });
+    } catch (err) { res.status(500).json({ error: 'approve_failed' }); }
+});
 
-        res.json({ success: true, approval: { userId, ...documentApprovals[documentId][userId] } });
-    } catch (err) {
-        console.error('❌ Approvals POST error:', err);
-        res.status(500).json({ success: false, error: err.message || 'Internal Server Error' });
+// Reject
+// POST /api/approvals/reject { documentId, targetUserId, actorId, comment? }
+app.post('/api/approvals/reject', (req, res) => {
+    try {
+        const { documentId, targetUserId, actorId, comment } = req.body || {};
+        const docId = seedApprovalsListIfMissing(documentId || currentDocument.id || 'default-doc');
+        const actor = webUsers[actorId] || wordUsers[actorId] || allUsers[actorId];
+        if (!actor) return res.status(404).json({ error: 'actor_not_found' });
+        const state = approvalsByDocument[docId];
+        const row = state.approvers.find(a => a.userId === targetUserId);
+        if (!row) return res.status(404).json({ error: 'target_not_found' });
+        const isSelf = actor.id === row.userId;
+        if (!(isSelf || actor.role === 'editor')) return res.status(403).json({ error: 'forbidden' });
+        if (row.status === 'rejected') {
+            const summary = computeApprovedSummary(docId);
+            return res.json({ success: true, approver: row, summary, noop: true });
+        }
+        row.status = 'rejected';
+        row.updatedBy = actor.id;
+        row.updatedAt = new Date().toISOString();
+        if (comment) state.history.push({ type: 'reject', by: actor.id, target: row.userId, comment, at: row.updatedAt });
+        // keep legacy map in sync
+        if (!documentApprovals[docId]) documentApprovals[docId] = {};
+        documentApprovals[docId][row.userId] = { status: 'rejected', approvedBy: actor.id, approvedAt: row.updatedAt };
+        fs.writeFileSync(APPROVALS_FILE, JSON.stringify(documentApprovals, null, 2));
+        saveApprovalsState();
+        const { approvedCount, totalUsers } = computeApprovedSummary(docId);
+        broadcastSSE({ type: 'approvals-updated', documentId: docId, userId: row.userId, status: 'rejected', actorId: actor.id, approved: approvedCount, total: totalUsers, message: `${actor.name} rejected ${row.name}`, timestamp: new Date().toISOString() });
+        res.json({ success: true, approver: row, summary: { approvedCount, totalUsers } });
+    } catch (err) { res.status(500).json({ error: 'reject_failed' }); }
+});
+
+// Remind (stub)
+// POST /api/approvals/remind { documentId, targetUserId, actorId }
+app.post('/api/approvals/remind', (req, res) => {
+    try {
+        const { documentId, targetUserId, actorId } = req.body || {};
+        const docId = seedApprovalsListIfMissing(documentId || currentDocument.id || 'default-doc');
+        const state = approvalsByDocument[docId];
+        const row = state.approvers.find(a => a.userId === targetUserId);
+        if (!row) return res.status(404).json({ error: 'target_not_found' });
+        state.history.push({ type: 'remind', by: actorId || 'unknown', target: row.userId, at: new Date().toISOString() });
+        saveApprovalsState();
+        try {
+            const { approvedCount, totalUsers } = computeApprovedSummary(docId);
+            broadcastSSE({ type: 'approvals-reminder-sent', documentId: docId, userId: row.userId, actorId: actorId, approved: approvedCount, total: totalUsers, message: `Reminder sent to ${row.name}` , timestamp: new Date().toISOString() });
+        } catch (_) {}
+        res.json({ success: true, message: `you emailed a reminder to ${row.name}` });
+    } catch (_) { res.status(500).json({ error: 'remind_failed' }); }
+});
+
+// Add user (editor only)
+// POST /api/approvals/add-user { documentId, name, email, actorId }
+app.post('/api/approvals/add-user', (req, res) => {
+    try {
+        const { documentId, name, email, actorId } = req.body || {};
+        const actor = webUsers[actorId] || wordUsers[actorId] || allUsers[actorId];
+        if (!actor) return res.status(404).json({ error: 'actor_not_found' });
+        if (actor.role !== 'editor') return res.status(403).json({ error: 'forbidden' });
+        // Basic email validation (very loose): must contain @ and a dot after @
+        if (typeof email !== 'string' || !/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(email)) {
+            return res.status(400).json({ error: 'invalid_email' });
+        }
+        const docId = seedApprovalsListIfMissing(documentId || currentDocument.id || 'default-doc');
+        const state = approvalsByDocument[docId];
+        const userId = `user_${Date.now().toString(36)}_${Math.random().toString(36).slice(2,6)}`;
+        const order = state.approvers.length + 1;
+        state.approvers.push({ userId, name, email, order, status: 'none', updatedBy: actor.id, updatedAt: new Date().toISOString(), notes: '' });
+        saveApprovalsState();
+        try { const summary = computeApprovedSummary(docId); const { approvedCount, totalUsers } = summary; broadcastSSE({ type: 'approvals-list-updated', documentId: docId, action: 'added', userId, approved: approvedCount, total: totalUsers, timestamp: new Date().toISOString() }); } catch(_){ }
+        res.json({ success: true, approver: state.approvers.find(a => a.userId === userId) });
+    } catch (_) { res.status(500).json({ error: 'add_user_failed' }); }
+});
+
+// Delete user (editor only)
+// POST /api/approvals/delete-user { documentId, targetUserId, actorId }
+app.post('/api/approvals/delete-user', (req, res) => {
+    try {
+        const { documentId, targetUserId, actorId } = req.body || {};
+        const actor = webUsers[actorId] || wordUsers[actorId] || allUsers[actorId];
+        if (!actor) return res.status(404).json({ error: 'actor_not_found' });
+        if (actor.role !== 'editor') return res.status(403).json({ error: 'forbidden' });
+        const docId = seedApprovalsListIfMissing(documentId || currentDocument.id || 'default-doc');
+        const state = approvalsByDocument[docId];
+        const before = state.approvers.length;
+        state.approvers = state.approvers.filter(a => a.userId !== targetUserId);
+        saveApprovalsState();
+        try { const summary = computeApprovedSummary(docId); const { approvedCount, totalUsers } = summary; broadcastSSE({ type: 'approvals-list-updated', documentId: docId, action: 'deleted', userId: targetUserId, approved: approvedCount, total: totalUsers, timestamp: new Date().toISOString() }); } catch(_){ }
+        res.json({ success: true, removed: before - state.approvers.length });
+    } catch (_) { res.status(500).json({ error: 'delete_user_failed' }); }
+});
+
+// Reorder (editor only)
+// POST /api/approvals/reorder { documentId, order: [{ userId, order }] }
+app.post('/api/approvals/reorder', (req, res) => {
+    try {
+        const { documentId, order, actorId } = req.body || {};
+        const actor = webUsers[actorId] || wordUsers[actorId] || allUsers[actorId];
+        if (!actor) return res.status(404).json({ error: 'actor_not_found' });
+        if (actor.role !== 'editor') return res.status(403).json({ error: 'forbidden' });
+        const docId = seedApprovalsListIfMissing(documentId || currentDocument.id || 'default-doc');
+        const state = approvalsByDocument[docId];
+        const map = new Map((Array.isArray(order) ? order : []).map(x => [x.userId, Number(x.order) || 0]));
+        state.approvers.forEach(a => { if (map.has(a.userId)) a.order = map.get(a.userId); });
+        saveApprovalsState();
+        try { const summary = computeApprovedSummary(docId); const { approvedCount, totalUsers } = summary; broadcastSSE({ type: 'approvals-list-updated', documentId: docId, action: 'reordered', approved: approvedCount, total: totalUsers, timestamp: new Date().toISOString() }); } catch(_){ }
+        res.json({ success: true, approvers: state.approvers });
+    } catch (_) { res.status(500).json({ error: 'reorder_failed' }); }
+});
+
+// Update notes (self or editor)
+// POST /api/approvals/update-notes { documentId, targetUserId, notes, actorId }
+app.post('/api/approvals/update-notes', (req, res) => {
+    try {
+        const { documentId, targetUserId, notes, actorId } = req.body || {};
+        if (typeof notes !== 'string' || notes.length > 200) return res.status(400).json({ error: 'invalid_notes' });
+        const actor = webUsers[actorId] || wordUsers[actorId] || allUsers[actorId];
+        if (!actor) return res.status(404).json({ error: 'actor_not_found' });
+        const docId = seedApprovalsListIfMissing(documentId || currentDocument.id || 'default-doc');
+        const state = approvalsByDocument[docId];
+        const row = state.approvers.find(a => a.userId === targetUserId);
+        if (!row) return res.status(404).json({ error: 'target_not_found' });
+        const isSelf = actor.id === row.userId;
+        if (!(isSelf || actor.role === 'editor')) return res.status(403).json({ error: 'forbidden' });
+        row.notes = notes;
+        row.updatedBy = actor.id;
+        row.updatedAt = new Date().toISOString();
+        saveApprovalsState();
+        try {
+            const { approvedCount, totalUsers } = computeApprovedSummary(docId);
+            broadcastSSE({ type: 'approvals-notes-updated', documentId: docId, userId: row.userId, approved: approvedCount, total: totalUsers, timestamp: new Date().toISOString() });
+        } catch(_){}
+        res.json({ success: true, approver: row });
+    } catch (_) { res.status(500).json({ error: 'update_notes_failed' }); }
+});
+
+// Compile health check
+app.get('/api/health/compile', (req, res) => {
+    try {
+        const bin = getSofficeBinOrNull();
+        if (!bin) return res.status(503).json({ ok: false, reason: 'soffice_not_found' });
+        const r = spawnSync(bin, ['--version'], { encoding: 'utf8' });
+        if (r.error) return res.status(500).json({ ok: false, reason: 'spawn_error' });
+        const out = (r.stdout || r.stderr || '').trim();
+        res.json({ ok: true, bin, version: out });
+    } catch (e) {
+        res.status(500).json({ ok: false, error: 'health_check_failed' });
+    }
+});
+
+// Reset approvals to canonical set for the current document
+// POST /api/approvals/reset { documentId, actorId }
+app.post('/api/approvals/reset', (req, res) => {
+    try {
+        const { documentId, actorId } = req.body || {};
+        const actor = webUsers[actorId] || wordUsers[actorId] || allUsers[actorId];
+        if (!actor) return res.status(404).json({ error: 'actor_not_found' });
+        if (actor.role !== 'editor') return res.status(403).json({ error: 'forbidden' });
+        const docId = seedApprovalsListIfMissing(documentId || currentDocument.id || 'default-doc');
+        // Rebuild canonical approvers from webUsers
+        const users = Object.values(webUsers || {});
+        approvalsByDocument[docId] = {
+            approvers: users.map((u, idx) => ({ userId: u.id, name: u.name, email: u.email, order: idx + 1, status: 'none', updatedBy: actor.id, updatedAt: new Date().toISOString(), notes: '' })),
+            history: []
+        };
+        documentApprovals[docId] = {}; // zero all simple approvals map
+        saveApprovalsState();
+        const { approvedCount, totalUsers } = computeApprovedSummary(docId);
+        try { broadcastSSE({ type: 'approvals-list-updated', documentId: docId, action: 'reset', approved: approvedCount, total: totalUsers, timestamp: new Date().toISOString() }); } catch(_) {}
+        res.json({ success: true });
+    } catch (e) {
+        res.status(500).json({ error: 'reset_failed' });
     }
 });
 

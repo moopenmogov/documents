@@ -1,31 +1,5 @@
 {
-  "default-doc": {
-    "user1": {
-      "status": "approved",
-      "approvedBy": "user1",
-      "approvedAt": "2025-08-14T21:30:22.701Z"
-    },
-    "user3": {
-      "status": "approved",
-      "approvedBy": "user1",
-      "approvedAt": "2025-08-13T18:46:00.745Z"
-    },
-    "user5": {
-      "status": "approved",
-      "approvedBy": "user5",
-      "approvedAt": "2025-08-13T21:01:16.066Z"
-    },
-    "user2": {
-      "status": "approved",
-      "approvedBy": "user2",
-      "approvedAt": "2025-08-15T01:31:07.752Z"
-    },
-    "vendor1": {
-      "status": "approved",
-      "approvedBy": "vendor1",
-      "approvedAt": "2025-08-14T19:01:03.649Z"
-    }
-  },
+  "default-doc": {},
   "doc-1755112511679": {
     "user2": {
       "status": "rejected",
@@ -41,6 +15,74 @@
       "status": "rejected",
       "approvedBy": "user1",
       "approvedAt": "2025-08-13T20:27:45.480Z"
+    }
+  },
+  "doc-current": {
+    "user1": {
+      "status": "approved",
+      "approvedBy": "user1",
+      "approvedAt": "2025-08-15T19:17:16.607Z"
+    },
+    "user3": {
+      "status": "approved",
+      "approvedBy": "user1",
+      "approvedAt": "2025-08-15T19:17:20.789Z"
+    }
+  },
+  "doc-1755272017511": {
+    "user1": {
+      "status": "rejected",
+      "approvedBy": "user1",
+      "approvedAt": "2025-08-15T16:07:07.760Z"
+    },
+    "user3": {
+      "status": "approved",
+      "approvedBy": "user1",
+      "approvedAt": "2025-08-15T16:32:25.199Z"
+    },
+    "user2": {
+      "status": "approved",
+      "approvedBy": "user1",
+      "approvedAt": "2025-08-15T16:02:41.916Z"
+    },
+    "user5": {
+      "status": "approved",
+      "approvedBy": "user1",
+      "approvedAt": "2025-08-15T16:02:34.834Z"
+    },
+    "vendor1": {
+      "status": "approved",
+      "approvedBy": "user1",
+      "approvedAt": "2025-08-15T15:51:14.501Z"
+    },
+    "user_med09a96_7abt": {
+      "status": "approved",
+      "approvedBy": "user1",
+      "approvedAt": "2025-08-15T15:51:16.524Z"
+    },
+    "user_med0kx8p_ghiw": {
+      "status": "approved",
+      "approvedBy": "user1",
+      "approvedAt": "2025-08-15T16:07:12.469Z"
+    }
+  },
+  "doc-1755284308185": {
+    "user1": {
+      "status": "approved",
+      "approvedBy": "user3",
+      "approvedAt": "2025-08-15T18:59:05.990Z"
+    },
+    "user2": {
+      "status": "approved",
+      "approvedBy": "user3",
+      "approvedAt": "2025-08-15T18:59:11.075Z"
+    }
+  },
+  "doc-1755284421489": {
+    "user1": {
+      "status": "approved",
+      "approvedBy": "user1",
+      "approvedAt": "2025-08-15T19:06:31.798Z"
     }
   }
 }
