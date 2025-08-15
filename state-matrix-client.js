@@ -197,6 +197,9 @@ window.refreshActionsDropdownFromMatrix = function(selectId, config) {
         },
         true
     );
+    // Finalize toggle (only when allowed by matrix)
+    add('finalize', 'Finalize', async () => { try { window.onWebDocActionChange && window.onWebDocActionChange('finalize'); } catch(_) {} }, !!b.finalizeBtn);
+    add('unfinalize', 'Move to Draft', async () => { try { window.onWebDocActionChange && window.onWebDocActionChange('unfinalize'); } catch(_) {} }, !!b.unfinalizeBtn);
     add('replaceDefaultBtn', '⬆️ Replace default document', () => {
         try {
             const fileEl = document.getElementById('fileInput') || document.getElementById('replaceCurrentDocFileInput') || document.getElementById('inputReplaceCurrent');
