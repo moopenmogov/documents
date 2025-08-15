@@ -1339,16 +1339,14 @@
                         panel.style.padding = '16px';
                         panel.innerHTML = (
                             '<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px">'
-                            + '<div style="font-size:16px;font-weight:600">Compile (prototype)</div>'
-                            + '<button id="compileCloseBtn" style="border:none;background:#eee;padding:6px 10px;border-radius:4px;cursor:pointer">Close</button>'
+                            + '<div style="font-size:16px;font-weight:600">Compile</div>'
                             + '</div>'
                             + '<div id="compileBody" style="font-size:13px;color:#334155;margin-bottom:8px"></div>'
                         );
                         modal.appendChild(panel);
                         modal.addEventListener('click', (ev) => { if (ev.target === modal) modal.style.display = 'none'; });
                         document.body.appendChild(modal);
-                        const closeBtn = panel.querySelector('#compileCloseBtn');
-                        if (closeBtn) closeBtn.addEventListener('click', () => { modal.style.display = 'none'; });
+                        
                         // Populate minimal UI
                         const body = panel.querySelector('#compileBody');
                         if (body) {
@@ -1366,10 +1364,9 @@
                                 + '<div style="display:flex; align-items:center; justify-content:space-between; gap:10px;">'
                                 + '  <div style="display:flex; align-items:center; gap:10px;">'
                                 + '    <button id="uploadExhibitBtn" class="btn" style="background:#374151;color:#ffffff;">Upload PDF</button>'
-                                + '    <a id="compileDownload" href="#" download="compiled.pdf" style="display:none; font-size:12px; color:#2563eb; text-decoration:underline;">Download compiled.pdf</a>'
                                 + '  </div>'
                                 + '  <div style="display:flex; align-items:center; gap:8px;">'
-                                + '    <button id="compileCancel" class="btn" style="background:#bfdbfe;color:#1e40af;">Cancel</button>'
+                                + '    <button id="compileCancel" class="btn" style="background:#bfdbfe;color:#000;">Cancel</button>'
                                 + '    <button id="compileGo" class="btn" style="background:#1f2937;color:#ffffff;">Compile</button>'
                                 + '  </div>'
                                 + '</div>';
@@ -5448,7 +5445,7 @@ window.__forceOpenApprovalsTest = function() {
                     add(!!b.overrideBtn, 'overrideBtn', 'Override Check-out', window.overrideCheckout);
                     add(!!b.sendVendorBtn, 'sendVendorBtn', 'Send to Vendor', window.openVendorModal);
                     add(!!b.replaceDefaultBtn, 'replaceDefaultBtn', 'Replace Default Document', window.replaceDefaultDocument || window.showFileDialog);
-                    add(!!b.compileBtn, 'compileBtn', 'COMPILE', window.openCompileModal);
+                    add(!!b.compileBtn, 'compileBtn', 'Compile', window.openCompileModal);
                     add(true, 'approvalsBtn', 'Approval details', window.openUsersModalWord || window.openUsersModal || window.openUsersModalWeb);
 
                     console.log('🔄 DROPDOWN DEBUG: final actions to be added:', actions.map(a => ({ id: a.id, label: a.label, hasFunction: !!a.fn, functionName: a.fn?.name })));
@@ -5745,6 +5742,26 @@ window.__forceOpenApprovalsTest = function() {
                 // Open modal on button click
                 button.addEventListener('click', function() {
                     modal.style.display = 'block';
+                    // Force autoplay (muted) on open to satisfy autoplay policies
+                    try {
+                        const autoplayUrl = 'https://www.youtube.com/embed/dQw4w9WgXcQ?autoplay=1&mute=1&playsinline=1&enablejsapi=1';
+                        if (video) {
+                            const current = video.src || '';
+                            if (current !== autoplayUrl) {
+                                video.src = '';
+                                video.src = autoplayUrl;
+                            } else {
+                                // Ensure reload if same URL already set
+                                const bust = autoplayUrl + '&t=' + Date.now();
+                                video.src = '';
+                                video.src = bust;
+                            }
+                            const allow = video.getAttribute('allow') || '';
+                            if (!/autoplay/.test(allow)) {
+                                video.setAttribute('allow', (allow ? allow + '; ' : '') + 'autoplay');
+                            }
+                        }
+                    } catch (_) {}
                 });
                 
                 // Close modal when clicking outside the content
