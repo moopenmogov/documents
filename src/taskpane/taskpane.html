@@ -491,7 +491,6 @@
                 opacity: 1;
             }
         }
-
         /* Apply animation to all button types with stronger specificity */
         button:active, 
         .btn:active, 
@@ -645,7 +644,6 @@
             font-weight: 600;
             margin: 0;
         }
-        
         .notification-modal-close {
             background: none;
             border: none;
@@ -991,7 +989,6 @@
         .btn { border:none; border-radius:8px; padding:8px 12px; font-weight:600; cursor:pointer; color:#fff !important; }
         .btn[data-action="approve"] { background: #d4edda !important; color: #155724 !important; border: 1px solid #c3e6cb !important; }
         .btn[data-action="reject"] { background: #f8d7da !important; color: #721c24 !important; border: 1px solid #f5c6cb !important; }
-
         /* Add to existing rules where flex-grow appears (e.g., .grow class or similar) */
         .grow-class { flex-grow: 1; -ms-flex-positive: 1; } // Adjust to actual selector, e.g., line 168
 
@@ -1345,7 +1342,6 @@
             console.log('🧭 OfficeExtension: extendedErrorLogging enabled');
         }
     } catch (_) {}
-
     // Back-compat global stubs to prevent legacy calls from throwing
     try {
         if (typeof window.populateDocumentActions !== 'function') {
@@ -1618,7 +1614,6 @@
             try { logRichApiError(err, 'window.error'); } catch(_) { console.warn(err); }
         });
     } catch (_) {}
-
     // --- Self Test: Insert local DOCX via file picker ---
     (function setupSelfTestInsertDocx() {
         try {
@@ -1685,7 +1680,6 @@
             console.warn('Failed to set up Self Test Insert DOCX helpers', e);
         }
     })();
-
     // --- Server Raw Loader: Use the same insert path as Self Test but fetch from API ---
     /* Removed legacy server raw loader UI */
     /* (function setupServerRawLoader() {
@@ -2132,6 +2126,21 @@
                     } else if (data.type === 'vendor-invited') {
                         showStatus('sseStatus', `📡 ${data.message}`, 'info');
                         // No state matrix update needed for vendor invite
+                    } else if (data.type === 'document-finalize-updated') {
+                        // Apply finalize toggle immediately: banner + lock/unlock + dropdown refresh
+                        try { addNotification(data.isFinal ? 'Finalized. The first approver has been notified.' : 'Moved back to Draft.', data.isFinal ? 'success' : 'info'); } catch(_) {}
+                        try {
+                            if (data.isFinal) { try { await lockDocument(); } catch(_) {} }
+                            else { try { await unlockDocument(); } catch(_) {} }
+                        } catch(_) {}
+                        try {
+                            await fetchDocumentStatus();
+                            await updateUIFromStateMatrix('word', getCurrentUser, getCurrentUserRole, currentDocumentState);
+                            // Rebuild dropdown immediately without requiring user interaction
+                            if (window.__lastStateMatrix && typeof window.renderMatrixActionsDropdown === 'function') {
+                                window.renderMatrixActionsDropdown(window.__lastStateMatrix);
+                            }
+                        } catch (e) { console.warn('Finalize SSE refresh failed:', e); }
                     } else if (data.type === 'permission-changed') {
                         console.log(`📡 WORD: Permission changed for ${data.user.name}`);
                         // Refresh button states if this affects current user
@@ -2170,7 +2179,6 @@
         // User management state (same as web viewer)
         let currentUser = null;
         let allUsers = [];
-        
         // Initialize word-specific user system  
         async function initializeUserSystem() {
             try {
@@ -2528,7 +2536,6 @@
                 }
             });
         }
-        
         // Multi-layer document protection detection
         async function determineDocumentAccess() {
             console.log('🔍 STEP 1: Determining document access levels...');
@@ -2659,9 +2666,6 @@
                 console.log('DISABLED: Would unlock document - SuperDoc handles protection');
             }
         }
-
-
-        
         // Fetch current document status
         async function fetchDocumentStatus() {
             try {
@@ -3066,7 +3070,7 @@
         
         // Override any checkout
         window.overrideCheckout = async function overrideCheckout() {
-            console.log('ðŸ" WORD: Calling override API...');
+            console.log('🔒 WORD: Calling override API...');
             try {
                 const response = await fetch('http://localhost:3001/api/override', {
                     method: 'POST',
@@ -3075,7 +3079,7 @@
                 });
                 
                 if (response.ok) {
-                    console.log('âœ… WORD: Override successful');
+                    console.log('✅ WORD: Override successful');
                     // Refresh matrix/UI state immediately
                     try {
                         await fetchDocumentStatus();
@@ -3084,10 +3088,10 @@
                         if (window.updateQuickActionsVisibility) updateQuickActionsVisibility();
                     } catch(_) {}
                 } else {
-                    console.error('âŒ WORD: Override failed:', response.status);
+                    console.error('❌ WORD: Override failed:', response.status);
                 }
             } catch (error) {
-                console.error('âŒ WORD: Override error:', error);
+                console.error('❌ WORD: Override error:', error);
             }
         }
         
@@ -3145,7 +3149,6 @@
                 return false;
             }
         }
-
         // Global flags
         window.__documentInsertInProgress = window.__documentInsertInProgress || false;
         window.__pureInsertMode = window.__pureInsertMode !== undefined ? window.__pureInsertMode : true; // Do not modify the document content before/after insert attempts
@@ -3153,10 +3156,8 @@
         window.__baselineStylesJson = window.__baselineStylesJson || null;
         // Default to live mode so SSE/matrix updates reflect immediately
         window.__insertIsolation = window.__insertIsolation !== undefined ? window.__insertIsolation : false;
-        
         // Disable HMR/live reload during pure insert testing to reduce WebView churn
         try { if (window.__pureInsertMode && typeof module !== 'undefined' && module.hot && typeof module.hot.decline === 'function') { module.hot.decline(); console.log('🔕 HMR disabled for pure insert testing'); } } catch(_) {}
-        
         // Load latest document - with state management and resource control
         async function loadLatestIntoCurrentDocument() {
             console.log('📄 View Latest: Loading document with workaround...');
@@ -3656,7 +3657,6 @@
                 showStatus('documentStatus', '❌ Failed to share document: ' + error.message, 'error');
             }
         }
-        
         // Helper function to get document content as base64
         async function getDocumentAsBase64() {
             return new Promise((resolve, reject) => {
@@ -3773,7 +3773,6 @@
                 showStatus('documentStatus', '❌ Failed to lock document', 'error');
             }
         }
-        
         async function unlockDocument() {
             try {
                 // Always try to clean up any locks, even if we think there aren't any
@@ -3804,7 +3803,6 @@
                 showStatus('documentStatus', '❌ Failed to unlock document', 'error');
             }
         }
-        
         // Handle Word Online deletion bug
         async function setupLockProtection() {
             try {
@@ -4076,7 +4074,6 @@
 				console.warn('📊 WORD: Failed to update row from SSE:', e);
 			}
 		}
-
         // Quick pill update function for SSE sync (must be defined before SSE connects)
         function __updateApprovalsPillWord(approved, total) {
             try {
@@ -4436,9 +4433,7 @@
                 window.addNotification && window.addNotification('❌ Failed to update approval');
             }
         }
-
         // NFB modal implementation removed - using unified implementation below
-
         // Word: real Users/Approvals modal implementation (dedicated container). The opener proxies to this.
         window.__openUsersModalWordImpl = async function() {
             try {
@@ -4626,8 +4621,8 @@
                             const displayName = tr?.getAttribute('data-user-name') || userId;
                             bar.innerHTML = `<div>You're about to remove approval for <b>${displayName}</b>. Continue?</div>`+
                                             `<div style=\"display:flex; gap:8px;\">`+
-                                            `<button id=\"confirmRemoveWord\" class=\"btn\">Confirm</button>`+
-                                            `<button id=\"cancelRemoveWord\" class=\"btn btn-ghost\" style=\"background:transparent !important; color:#374151 !important; border:1px solid #e5e7eb !important;\">Cancel</button>`+
+                                            `<button id=\"confirmRemoveWord\" class=\"btn\" style=\"background:#1f2937;color:#fff;border:none;border-radius:6px;padding:8px 12px;\">Confirm</button>`+
+                                            `<button id=\"cancelRemoveWord\" class=\"btn btn-ghost\" style=\"background:#e5e7eb;color:#000;border:1px solid #d1d5db;border-radius:6px;padding:8px 12px;\">Cancel</button>`+
                                             `</div>`;
                             const actions = document.querySelector('#approvalsModalWord .actions');
                             actions && actions.parentNode.insertBefore(bar, actions);
@@ -4654,8 +4649,8 @@
                             const displayName = tr?.getAttribute('data-user-name') || userId;
                             bar.innerHTML = `<div>You're about to approve on behalf of <b>${displayName}</b>. Continue?</div>`+
                                             `<div style="display:flex; gap:8px;">`+
-                                            `<button id="confirmApproveWord" class="btn">Confirm</button>`+
-                                            `<button id="cancelApproveWord" class="btn btn-ghost" style="background:transparent !important; color:#374151 !important; border:1px solid #e5e7eb !important;">Cancel</button>`+
+                                            `<button id="confirmApproveWord" class="btn" style="background:#1f2937;color:#fff;border:none;border-radius:6px;padding:8px 12px;">Confirm</button>`+
+                                            `<button id="cancelApproveWord" class="btn btn-ghost" style="background:#e5e7eb;color:#000;border:1px solid #d1d5db;border-radius:6px;padding:8px 12px;">Cancel</button>`+
                                             `</div>`;
                             const actions = document.querySelector('#approvalsModalWord .actions');
                             actions && actions.parentNode.insertBefore(bar, actions);
@@ -4709,8 +4704,8 @@
                                 <div style="display:flex; gap:8px; align-items:center; flex-wrap:wrap;">
                                     <input id="addUserNameWord" type="text" placeholder="Name" style="flex:1; min-width:180px; padding:6px 8px; border:1px solid #e5e7eb; border-radius:6px" />
                                     <input id="addUserEmailWord" type="email" placeholder="Email" style="flex:1; min-width:220px; padding:6px 8px; border:1px solid #e5e7eb; border-radius:6px" />
-                                    <button id="addUserSaveWord" class="btn btn-secondary">Save</button>
-                                    <button id="addUserCancelWord" class="btn btn-ghost" style="background:transparent !important; color:#374151 !important; border:1px solid #e5e7eb !important;">Cancel</button>
+                                    <button id="addUserSaveWord" class="btn" style="background:#1f2937;color:#fff;border:none;border-radius:6px;padding:8px 12px;">Save</button>
+                                    <button id="addUserCancelWord" class="btn btn-ghost" style="background:#e5e7eb;color:#000;border:1px solid #d1d5db;border-radius:6px;padding:8px 12px;">Cancel</button>
                                 </div>
                             `;
                             // Insert above footer actions
@@ -4836,8 +4831,6 @@ window.__forceOpenApprovalsTest = function() {
         document.getElementById('forceClose').onclick = () => { try { m.remove(); b.remove(); } catch(_) {} };
     } catch(_) {}
 };
-                
-        
         // Connect to SSE when Office is ready
         Office.onReady((info) => {
             if (info.host === Office.HostType.Word) {
@@ -5477,7 +5470,6 @@ window.__forceOpenApprovalsTest = function() {
                 console.error('❌ Simple lock failed:', error);
             }
         };
-
         window.debugSafeUnlock = async () => {
             console.log('🔓 SAFE UNLOCK - unlocking without deleting content...');
             try {
@@ -5714,9 +5706,6 @@ window.__forceOpenApprovalsTest = function() {
                 console.log('ℹ️ autoAttachToOpenDocument skipped:', e?.message || e);
             }
         }
-
-
-
         // Matrix-driven unified dropdown (matches web actions 1:1)
         (function setupMatrixActionsDropdown() {
             try {
@@ -5783,21 +5772,85 @@ window.__forceOpenApprovalsTest = function() {
                     if (!config || !config.buttons) return;
                     const b = config.buttons;
                     const actions = [];
-                    const add = (cond, id, label, fn) => { if (cond && typeof fn === 'function') actions.push({ id, label, fn }); };
+                    const add = (id, label, fn, include) => { if (include && typeof fn === 'function') actions.push({ id, label, fn }); };
 
-                    // Match web order EXACTLY - copied from refreshActionsDropdownFromMatrix
                     const hasDoc = !!config.checkoutStatus?.show;
-                    add(hasDoc && (b.viewOnlyBtn !== false), 'viewOnlyBtn', 'View Latest', window.viewLatestRobust || window.cleanViewLatest || window.viewReadOnly);
-                    add(true, 'shareToWebBtn', 'Open in Web', window.shareToWeb);
-                    add(!!b.checkoutBtn, 'checkoutBtn', 'Check-out Document', window.checkoutDocument);
-                    add(!!b.checkedInBtns, 'checkinBtn', 'Save & Check-in', window.checkinDocument);
-                    add(!!b.checkedInBtns, 'cancelBtn', 'Cancel Check-out', window.cancelCheckout);
-                    add(!!b.checkedInBtns, 'saveProgressBtn', 'Save Progress', window.saveProgress);
-                    add(!!b.overrideBtn, 'overrideBtn', 'Override Check-out', window.overrideCheckout);
-                    add(!!b.sendVendorBtn, 'sendVendorBtn', 'Send to Vendor', window.openVendorModal);
-                    add(!!b.replaceDefaultBtn, 'replaceDefaultBtn', 'Replace Default Document', window.replaceDefaultDocument || window.showFileDialog);
-                    add(!!b.compileBtn, 'compileBtn', 'Compile', window.openCompileModal);
-                    add(true, 'approvalsBtn', 'Approval details', window.openUsersModalWord || window.openUsersModal || window.openUsersModalWeb);
+                    const order = Array.isArray(config.dropdown?.order) ? config.dropdown.order : [
+                        'viewOnlyBtn','shareToWebBtn','checkoutBtn','checkinBtn','cancelBtn','saveProgressBtn','overrideBtn','sendVendorBtn','replaceDefaultBtn','compile','approvalsBtn','finalize','unfinalize'
+                    ];
+                    const map = {
+                        viewOnlyBtn: () => add('viewOnlyBtn', 'View Latest', window.viewLatestRobust || window.cleanViewLatest || window.viewReadOnly, hasDoc && (b.viewOnlyBtn !== false)),
+                        shareToWebBtn: () => add('shareToWebBtn', 'Open in Web', window.shareToWeb, true),
+                        checkoutBtn: () => add('checkoutBtn', 'Check-out Document', window.checkoutDocument, !!b.checkoutBtn),
+                        checkinBtn: () => add('checkinBtn', 'Save & Check-in', window.checkinDocument, !!b.checkedInBtns),
+                        cancelBtn: () => add('cancelBtn', 'Cancel Check-out', window.cancelCheckout, !!b.checkedInBtns),
+                        saveProgressBtn: () => add('saveProgressBtn', 'Save Progress', window.saveProgress, !!b.checkedInBtns),
+                        overrideBtn: () => add('overrideBtn', 'Override Check-out', window.overrideCheckout, !!b.overrideBtn),
+                        sendVendorBtn: () => add('sendVendorBtn', 'Send to Vendor', window.openVendorModal, !!b.sendVendorBtn),
+                        replaceDefaultBtn: () => add('replaceDefaultBtn', 'Replace Default Document', window.replaceDefaultDocument || window.showFileDialog, !!b.replaceDefaultBtn),
+                        compile: () => add('compile', 'Compile', window.openCompileModal, !!b.compileBtn),
+                        approvalsBtn: () => add('approvalsBtn', 'Approval details', window.openUsersModalWord || window.openUsersModal || window.openUsersModalWeb, true),
+                        finalize: () => add('finalize', 'Finalize', async () => {
+                            try {
+                                const fin = (config.finalize && config.finalize.confirm) || {};
+                                const title = fin.title || 'Please confirm you\'d like to finalize.';
+                                const body = fin.body || 'After finalizing, the document is locked and the first approver is notified.';
+                                const label = fin.confirmLabel || 'Finalize';
+                                const tone = fin.toneColor || '#fff3cd';
+                                const toneText = fin.toneTextColor || '#111827';
+                                // Scoped container with style overrides (matches web approach)
+                                const wrap = document.createElement('div');
+                                wrap.id = 'ogFinalizeWord';
+                                const style = document.createElement('style');
+                                style.textContent = '#ogFinalizeWord .btn{background:#1f2937 !important;color:#fff !important;border:none !important;border-radius:6px !important;padding:8px 12px !important;} #ogFinalizeWord .btn-cancel{background:#e5e7eb !important;color:#000 !important;border:1px solid #d1d5db !important;border-radius:6px !important;padding:8px 12px !important;}';
+                                const bar = document.createElement('div');
+                                bar.style.cssText = `margin:8px 0;background:${tone};color:${toneText};border:1px solid #e5e7eb;border-radius:6px;padding:8px 12px;display:flex;justify-content:space-between;align-items:center;gap:8px;`;
+                                bar.innerHTML = `<div><b>${title}</b><div>${body}</div></div>`+
+                                                 `<div style=\"display:flex;gap:8px;\">`+
+                                                 `<button id=\"__fin_confirm\" class=\"btn\">${label}</button>`+
+                                                 `<button id=\"__fin_cancel\" class=\"btn btn-cancel\">Cancel</button>`+
+                                                 `</div>`;
+                                wrap.appendChild(style);
+                                wrap.appendChild(bar);
+                                const host = document.querySelector('.section-body') || document.getElementById('approvalsModalWord') || document.body;
+                                host && host.parentNode && host.parentNode.insertBefore(wrap, host);
+                                const actorId = (window.getCurrentUser && window.getCurrentUser()?.id) || (window.currentUser && window.currentUser.id) || 'user1';
+                                wrap.querySelector('#__fin_confirm').onclick = async () => {
+                                    try { await fetch('http://localhost:3001/api/finalize', { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({ actorId }) }); }
+                                    catch(e){ console.warn(e); }
+                                    finally { try { wrap.remove(); } catch(_) {} }
+                                };
+                                wrap.querySelector('#__fin_cancel').onclick = () => { try { wrap.remove(); } catch(_) {} };
+                            } catch (e) { console.warn('Finalize UI failed', e); }
+                        }, !!b.finalizeBtn),
+                        unfinalize: () => add('unfinalize', 'Move to Draft', async () => {
+                            try {
+                                const fin = (config.finalize && config.finalize.unfinalize) || {};
+                                const title = fin.title || 'Move back to Draft?';
+                                const body = fin.body || 'Editors can edit again; approvals may need to be re-requested.';
+                                const label = fin.confirmLabel || 'Move to Draft';
+                                const tone = fin.toneColor || '#e5e7eb';
+                                const toneText = fin.toneTextColor || '#111827';
+                                const bar = document.createElement('div');
+                                bar.style.cssText = `margin:8px 0;background:${tone};color:${toneText};border:1px solid #e5e7eb;border-radius:6px;padding:8px 12px;display:flex;justify-content:space-between;align-items:center;gap:8px;`;
+                                bar.innerHTML = `<div><b>${title}</b><div>${body}</div></div>`+
+                                                 `<div style=\"display:flex;gap:8px;\">`+
+                                                 `<button id=\"__unfin_confirm\" class=\"btn\" style=\"background:#1f2937;color:#fff;border:none;border-radius:6px;padding:8px 12px;\">${label}</button>`+
+                                                 `<button id=\"__unfin_cancel\" class=\"btn btn-ghost\" style=\"background:#e5e7eb;color:#000;border:1px solid #d1d5db;border-radius:6px;padding:8px 12px;\">Cancel</button>`+
+                                                 `</div>`;
+                                const host = document.querySelector('.section-body') || document.getElementById('approvalsModalWord') || document.body;
+                                host && host.parentNode && host.parentNode.insertBefore(bar, host);
+                                const actorId = (window.getCurrentUser && window.getCurrentUser()?.id) || (window.currentUser && window.currentUser.id) || 'user1';
+                                bar.querySelector('#__unfin_confirm').onclick = async () => {
+                                    try { await fetch('http://localhost:3001/api/unfinalize', { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({ actorId }) }); }
+                                    catch(e){ console.warn(e); }
+                                    finally { try { bar.remove(); } catch(_) {} }
+                                };
+                                bar.querySelector('#__unfin_cancel').onclick = () => { try { bar.remove(); } catch(_) {} };
+                            } catch (e) { console.warn('Unfinalize UI failed', e); }
+                        }, !!b.unfinalizeBtn)
+                    };
+                    order.forEach(key => { if (map[key]) map[key](); });
 
                     console.log('🔄 DROPDOWN DEBUG: final actions to be added:', actions.map(a => ({ id: a.id, label: a.label, hasFunction: !!a.fn, functionName: a.fn?.name })));
                     console.log('🔄 DROPDOWN DEBUG: actions details:', actions);
@@ -6065,7 +6118,6 @@ window.__forceOpenApprovalsTest = function() {
             return { passed, failed, total: tests.length };
         };
     </script>
-    
     <!-- Take Me Back to OpenGov Modal -->
     <div id="backToOpenGovModal" style="display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.5); z-index: 2147483647;">
         <div style="position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); background: white; border-radius: 8px; padding: 20px; max-width: 90vw; max-height: 90vh; box-shadow: 0 4px 20px rgba(0,0,0,0.15);">
@@ -6144,8 +6196,3 @@ window.__forceOpenApprovalsTest = function() {
     
 </body>
 </html>
-
-
-
-
-

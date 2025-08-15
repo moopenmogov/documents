@@ -32,12 +32,12 @@
     "user1": {
       "status": "approved",
       "approvedBy": "user1",
-      "approvedAt": "2025-08-15T19:17:16.607Z"
+      "approvedAt": "2025-08-15T22:51:04.221Z"
     },
     "user3": {
       "status": "approved",
       "approvedBy": "user1",
-      "approvedAt": "2025-08-15T19:17:20.789Z"
+      "approvedAt": "2025-08-15T22:51:12.614Z"
     },
     "user2": {
       "status": "rejected",
@@ -45,9 +45,9 @@
       "approvedAt": "2025-08-15T22:07:35.252Z"
     },
     "vendor1": {
-      "status": "approved",
-      "approvedBy": "user1",
-      "approvedAt": "2025-08-15T22:07:53.259Z"
+      "status": "rejected",
+      "approvedBy": "user3",
+      "approvedAt": "2025-08-15T22:37:31.104Z"
     }
   },
   "doc-1755272017511": {

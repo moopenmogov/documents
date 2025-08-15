@@ -1646,6 +1646,13 @@ app.post('/api/finalize', (req, res) => {
             return res.status(409).json({ error: 'not_checked_out_by_actor' });
         }
         currentDocument.isFinal = true;
+        // Eliminate checkout upon finalization
+        documentState.isCheckedOut = false;
+        documentState.checkedOutBy = null;
+        documentState.checkedOutUser = null;
+        documentState.checkedOutUserId = null;
+        documentState.checkedOutAt = null;
+        broadcastSSE({ type: 'checkout-cancelled', message: 'Checkout cleared due to finalization', timestamp: new Date().toISOString() });
         broadcastSSE({ type: 'document-finalize-updated', isFinal: true, timestamp: new Date().toISOString() });
         res.json({ success: true, isFinal: true });
     } catch (e) { res.status(500).json({ error: 'finalize_failed' }); }
@@ -1656,9 +1663,7 @@ app.post('/api/unfinalize', (req, res) => {
         const { actorId } = req.body || {};
         const actor = webUsers[actorId] || wordUsers[actorId] || allUsers[actorId];
         if (!actor || actor.role !== 'editor') return res.status(403).json({ error: 'forbidden' });
-        if (!documentState.isCheckedOut || documentState.checkedOutUserId !== actor.id) {
-            return res.status(409).json({ error: 'not_checked_out_by_actor' });
-        }
+        // Editors can move back to draft without checking out
         currentDocument.isFinal = false;
         broadcastSSE({ type: 'document-finalize-updated', isFinal: false, timestamp: new Date().toISOString() });
         res.json({ success: true, isFinal: false });
@@ -1941,9 +1946,9 @@ function getStateMatrixConfig(userRole, platform, docState, currentUser) {
         },
         checkoutStatus: {
             show: !!(currentDocument.filename && currentDocument.id),
-            text: isCheckedOut ? 
+            text: currentDocument.isFinal ? 'Document is Finalized and Cannot Be Edited.' : (isCheckedOut ? 
                 `Checked out by ${checkedOutUser?.name || checkedOutBy}` : 
-                'Available for check-out'
+                'Available for check-out')
         },
         viewerMessage: {
             show: userRole === 'viewer' && !!(currentDocument.filename && currentDocument.id),
@@ -1951,7 +1956,36 @@ function getStateMatrixConfig(userRole, platform, docState, currentUser) {
         },
         finalize: {
             isFinal: !!currentDocument.isFinal,
-            banner: currentDocument.isFinal ? 'Document is Finalized and Cannot Be Edited.' : ''
+            banner: currentDocument.isFinal ? {
+                text: 'Document is Finalized and Cannot Be Edited.',
+                color: '#6b7280',
+                textColor: '#ffffff',
+                locked: true
+            } : {
+                text: '',
+                color: '#bfdbfe',
+                textColor: '#1e40af',
+                locked: false
+            },
+            confirm: {
+                title: 'Please confirm you\'d like to finalize.',
+                body: 'After finalizing, the document is locked and the first approver is notified.',
+                confirmLabel: 'Finalize',
+                toneColor: '#fff3cd',
+                toneTextColor: '#111827'
+            },
+            unfinalize: {
+                title: 'Move back to Draft?',
+                body: 'Editors can edit again; approvals may need to be re-requested.',
+                confirmLabel: 'Move to Draft',
+                toneColor: '#e5e7eb',
+                toneTextColor: '#111827'
+            }
+        },
+        dropdown: {
+            order: [
+                'viewOnlyBtn','shareToWebBtn','checkoutBtn','checkinBtn','cancelBtn','saveProgressBtn','overrideBtn','sendVendorBtn','replaceDefaultBtn','compile','approvalsBtn','finalize','unfinalize'
+            ]
         },
         flags: {
             isSelfCheckout,
@@ -1974,14 +2008,20 @@ function getStateMatrixConfig(userRole, platform, docState, currentUser) {
     
     // EDITORS - Full privileges, can override others
     if (userRole === 'editor') {
-        if (!isCheckedOut) {
+        if (currentDocument.isFinal) {
+            // Final state: no checkout, editor may unfinalize without checkout
+            result.buttons.checkoutBtn = false;
+            result.buttons.checkedInBtns = false;
+            result.buttons.overrideBtn = false;
+            result.buttons.unfinalizeBtn = true;
+        } else if (!isCheckedOut) {
             // Available: checkout + send vendor
             result.buttons.checkoutBtn = true;
             result.buttons.sendVendorBtn = true;
         } else if (isSelfCheckout) {
             // Self checkout: checked-in buttons only
             result.buttons.checkedInBtns = true;
-            if (currentDocument.isFinal) result.buttons.unfinalizeBtn = true; else result.buttons.finalizeBtn = true;
+            result.buttons.finalizeBtn = true;
         } else {
             // Someone else has checkout: override + appropriate banner
             result.buttons.overrideBtn = true;
@@ -1991,7 +2031,11 @@ function getStateMatrixConfig(userRole, platform, docState, currentUser) {
     
     // SUGGESTERS & VENDORS - Can checkout, no override privilege
     if (userRole === 'suggester' || userRole === 'vendor') {
-        if (!isCheckedOut) {
+        if (currentDocument.isFinal) {
+            // Final state: no checkout for non-editors
+            result.buttons.checkoutBtn = false;
+            result.buttons.checkedInBtns = false;
+        } else if (!isCheckedOut) {
             // Available: checkout only (no send vendor for non-editors)
             result.buttons.checkoutBtn = true;
         } else if (isSelfCheckout) {

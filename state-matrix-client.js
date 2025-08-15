@@ -46,13 +46,27 @@ function applyStateMatrixToUI(config) {
         if (el) el.style.display = showCheckedIn ? 'inline-block' : 'none';
     });
     
-    // Apply checkout status banner
+    // Apply checkout/finalize banner
     const checkoutStatus = document.getElementById('checkoutStatus');
-    if (checkoutStatus && config.checkoutStatus) {
-        if (config.checkoutStatus.show) {
+    if (checkoutStatus) {
+        const fin = config.finalize || {};
+        if (fin.isFinal && fin.banner && fin.banner.text) {
+            // Server-driven finalize banner (locked)
+            checkoutStatus.textContent = fin.banner.text;
+            checkoutStatus.style.display = 'block';
+            // Colors from server
+            try {
+                checkoutStatus.style.backgroundColor = fin.banner.color || '#6b7280';
+                checkoutStatus.style.color = fin.banner.textColor || '#ffffff';
+                checkoutStatus.style.padding = '6px 11px';
+                checkoutStatus.style.borderRadius = '4px';
+                checkoutStatus.style.fontSize = '18px';
+                checkoutStatus.style.fontWeight = '500';
+                checkoutStatus.style.margin = '8px 0';
+            } catch(_) {}
+        } else if (config.checkoutStatus && config.checkoutStatus.show) {
             checkoutStatus.textContent = config.checkoutStatus.text;
             checkoutStatus.style.display = 'block';
-            
             // Apply softer pink/teal directly via JavaScript (CSS specificity)
             if (config.checkoutStatus.text.includes('Checked out by')) {
                 console.log('🔴 Applying medium blue background - text contains "Checked out by":', config.checkoutStatus.text);
@@ -176,40 +190,44 @@ window.refreshActionsDropdownFromMatrix = function(selectId, config) {
     const add = (id, label, fn, include) => { if (include && typeof fn === 'function') actions.push({ id, label, fn }); };
     const b = config.buttons;
     const hasDoc = !!config.checkoutStatus?.show;
-    add('viewOnlyBtn', 'View Latest', window.viewLatestRobust || window.cleanViewLatest || window.viewReadOnly, hasDoc && (b.viewOnlyBtn !== false));
-    add('shareToWebBtn', 'Open in Web', window.shareToWeb, true);
-    add('checkoutBtn', 'Check-out Document', window.checkoutDocument, !!b.checkoutBtn);
-    add('checkinBtn', 'Save & Check-in', window.checkinDocument, !!b.checkedInBtns);
-    add('cancelBtn', 'Cancel Check-out', window.cancelCheckout, !!b.checkedInBtns);
-    add('saveProgressBtn', 'Save Progress', window.saveProgress, !!b.checkedInBtns);
-    add('overrideBtn', 'Override Check-out', window.overrideCheckout, !!b.overrideBtn);
-    add('sendVendorBtn', 'Send to Vendor', window.openVendorModal, !!b.sendVendorBtn);
-    add(
-        'approvalsBtn',
-        'Approval details',
-        () => {
+
+    // Build by server-provided order when available, else fallback
+    const order = Array.isArray(config.dropdown?.order) ? config.dropdown.order : [
+        'viewOnlyBtn','shareToWebBtn','checkoutBtn','checkinBtn','cancelBtn','saveProgressBtn','overrideBtn','sendVendorBtn','replaceDefaultBtn','compile','approvalsBtn','finalize','unfinalize'
+    ];
+
+    const map = {
+        viewOnlyBtn: () => add('viewOnlyBtn', 'View Latest', window.viewLatestRobust || window.cleanViewLatest || window.viewReadOnly, hasDoc && (b.viewOnlyBtn !== false)),
+        shareToWebBtn: () => add('shareToWebBtn', 'Open in Web', window.shareToWeb, true),
+        checkoutBtn: () => add('checkoutBtn', 'Check-out Document', window.checkoutDocument, !!b.checkoutBtn),
+        checkinBtn: () => add('checkinBtn', 'Save & Check-in', window.checkinDocument, !!b.checkedInBtns),
+        cancelBtn: () => add('cancelBtn', 'Cancel Check-out', window.cancelCheckout, !!b.checkedInBtns),
+        saveProgressBtn: () => add('saveProgressBtn', 'Save Progress', window.saveProgress, !!b.checkedInBtns),
+        overrideBtn: () => add('overrideBtn', 'Override Check-out', window.overrideCheckout, !!b.overrideBtn),
+        sendVendorBtn: () => add('sendVendorBtn', 'Send to Vendor', window.openVendorModal, !!b.sendVendorBtn),
+        replaceDefaultBtn: () => add('replaceDefaultBtn', '⬆️ Replace default document', () => {
+            try {
+                const fileEl = document.getElementById('fileInput') || document.getElementById('replaceCurrentDocFileInput') || document.getElementById('inputReplaceCurrent');
+                if (fileEl && typeof fileEl.click === 'function') fileEl.click();
+            } catch(_) {}
+        }, !!b.replaceDefaultBtn),
+        compile: () => add('compile', 'Compile', () => {
+            try { (window.onWebDocActionChange && window.onWebDocActionChange('compile')) || (window.openCompileModal && window.openCompileModal()); } catch(_){}
+        }, !!b.compileBtn),
+        approvalsBtn: () => add('approvalsBtn', 'Approval details', () => {
             const fn = (window.openApprovalsModalWord || window.openApprovalsModal || window.openApprovalsModalWeb);
             if (typeof fn === 'function') {
                 try { fn(); } catch (e) { console.error('Approvals open error:', e); }
             } else {
                 console.warn('Approvals opener not available');
             }
-        },
-        true
-    );
-    // Finalize toggle (only when allowed by matrix)
-    add('finalize', 'Finalize', async () => { try { window.onWebDocActionChange && window.onWebDocActionChange('finalize'); } catch(_) {} }, !!b.finalizeBtn);
-    add('unfinalize', 'Move to Draft', async () => { try { window.onWebDocActionChange && window.onWebDocActionChange('unfinalize'); } catch(_) {} }, !!b.unfinalizeBtn);
-    add('replaceDefaultBtn', '⬆️ Replace default document', () => {
-        try {
-            const fileEl = document.getElementById('fileInput') || document.getElementById('replaceCurrentDocFileInput') || document.getElementById('inputReplaceCurrent');
-            if (fileEl && typeof fileEl.click === 'function') fileEl.click();
-        } catch(_) {}
-    }, !!b.replaceDefaultBtn);
-    // Always include Compile when matrix says compileBtn=true
-    add('compile', 'Compile', () => {
-        try { (window.onWebDocActionChange && window.onWebDocActionChange('compile')) || (window.openCompileModal && window.openCompileModal()); } catch(_){}
-    }, !!b.compileBtn);
+        }, true),
+        finalize: () => add('finalize', 'Finalize', async () => { try { window.onWebDocActionChange && window.onWebDocActionChange('finalize'); } catch(_) {} }, !!b.finalizeBtn),
+        unfinalize: () => add('unfinalize', 'Move to Draft', async () => { try { window.onWebDocActionChange && window.onWebDocActionChange('unfinalize'); } catch(_) {} }, !!b.unfinalizeBtn)
+    };
+
+    order.forEach(key => { if (map[key]) map[key](); });
+
     actions.forEach(a => { const opt = document.createElement('option'); opt.value = a.id; opt.textContent = a.label; select.appendChild(opt); });
     const wrapper = select.parentElement || select;
     wrapper.style.display = actions.length ? 'block' : 'none';

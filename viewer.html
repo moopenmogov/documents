@@ -2535,6 +2535,10 @@
                         try { addNotification(data.message || `Document uploaded${data.filename ? ': ' + data.filename : ''}`, 'success'); } catch(_) {}
 
                          fetchDocumentStatus().then(() => updateUIFromStateMatrix('web', getCurrentUser, getCurrentUserRole, currentDocumentState)); // Refresh UI when new document is available
+                    } else if (data.type === 'document-finalize-updated') {
+                        console.log(`📡 SSE: Finalize updated → ${data.isFinal ? 'final' : 'draft'}`);
+                        try { addNotification(data.isFinal ? 'Finalized. The first approver has been notified.' : 'Moved back to Draft.', data.isFinal ? 'success' : 'info'); } catch(_) {}
+                        fetchDocumentStatus().then(() => updateUIFromStateMatrix('web', getCurrentUser, getCurrentUserRole, currentDocumentState));
                         // Auto-load the uploaded document
 
                         if (data.documentId && data.filename) {
@@ -5241,31 +5245,51 @@
              if (val === 'compile') {
                  try { document.getElementById('compileModal').style.display = 'block'; buildCompileModalWeb(); } catch(_){}
                  const sel = document.getElementById('webDocActionsSelect'); if (sel) sel.value = '';
-             } else if (val === 'finalize') {
-                 (async () => {
-                     try {
-                         const actorId = (window.currentUser && window.currentUser.id) || 'user1';
-                         const r = await fetch('http://localhost:3001/api/finalize', { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({ actorId }) });
-                         if (!r.ok) throw new Error('finalize_failed');
-                         try { window.addNotification && window.addNotification('Finalized. The first approver has been notified.', 'success'); } catch(_) {}
-                     } catch (e) {
-                         try { window.addNotification && window.addNotification('Finalize failed', 'error'); } catch(_) {}
-                     }
-                 })();
-                 const sel = document.getElementById('webDocActionsSelect'); if (sel) sel.value = '';
-             } else if (val === 'unfinalize') {
-                 (async () => {
-                     try {
-                         const actorId = (window.currentUser && window.currentUser.id) || 'user1';
-                         const r = await fetch('http://localhost:3001/api/unfinalize', { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({ actorId }) });
-                         if (!r.ok) throw new Error('unfinalize_failed');
-                         try { window.addNotification && window.addNotification('Moved back to Draft.', 'info'); } catch(_) {}
-                     } catch (e) {
-                         try { window.addNotification && window.addNotification('Unfinalize failed', 'error'); } catch(_) {}
-                     }
-                 })();
-                 const sel = document.getElementById('webDocActionsSelect'); if (sel) sel.value = '';
-             }
+             } else if (val === 'finalize' || val === 'unfinalize') {
+                  try {
+                      const cfg = (window.__lastStateMatrix && window.__lastStateMatrix.finalize) || {};
+                      const isUn = (val === 'unfinalize');
+                      const meta = isUn ? (cfg.unfinalize || {}) : (cfg.confirm || {});
+                      const title = meta.title || (isUn ? 'Move back to Draft?' : 'Please confirm you\'d like to finalize.');
+                      const body = meta.body || (isUn ? 'Editors can edit again; approvals may need to be re-requested.' : 'After finalizing, the document is locked and the first approver is notified.');
+                      const label = meta.confirmLabel || (isUn ? 'Move to Draft' : 'Finalize');
+                      const tone = meta.toneColor || '#fff3cd';
+                      const toneText = meta.toneTextColor || '#111827';
+
+                      const host = document.body;
+                      const overlay = document.createElement('div');
+                      overlay.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,0.35);z-index:2147483646;display:flex;align-items:center;justify-content:center;';
+                      const modal = document.createElement('div');
+                      modal.id = 'ogFinalize';
+                      modal.style.cssText = 'background:#fff;border-radius:8px;min-width:360px;max-width:520px;padding:14px 16px;box-shadow:0 8px 30px rgba(0,0,0,0.2);';
+                      const style = document.createElement('style');
+                      style.textContent = '#ogFinalize .btn{background:#1f2937 !important;color:#fff !important;border:none !important;border-radius:6px !important;padding:8px 12px !important;} #ogFinalize .btn-cancel{background:#e5e7eb !important;color:#000 !important;border:1px solid #d1d5db !important;border-radius:6px !important;padding:8px 12px !important;}';
+                      const hdr = document.createElement('div'); hdr.textContent = title; hdr.style.cssText='font-weight:600;font-size:16px;margin-bottom:8px;';
+                      const msg = document.createElement('div'); msg.textContent = body; msg.style.cssText=`background:${tone};color:${toneText};border-radius:6px;padding:8px 10px;margin-bottom:10px;`;
+                      const actions = document.createElement('div'); actions.style.cssText='display:flex;gap:8px;justify-content:flex-end;';
+                      const btnConfirm = document.createElement('button'); btnConfirm.textContent = label; btnConfirm.className='btn';
+                      const btnCancel = document.createElement('button'); btnCancel.textContent = 'Cancel'; btnCancel.className='btn btn-cancel';
+                      actions.appendChild(btnCancel); actions.appendChild(btnConfirm);
+                      modal.appendChild(style); modal.appendChild(hdr); modal.appendChild(msg); modal.appendChild(actions); overlay.appendChild(modal); host.appendChild(overlay);
+
+                      const resetSel = () => { const sel = document.getElementById('webDocActionsSelect'); if (sel) sel.value = ''; };
+                      btnCancel.onclick = () => { try { overlay.remove(); } catch(_) {}; resetSel(); };
+                      btnConfirm.onclick = async () => {
+                          try {
+                              btnConfirm.disabled = true; btnCancel.disabled = true;
+                              const actorId = (window.currentUser && window.currentUser.id) || 'user1';
+                              const endpoint = isUn ? '/api/unfinalize' : '/api/finalize';
+                              const r = await fetch('http://localhost:3001' + endpoint, { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({ actorId }) });
+                              if (!r.ok) throw new Error('finalize_toggle_failed');
+                          } catch (e) {
+                              try { window.addNotification && window.addNotification(isUn ? 'Unfinalize failed' : 'Finalize failed', 'error'); } catch(_) {}
+                          } finally {
+                              try { overlay.remove(); } catch(_) {}
+                              resetSel();
+                          }
+                      };
+                  } catch(_) {}
+              }
          };
          window.closeCompileModal = function(){ try { document.getElementById('compileModal').style.display = 'none'; } catch(_){} };
 

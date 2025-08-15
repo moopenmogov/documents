@@ -8,7 +8,7 @@
         "order": 1,
         "status": "none",
         "updatedBy": "user1",
-        "updatedAt": "2025-08-15T22:07:58.818Z",
+        "updatedAt": "2025-08-15T22:51:18.940Z",
         "notes": ""
       },
       {
@@ -18,7 +18,7 @@
         "order": 2,
         "status": "none",
         "updatedBy": "user1",
-        "updatedAt": "2025-08-15T22:07:58.818Z",
+        "updatedAt": "2025-08-15T22:51:18.940Z",
         "notes": ""
       },
       {
@@ -28,7 +28,7 @@
         "order": 3,
         "status": "none",
         "updatedBy": "user1",
-        "updatedAt": "2025-08-15T22:07:58.818Z",
+        "updatedAt": "2025-08-15T22:51:18.940Z",
         "notes": ""
       },
       {
@@ -38,7 +38,7 @@
         "order": 4,
         "status": "none",
         "updatedBy": "user1",
-        "updatedAt": "2025-08-15T22:07:58.818Z",
+        "updatedAt": "2025-08-15T22:51:18.940Z",
         "notes": ""
       },
       {
@@ -48,7 +48,7 @@
         "order": 5,
         "status": "none",
         "updatedBy": "user1",
-        "updatedAt": "2025-08-15T22:07:58.818Z",
+        "updatedAt": "2025-08-15T22:51:18.940Z",
         "notes": ""
       }
     ],
@@ -71,9 +71,9 @@
         "name": "Fun E. Guy",
         "email": "funguy@opengov.com",
         "order": 2,
-        "status": "approved",
+        "status": "none",
         "updatedBy": "user1",
-        "updatedAt": "2025-08-15T22:10:16.252Z",
+        "updatedAt": "2025-08-15T18:33:08.643Z",
         "notes": ""
       },
       {
@@ -81,9 +81,9 @@
         "name": "Gettysburger King",
         "email": "gettysburger@opengov.com",
         "order": 3,
-        "status": "rejected",
+        "status": "none",
         "updatedBy": "user1",
-        "updatedAt": "2025-08-15T22:10:16.305Z",
+        "updatedAt": "2025-08-15T18:33:08.643Z",
         "notes": ""
       },
       {
@@ -107,22 +107,7 @@
         "notes": ""
       }
     ],
-    "history": [
-      {
-        "type": "approve",
-        "by": "user1",
-        "target": "user3",
-        "comment": "LGTM",
-        "at": "2025-08-15T22:10:16.252Z"
-      },
-      {
-        "type": "reject",
-        "by": "user1",
-        "target": "user2",
-        "comment": "Needs changes",
-        "at": "2025-08-15T22:10:16.305Z"
-      }
-    ]
+    "history": []
   },
   "doc-1755272017511": {
     "approvers": [
@@ -445,6 +430,61 @@
         "status": "none",
         "updatedBy": "user1",
         "updatedAt": "2025-08-15T19:41:59.700Z",
+        "notes": ""
+      }
+    ],
+    "history": []
+  },
+  "doc-1755295969158": {
+    "approvers": [
+      {
+        "userId": "user1",
+        "name": "Warren Peace",
+        "email": "warren@opengov.com",
+        "order": 1,
+        "status": "none",
+        "updatedBy": null,
+        "updatedAt": null,
+        "notes": ""
+      },
+      {
+        "userId": "user3",
+        "name": "Fun E. Guy",
+        "email": "funguy@opengov.com",
+        "order": 2,
+        "status": "none",
+        "updatedBy": null,
+        "updatedAt": null,
+        "notes": ""
+      },
+      {
+        "userId": "user2",
+        "name": "Gettysburger King",
+        "email": "gettysburger@opengov.com",
+        "order": 3,
+        "status": "none",
+        "updatedBy": null,
+        "updatedAt": null,
+        "notes": ""
+      },
+      {
+        "userId": "user5",
+        "name": "Yuri Lee Laffed",
+        "email": "reese@opengov.com",
+        "order": 4,
+        "status": "none",
+        "updatedBy": null,
+        "updatedAt": null,
+        "notes": ""
+      },
+      {
+        "userId": "vendor1",
+        "name": "Hoo R. U",
+        "email": "moti@real.builders",
+        "order": 5,
+        "status": "none",
+        "updatedBy": null,
+        "updatedAt": null,
         "notes": ""
       }
     ],
