@@ -7336,7 +7336,11 @@
                 const statusJson = await statusResp.json();
                 const isEditor = !!(statusJson && statusJson.platformUsers && statusJson.platformUsers.web && statusJson.platformUsers.web.role === 'editor');
                 const state = await ApprovalsClient.getState();
-                document.getElementById('approvalsModalWeb').style.display = 'block';
+                if (typeof window.openModalById === 'function') {
+                    window.openModalById('approvalsModalWeb');
+                } else {
+                    document.getElementById('approvalsModalWeb').style.display = 'block';
+                }
                 renderApprovalsTableWeb(state, { actorId, isEditor });
             } catch (e) {
                 console.error('Approvals open error (web):', e);
