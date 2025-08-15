@@ -1870,19 +1870,7 @@
 
     </script>
 
-    <script>
-        // Web Approvals modal opener placeholder (UI to be implemented next)
-        window.openApprovalsModalWeb = async function() {
-            try {
-                const state = await (window.ApprovalsClient && ApprovalsClient.getState());
-                console.log('WEB approvals state:', state);
-                alert('Approvals UI coming next. Seeded approvers: ' + (state && state.approvers ? state.approvers.length : 0));
-            } catch (e) {
-                console.error('Approvals open error (web):', e);
-                alert('Failed to load approvals state');
-            }
-        };
-    </script>
+    
 
     <script src="./new-feature-banner.js"></script>
 
