@@ -842,6 +842,10 @@ app.post('/api/exhibits/delete', (req, res) => {
         res.status(500).json({ error: 'delete_exhibit_failed' });
     }
 });
+
+// Delete a default exhibit by filename (server-seeded defaults)
+// POST /api/exhibits/delete-default { filename }
+// (Removed) no server-side delete for defaults in this prototype
 // Serve DOCX file to SuperDoc viewer
 app.get('/api/document/:documentId', (req, res) => {
     try {

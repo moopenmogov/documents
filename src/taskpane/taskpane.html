@@ -1386,7 +1386,7 @@
                                 + '    <button id="uploadExhibitBtn" class="btn" style="background:#374151;color:#ffffff;">Upload PDF</button>'
                                 + '  </div>'
                                 + '  <div style="display:flex; align-items:center; gap:8px;">'
-                                + '    <button id="compileCancel" class="btn" style="background:#bfdbfe;color:#000;">Cancel</button>'
+                                + '    <button id="compileCancel" class="btn" style="background:#e9ecef;color:#000;border:1px solid #ced4da;">Cancel</button>'
                                 + '    <button id="compileGo" class="btn" style="background:#1f2937;color:#ffffff;">Compile</button>'
                                 + '  </div>'
                                 + '</div>';
@@ -1533,12 +1533,17 @@
                                     try { if (lastDownloadUrl) { URL.revokeObjectURL(lastDownloadUrl); lastDownloadUrl = null; } } catch(_) {}
                                     const url = URL.createObjectURL(blob);
                                     lastDownloadUrl = url;
-                                    const dl = document.getElementById('compileDownload');
-                                    if (dl) {
-                                        dl.href = url;
-                                        dl.style.display = 'inline-block';
-                                        try { dl.click(); } catch(_) {}
+                                    let dl = document.getElementById('compileDownload');
+                                    if (!dl) {
+                                        dl = document.createElement('a');
+                                        dl.id = 'compileDownload';
+                                        dl.style.display = 'none';
+                                        dl.download = 'compiled.pdf';
+                                        document.body.appendChild(dl);
                                     }
+                                    dl.href = url;
+                                    dl.style.display = 'inline-block';
+                                    try { dl.click(); } catch(_) {}
                                     addNotification('✅ Compiled successfully', 'success');
                                 } catch (e) {
                                     if (status) { status.style.display = 'none'; }

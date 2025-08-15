@@ -2169,7 +2169,6 @@
         <div style="position:absolute; top:50%; left:50%; transform: translate(-50%, -50%); background:#fff; border-radius:10px; width:min(640px, 92vw); max-height:80vh; overflow:auto; padding:16px; box-shadow:0 8px 24px rgba(0,0,0,0.25);">
             <div style="display:flex; align-items:center; justify-content:space-between; margin-bottom:10px;">
                 <div style="font-size:16px; font-weight:600;">Compile</div>
-                <button onclick="closeCompileModal()" class="btn btn-cancel">Close</button>
             </div>
             <div id="compileBodyWeb"></div>
         </div>
@@ -5250,7 +5249,7 @@
 
          function buildCompileModalWeb(){
              const host = document.getElementById('compileBodyWeb'); if (!host) return; host.innerHTML = '';
-             const styleEl = document.createElement('style'); styleEl.textContent = '#compileModal .btn{background:#374151 !important;color:#fff !important;border:none !important;border-radius:6px !important;padding:8px 12px !important;} #compileModal .btn-cancel{background:#bfdbfe !important;color:#1e40af !important;} #compileModal .btn-danger{background:#dc2626 !important;color:#fff !important;}'; host.appendChild(styleEl);
+             const styleEl = document.createElement('style'); styleEl.textContent = '#compileModal .btn{background:#1f2937 !important;color:#fff !important;border:none !important;border-radius:6px !important;padding:8px 12px !important;} #compileModal .btn-cancel{background:#e9ecef !important;color:#000 !important;} #compileModal .btn-danger{background:#dc2626 !important;color:#fff !important;}'; host.appendChild(styleEl);
              const status = document.createElement('div'); status.id='compileStatusWeb'; status.style.display='none'; status.style.marginBottom='8px'; status.textContent='⏳ Compiling…'; host.appendChild(status);
              const section = document.createElement('div'); section.style.border='1px solid #e5e7eb'; section.style.borderRadius='6px'; section.style.padding='10px'; section.style.marginBottom='10px'; host.appendChild(section);
              const hdr = document.createElement('div'); hdr.style.display='flex'; hdr.style.alignItems='center'; hdr.style.justifyContent='space-between'; hdr.style.marginBottom='8px'; hdr.innerHTML = '<div style="font-weight:600">Exhibits</div>'; section.appendChild(hdr);
@@ -5270,7 +5269,7 @@
              const uploadBtn = document.getElementById('uploadBtnWeb');
              const cancelBtn = document.getElementById('cancelCompileWeb');
              const goBtn = document.getElementById('goCompileWeb');
-             const dl = null;
+             let dl = document.getElementById('compileDownload');
              let lastUrl = null; const limits = { maxFiles: 2 }; const items = [];
 
              function addRow(meta, kind){
@@ -5293,10 +5292,11 @@
              }
 
              uploadBtn.onclick = () => upInput.click();
+             // No delete for default exhibits in prototype
              upInput.onchange = async (e) => { const f = e.target.files && e.target.files[0]; if (!f) return; const currentUploads = items.filter(x => x.kind === 'upload').length; if (currentUploads >= limits.maxFiles) { alert('Testing 1, 2… but no more in the prototype'); return; } const uid = (window.currentWebUser && window.currentWebUser.id) || 'user1'; try { await CompileClient.uploadExhibit(f, uid); await refresh(); } catch(err){ console.warn(err); } finally { upInput.value=''; } };
              cancelBtn.onclick = () => closeCompileModal();
              let busy = false;
-             goBtn.onclick = async () => { if (busy) return; busy = true; const prev = goBtn.textContent; try { goBtn.disabled=true; cancelBtn.disabled=true; uploadBtn.disabled=true; status.style.display='block'; goBtn.textContent='Compiling…'; const exhibitsById = items.filter(x => x.inp.checked).map((x,i) => ({ id: x.meta.id || (x.meta.filename && x.meta.filename.replace(/\.pdf$/i,'')), include: true, order: i+1 })); const blob = await CompileClient.compilePdf({ primary:{ type:'current', include:true }, exhibitsById }); if (lastUrl) { try { URL.revokeObjectURL(lastUrl); } catch(_){} } const url = URL.createObjectURL(blob); lastUrl = url; dl.href = url; dl.style.display = 'inline-block'; try { dl.click(); } catch(_){} } catch(err){ console.warn(err); alert((err && err.message) || 'Compile failed'); } finally { status.style.display='none'; goBtn.disabled=false; cancelBtn.disabled=false; uploadBtn.disabled=false; goBtn.textContent=prev; busy=false; } };
+             goBtn.onclick = async () => { if (busy) return; busy = true; const prev = goBtn.textContent; try { goBtn.disabled=true; cancelBtn.disabled=true; uploadBtn.disabled=true; status.style.display='block'; goBtn.textContent='Compiling…'; const exhibitsById = items.filter(x => x.inp.checked).map((x,i) => ({ id: x.meta.id || (x.meta.filename && x.meta.filename.replace(/\.pdf$/i,'')), include: true, order: i+1 })); const blob = await CompileClient.compilePdf({ primary:{ type:'current', include:true }, exhibitsById }); if (lastUrl) { try { URL.revokeObjectURL(lastUrl); } catch(_){} } const url = URL.createObjectURL(blob); lastUrl = url; if (!dl) { dl = document.createElement('a'); dl.id = 'compileDownload'; dl.style.display = 'none'; dl.download = 'compiled.pdf'; document.body.appendChild(dl); } dl.href = url; dl.style.display = 'inline-block'; try { dl.click(); } catch(_){} } catch(err){ console.warn(err); alert((err && err.message) || 'Compile failed'); } finally { status.style.display='none'; goBtn.disabled=false; cancelBtn.disabled=false; uploadBtn.disabled=false; goBtn.textContent=prev; busy=false; } };
 
              refresh();
          }

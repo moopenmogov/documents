@@ -42,5 +42,12 @@
       "approvedBy": "user1",
       "approvedAt": "2025-08-13T20:27:45.480Z"
     }
+  },
+  "doc-current": {
+    "user_meciywkb_1eyi": {
+      "status": "rejected",
+      "approvedBy": "user1",
+      "approvedAt": "2025-08-15T07:47:08.376Z"
+    }
   }
 }
