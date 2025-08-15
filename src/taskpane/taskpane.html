@@ -2717,8 +2717,9 @@
                         await updateUIFromStateMatrix('word', getCurrentUser, getCurrentUserRole, currentDocumentState);
                         if (window.updateQuickActionsVisibility) updateQuickActionsVisibility();
                     } catch(_) {}
-                    // Load document content using working method
-                    await loadDocumentContent();
+                    // Do NOT auto-insert server content on checkout.
+                    // Preserves any local content the user may already have in the document.
+                    // If the user wants the latest from server, they can use "View Latest" explicitly.
                 } else {
                     const error = await response.json();
                     showStatus('documentStatus', `❌ ${error.error}`, 'error');
@@ -3664,38 +3665,53 @@
                     if (result.status === Office.AsyncResultStatus.Succeeded) {
                         const file = result.value;
                         const sliceCount = file.sliceCount;
-                        let docxContent = [];
+                        const slices = [];
+                        
+                        const normalizeToUint8 = (data) => {
+                            try {
+                                if (!data) return new Uint8Array(0);
+                                // ArrayBuffer
+                                if (data instanceof ArrayBuffer) return new Uint8Array(data);
+                                // TypedArray
+                                if (ArrayBuffer.isView(data) && data.buffer) return new Uint8Array(data.buffer, data.byteOffset, data.byteLength);
+                                // Plain JS array of numbers
+                                if (Array.isArray(data)) return new Uint8Array(data);
+                                // Fallback: try to coerce via Object.values
+                                const vals = Array.isArray(data) ? data : Object.values(data);
+                                return new Uint8Array(vals);
+                            } catch (_) {
+                                return new Uint8Array(0);
+                            }
+                        };
                         
                         const getSlice = (sliceIndex) => {
                             file.getSliceAsync(sliceIndex, (sliceResult) => {
                                 if (sliceResult.status === Office.AsyncResultStatus.Succeeded) {
-                                    docxContent.push(sliceResult.value.data);
+                                    const u8 = normalizeToUint8(sliceResult.value.data);
+                                    slices.push(u8);
                                     if (sliceIndex < sliceCount - 1) {
                                         getSlice(sliceIndex + 1);
                                     } else {
                                         file.closeAsync();
-                                        // Convert to base64 using a safe merge + chunked encoding
-                                        // Merge ArrayBuffer slices into one contiguous Uint8Array
+                                        // Merge slices safely
                                         try {
-                                            const totalLength = docxContent.reduce((sum, buf) => sum + (buf && buf.byteLength ? buf.byteLength : 0), 0);
+                                            const totalLength = slices.reduce((sum, u) => sum + (u ? u.byteLength : 0), 0);
                                             const merged = new Uint8Array(totalLength);
                                             let offset = 0;
-                                            for (let i = 0; i < docxContent.length; i++) {
-                                                const buf = docxContent[i];
-                                                if (!buf) continue;
-                                                const view = new Uint8Array(buf);
-                                                merged.set(view, offset);
-                                                offset += view.byteLength;
-                                            }
+                                            for (const u of slices) { if (u && u.byteLength) { merged.set(u, offset); offset += u.byteLength; } }
+                                            // Chunked base64 encode
                                             const chunkSize = 8192;
                                             let binaryString = '';
                                             for (let i = 0; i < merged.length; i += chunkSize) {
                                                 const chunk = merged.subarray(i, i + chunkSize);
-                                                binaryString += String.fromCharCode.apply(null, Array.from(chunk));
+                                                // Avoid apply on typed arrays for very large chunks in some hosts
+                                                let part = '';
+                                                for (let j = 0; j < chunk.length; j++) part += String.fromCharCode(chunk[j]);
+                                                binaryString += part;
                                             }
                                             const base64 = btoa(binaryString);
                                             resolve(base64);
-                                        } catch (mergeErr) {
+                                        } catch (assembleErr) {
                                             reject(new Error('Failed to assemble DOCX data'));
                                         }
                                     }
