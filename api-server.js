@@ -572,17 +572,25 @@ app.post('/api/checkin', (req, res) => {
             if (!isWellFormedDocx(buffer)) {
                 return res.status(400).json({ success: false, error: 'invalid_docx' });
             }
-            // Canonical write: check-in always updates current.docx atomically
+            // Prefer canonical write to current.docx; fall back to a new versioned file if locked
             const targetPath = path.join(defaultDocDir, 'current.docx');
-            writeFileAtomic(targetPath, buffer);
-            
-            // Update current document info to canonical current.docx
-            currentDocument.id = 'doc-current';
-            currentDocument.filename = 'current.docx';
-            currentDocument.filePath = targetPath;
-            currentDocument.lastUpdated = new Date().toISOString();
-            
-            console.log(`✅ Document checked in by ${source}: current.docx (${buffer.length} bytes)`);
+            try {
+                writeFileAtomic(targetPath, buffer);
+                currentDocument.id = 'doc-current';
+                currentDocument.filename = 'current.docx';
+                currentDocument.filePath = targetPath;
+                currentDocument.lastUpdated = new Date().toISOString();
+                console.log(`✅ Document checked in by ${source}: current.docx (${buffer.length} bytes)`);
+            } catch (e) {
+                const timestamp = Date.now();
+                const altPath = path.join(defaultDocDir, `checkin-${timestamp}.docx`);
+                fs.writeFileSync(altPath, buffer);
+                currentDocument.id = `doc-${timestamp}`;
+                currentDocument.filename = path.basename(altPath);
+                currentDocument.filePath = altPath;
+                currentDocument.lastUpdated = new Date().toISOString();
+                console.warn(`⚠️ current.docx busy; saved check-in to ${currentDocument.filename}`);
+            }
         }
         
         // Clear checkout state (unlock document)
