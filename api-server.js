@@ -178,6 +178,7 @@ let documentPermissions = {};
 let documentApprovals = {};
 
 const APPROVALS_FILE = './approvals.json';
+const APPROVALS_STATE_FILE = './approvals-state.json';
 
 if (fs.existsSync(APPROVALS_FILE)) {
   const loaded = JSON.parse(fs.readFileSync(APPROVALS_FILE));
@@ -191,6 +192,49 @@ if (fs.existsSync(APPROVALS_FILE)) {
   });
   documentApprovals = loaded;
   console.log('✅ Loaded and validated approvals from file');
+}
+
+// Rich approvals-by-document state (routing order, notes, etc.)
+let approvalsByDocument = {};
+try {
+  if (fs.existsSync(APPROVALS_STATE_FILE)) {
+    approvalsByDocument = JSON.parse(fs.readFileSync(APPROVALS_STATE_FILE, 'utf8')) || {};
+  }
+} catch (_) { approvalsByDocument = {}; }
+function saveApprovalsState() {
+  try { fs.writeFileSync(APPROVALS_STATE_FILE, JSON.stringify(approvalsByDocument, null, 2)); } catch (_) {}
+}
+function seedApprovalsListIfMissing(docId) {
+  if (!docId) docId = currentDocument.id || 'default-doc';
+  if (!approvalsByDocument[docId]) {
+    const users = Object.values(webUsers || {});
+    approvalsByDocument[docId] = {
+      approvers: users.map((u, idx) => ({
+        userId: u.id,
+        name: u.name,
+        email: u.email,
+        order: idx + 1,
+        status: 'none',
+        updatedBy: null,
+        updatedAt: null,
+        notes: ''
+      })),
+      history: []
+    };
+    saveApprovalsState();
+  }
+  return docId;
+}
+function computeApprovedSummary(docId) {
+  const list = (approvalsByDocument[docId] && approvalsByDocument[docId].approvers) || [];
+  const approvedCount = list.filter(a => a.status === 'approved').length;
+  return { approvedCount, totalUsers: list.length };
+}
+function normalizeOrders(docId) {
+  const state = approvalsByDocument[docId];
+  if (!state) return;
+  state.approvers.sort((a, b) => (Number(a.order) || 0) - (Number(b.order) || 0));
+  state.approvers.forEach((a, i) => { a.order = i + 1; });
 }
 
 // Store SSE connections
@@ -1364,78 +1408,173 @@ app.get('/api/document/:documentId/permissions', (req, res) => {
 
 // ===== APPROVALS API =====
 
-// Get approvals for a document
-app.get('/api/document/:documentId/approvals', (req, res) => {
-    const { documentId } = req.params;
-    const approvalsMap = documentApprovals[documentId] || {};
-    const approvals = Object.entries(approvalsMap).map(([userId, a]) => ({ userId, ...a }));
-    res.json({ success: true, approvals });
+// Snapshot state (routing order, notes, statuses)
+// GET /api/approvals/state?documentId=...
+app.get('/api/approvals/state', (req, res) => {
+    const docId = seedApprovalsListIfMissing(req.query.documentId || currentDocument.id || 'default-doc');
+    const state = approvalsByDocument[docId];
+    const summary = computeApprovedSummary(docId);
+    res.json({ success: true, documentId: docId, approvers: state.approvers.slice().sort((a,b)=>a.order-b.order), summary });
 });
 
-app.post('/api/document/:documentId/approvals', (req, res) => {
+// Approve
+// POST /api/approvals/approve { documentId, targetUserId, actorId, comment? }
+app.post('/api/approvals/approve', (req, res) => {
     try {
-        const { documentId } = req.params;
-        const { userId, action, actorId } = req.body;
-        if (!userId || !action || !actorId) {
-            return res.status(400).json({ success: false, error: 'Missing userId, action, or actorId' });
+        const { documentId, targetUserId, actorId, comment } = req.body || {};
+        const docId = seedApprovalsListIfMissing(documentId || currentDocument.id || 'default-doc');
+        const actor = webUsers[actorId] || wordUsers[actorId] || allUsers[actorId];
+        if (!actor) return res.status(404).json({ error: 'actor_not_found' });
+        const state = approvalsByDocument[docId];
+        const row = state.approvers.find(a => a.userId === targetUserId);
+        if (!row) return res.status(404).json({ error: 'target_not_found' });
+        const isSelf = actor.id === row.userId;
+        if (!(isSelf || actor.role === 'editor')) return res.status(403).json({ error: 'forbidden' });
+        if (row.status === 'approved') {
+            const summary = computeApprovedSummary(docId);
+            return res.json({ success: true, approver: row, summary, noop: true });
         }
-
-        // Initialize structure
-        if (!documentApprovals[documentId]) {
-            documentApprovals[documentId] = {};
-        }
-
-        // Map action to status
-        let status = 'no';
-        if (action === 'approve') status = 'approved';
-        if (action === 'unapprove' || action === 'reject') status = 'rejected';
-
-        const actor = allUsers[actorId] || webUsers[actorId] || wordUsers[actorId] || { id: actorId, name: actorId };
-        const target = allUsers[userId] || webUsers[userId] || wordUsers[userId] || { id: userId, name: userId };
-
-        documentApprovals[documentId][userId] = {
-            status,
-            approvedBy: actor.id,
-            approvedAt: new Date().toISOString()
-        };
-
-        // Broadcast SSE with counts for web pill updates
-        try {
-            const usersList = Object.values(webUsers || {});
-            const approvalsMap = documentApprovals[documentId] || {};
-            const approvalsArr = Object.entries(approvalsMap).map(([uid, a]) => ({ userId: uid, ...a }));
-            const approvedCount = approvalsArr.filter(a => a.status === 'approved').length;
-            const totalUsers = usersList.length;
-            broadcastSSE({
-                type: 'approvals-updated',
-                documentId,
-                userId,
-                status,
-                actorId,
-                approved: approvedCount,
-                total: totalUsers,
-                message: `${actor.name} ${status === 'approved' ? 'approved' : status === 'rejected' ? 'rejected' : 'set to no'} ${target.name}`,
-                timestamp: new Date().toISOString()
-            });
-        } catch (_e) {
-            broadcastSSE({
-                type: 'approvals-updated',
-                documentId,
-                userId,
-                status,
-                actorId,
-                message: `${actor.name} ${status === 'approved' ? 'approved' : status === 'rejected' ? 'rejected' : 'set to no'} ${target.name}`,
-                timestamp: new Date().toISOString()
-            });
-        }
-
+        row.status = 'approved';
+        row.updatedBy = actor.id;
+        row.updatedAt = new Date().toISOString();
+        if (comment) state.history.push({ type: 'approve', by: actor.id, target: row.userId, comment, at: row.updatedAt });
+        // keep legacy map in sync
+        if (!documentApprovals[docId]) documentApprovals[docId] = {};
+        documentApprovals[docId][row.userId] = { status: 'approved', approvedBy: actor.id, approvedAt: row.updatedAt };
         fs.writeFileSync(APPROVALS_FILE, JSON.stringify(documentApprovals, null, 2));
+        saveApprovalsState();
+        const { approvedCount, totalUsers } = computeApprovedSummary(docId);
+        broadcastSSE({ type: 'approvals-updated', documentId: docId, userId: row.userId, status: 'approved', actorId: actor.id, approved: approvedCount, total: totalUsers, message: `${actor.name} approved ${row.name}`, timestamp: new Date().toISOString() });
+        res.json({ success: true, approver: row, summary: { approvedCount, totalUsers } });
+    } catch (err) { res.status(500).json({ error: 'approve_failed' }); }
+});
 
-        res.json({ success: true, approval: { userId, ...documentApprovals[documentId][userId] } });
-    } catch (err) {
-        console.error('❌ Approvals POST error:', err);
-        res.status(500).json({ success: false, error: err.message || 'Internal Server Error' });
-    }
+// Reject
+// POST /api/approvals/reject { documentId, targetUserId, actorId, comment? }
+app.post('/api/approvals/reject', (req, res) => {
+    try {
+        const { documentId, targetUserId, actorId, comment } = req.body || {};
+        const docId = seedApprovalsListIfMissing(documentId || currentDocument.id || 'default-doc');
+        const actor = webUsers[actorId] || wordUsers[actorId] || allUsers[actorId];
+        if (!actor) return res.status(404).json({ error: 'actor_not_found' });
+        const state = approvalsByDocument[docId];
+        const row = state.approvers.find(a => a.userId === targetUserId);
+        if (!row) return res.status(404).json({ error: 'target_not_found' });
+        const isSelf = actor.id === row.userId;
+        if (!(isSelf || actor.role === 'editor')) return res.status(403).json({ error: 'forbidden' });
+        if (row.status === 'rejected') {
+            const summary = computeApprovedSummary(docId);
+            return res.json({ success: true, approver: row, summary, noop: true });
+        }
+        row.status = 'rejected';
+        row.updatedBy = actor.id;
+        row.updatedAt = new Date().toISOString();
+        if (comment) state.history.push({ type: 'reject', by: actor.id, target: row.userId, comment, at: row.updatedAt });
+        // keep legacy map in sync
+        if (!documentApprovals[docId]) documentApprovals[docId] = {};
+        documentApprovals[docId][row.userId] = { status: 'rejected', approvedBy: actor.id, approvedAt: row.updatedAt };
+        fs.writeFileSync(APPROVALS_FILE, JSON.stringify(documentApprovals, null, 2));
+        saveApprovalsState();
+        const { approvedCount, totalUsers } = computeApprovedSummary(docId);
+        broadcastSSE({ type: 'approvals-updated', documentId: docId, userId: row.userId, status: 'rejected', actorId: actor.id, approved: approvedCount, total: totalUsers, message: `${actor.name} rejected ${row.name}`, timestamp: new Date().toISOString() });
+        res.json({ success: true, approver: row, summary: { approvedCount, totalUsers } });
+    } catch (err) { res.status(500).json({ error: 'reject_failed' }); }
+});
+
+// Remind (stub)
+// POST /api/approvals/remind { documentId, targetUserId, actorId }
+app.post('/api/approvals/remind', (req, res) => {
+    try {
+        const { documentId, targetUserId, actorId } = req.body || {};
+        const docId = seedApprovalsListIfMissing(documentId || currentDocument.id || 'default-doc');
+        const state = approvalsByDocument[docId];
+        const row = state.approvers.find(a => a.userId === targetUserId);
+        if (!row) return res.status(404).json({ error: 'target_not_found' });
+        state.history.push({ type: 'remind', by: actorId || 'unknown', target: row.userId, at: new Date().toISOString() });
+        saveApprovalsState();
+        res.json({ success: true, message: `you emailed a reminder to ${row.name}` });
+    } catch (_) { res.status(500).json({ error: 'remind_failed' }); }
+});
+
+// Add user (editor only)
+// POST /api/approvals/add-user { documentId, name, email, actorId }
+app.post('/api/approvals/add-user', (req, res) => {
+    try {
+        const { documentId, name, email, actorId } = req.body || {};
+        const actor = webUsers[actorId] || wordUsers[actorId] || allUsers[actorId];
+        if (!actor) return res.status(404).json({ error: 'actor_not_found' });
+        if (actor.role !== 'editor') return res.status(403).json({ error: 'forbidden' });
+        // Basic email validation (very loose): must contain @ and a dot after @
+        if (typeof email !== 'string' || !/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(email)) {
+            return res.status(400).json({ error: 'invalid_email' });
+        }
+        const docId = seedApprovalsListIfMissing(documentId || currentDocument.id || 'default-doc');
+        const state = approvalsByDocument[docId];
+        const userId = `user_${Date.now().toString(36)}_${Math.random().toString(36).slice(2,6)}`;
+        const order = state.approvers.length + 1;
+        state.approvers.push({ userId, name, email, order, status: 'none', updatedBy: actor.id, updatedAt: new Date().toISOString(), notes: '' });
+        normalizeOrders(docId);
+        saveApprovalsState();
+        res.json({ success: true, approver: state.approvers.find(a => a.userId === userId) });
+    } catch (_) { res.status(500).json({ error: 'add_user_failed' }); }
+});
+
+// Delete user (editor only)
+// POST /api/approvals/delete-user { documentId, targetUserId, actorId }
+app.post('/api/approvals/delete-user', (req, res) => {
+    try {
+        const { documentId, targetUserId, actorId } = req.body || {};
+        const actor = webUsers[actorId] || wordUsers[actorId] || allUsers[actorId];
+        if (!actor) return res.status(404).json({ error: 'actor_not_found' });
+        if (actor.role !== 'editor') return res.status(403).json({ error: 'forbidden' });
+        const docId = seedApprovalsListIfMissing(documentId || currentDocument.id || 'default-doc');
+        const state = approvalsByDocument[docId];
+        const before = state.approvers.length;
+        state.approvers = state.approvers.filter(a => a.userId !== targetUserId);
+        normalizeOrders(docId);
+        saveApprovalsState();
+        res.json({ success: true, removed: before - state.approvers.length });
+    } catch (_) { res.status(500).json({ error: 'delete_user_failed' }); }
+});
+
+// Reorder (editor only)
+// POST /api/approvals/reorder { documentId, order: [{ userId, order }] }
+app.post('/api/approvals/reorder', (req, res) => {
+    try {
+        const { documentId, order, actorId } = req.body || {};
+        const actor = webUsers[actorId] || wordUsers[actorId] || allUsers[actorId];
+        if (!actor) return res.status(404).json({ error: 'actor_not_found' });
+        if (actor.role !== 'editor') return res.status(403).json({ error: 'forbidden' });
+        const docId = seedApprovalsListIfMissing(documentId || currentDocument.id || 'default-doc');
+        const state = approvalsByDocument[docId];
+        const map = new Map((Array.isArray(order) ? order : []).map(x => [x.userId, Number(x.order) || 0]));
+        state.approvers.forEach(a => { if (map.has(a.userId)) a.order = map.get(a.userId); });
+        normalizeOrders(docId);
+        saveApprovalsState();
+        res.json({ success: true, approvers: state.approvers });
+    } catch (_) { res.status(500).json({ error: 'reorder_failed' }); }
+});
+
+// Update notes (self or editor)
+// POST /api/approvals/update-notes { documentId, targetUserId, notes, actorId }
+app.post('/api/approvals/update-notes', (req, res) => {
+    try {
+        const { documentId, targetUserId, notes, actorId } = req.body || {};
+        if (typeof notes !== 'string' || notes.length > 200) return res.status(400).json({ error: 'invalid_notes' });
+        const actor = webUsers[actorId] || wordUsers[actorId] || allUsers[actorId];
+        if (!actor) return res.status(404).json({ error: 'actor_not_found' });
+        const docId = seedApprovalsListIfMissing(documentId || currentDocument.id || 'default-doc');
+        const state = approvalsByDocument[docId];
+        const row = state.approvers.find(a => a.userId === targetUserId);
+        if (!row) return res.status(404).json({ error: 'target_not_found' });
+        const isSelf = actor.id === row.userId;
+        if (!(isSelf || actor.role === 'editor')) return res.status(403).json({ error: 'forbidden' });
+        row.notes = notes;
+        row.updatedBy = actor.id;
+        row.updatedAt = new Date().toISOString();
+        saveApprovalsState();
+        res.json({ success: true, approver: row });
+    } catch (_) { res.status(500).json({ error: 'update_notes_failed' }); }
 });
 
 // Approval matrix - computes per-user approval UI state for an actor
