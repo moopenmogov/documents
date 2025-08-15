@@ -4211,10 +4211,13 @@
                     return;
                 }
                 
-                // FIXED: Standardize to fixed ID for consistency
-                const documentId = 'default-doc';
-                
-                const response = await fetch(`http://localhost:3001/api/approval-matrix?actorPlatform=word&actorId=${currentUser.id}&documentId=${documentId}`);
+                // Resolve active document id dynamically (fallback to default-doc)
+                let documentId = 'default-doc';
+                try {
+                    const meta = await getCurrentOrDefaultDocument();
+                    if (meta && meta.id) documentId = meta.id;
+                } catch(_) {}
+                const response = await fetch(`http://localhost:3001/api/approval-matrix?actorPlatform=word&actorId=${currentUser.id}&documentId=${encodeURIComponent(documentId)}`);
                 const data = await response.json();
                 if (!data || !data.success) {
                     if (approvalsList) approvalsList.innerHTML = '<tr><td colspan="4" style="color:#dc3545; font-size:12px; padding:6px;">Failed to load approvals</td></tr>';
@@ -4406,10 +4409,13 @@
 
                 console.log('🎯 Approval action:', { userId, action, actorId: currentUser.id });
                 
-                // FIXED: Standardize to fixed ID for consistency
-                const documentId = 'default-doc';
-                
-                const response = await fetch(`http://localhost:3001/api/document/${documentId}/approvals`, {
+                // Resolve active document id dynamically (fallback to default-doc)
+                let documentId = 'default-doc';
+                try {
+                    const meta = await getCurrentOrDefaultDocument();
+                    if (meta && meta.id) documentId = meta.id;
+                } catch(_) {}
+                const response = await fetch(`http://localhost:3001/api/document/${encodeURIComponent(documentId)}/approvals`, {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({
