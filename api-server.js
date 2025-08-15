@@ -40,10 +40,20 @@ function writeFileAtomic(targetPath, buffer) {
     const dir = path.dirname(targetPath);
     const tmp = path.join(dir, `.${path.basename(targetPath)}.${Date.now()}.tmp`);
     fs.writeFileSync(tmp, buffer);
-    if (fs.existsSync(targetPath)) {
-        try { fs.unlinkSync(targetPath); } catch (_) {}
+    // Replace using copy+rename fallback to avoid EPERM on Windows when file is busy
+    try {
+        if (fs.existsSync(targetPath)) {
+            try { fs.unlinkSync(targetPath); } catch (_) {}
+        }
+        fs.renameSync(tmp, targetPath);
+    } catch (e) {
+        try {
+            // Fallback: copy over the target and then remove tmp
+            fs.copyFileSync(tmp, targetPath);
+        } finally {
+            try { fs.unlinkSync(tmp); } catch (_) {}
+        }
     }
-    fs.renameSync(tmp, targetPath);
 }
 
 // Basic sanity check to avoid zero-byte or non-ZIP (.docx) uploads
