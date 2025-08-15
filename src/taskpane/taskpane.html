@@ -2716,6 +2716,8 @@
 
                         await updateUIFromStateMatrix('word', getCurrentUser, getCurrentUserRole, currentDocumentState);
                         if (window.updateQuickActionsVisibility) updateQuickActionsVisibility();
+                        // Ensure any previous read-only lock is removed now that Word owns the checkout
+                        try { await cleanupExistingLocks(); } catch(_) {}
                     } catch(_) {}
                     // Do NOT auto-insert server content on checkout.
                     // Preserves any local content the user may already have in the document.
