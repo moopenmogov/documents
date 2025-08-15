@@ -3,6 +3,8 @@ const cors = require('cors');
 const multer = require('multer');
 const fs = require('fs');
 const path = require('path');
+const { spawn } = require('child_process');
+let PDFLib = null; // lazy-loaded for compile endpoint
 
 const app = express();
 const PORT = 3001;
@@ -11,23 +13,109 @@ const PORT = 3001;
 app.use(cors());
 app.use(express.json({ limit: '50mb' }));
 
-// Serve static files from uploads directory
-app.use('/uploads', express.static(path.join(__dirname, 'uploads')));
+// Serve static files for exhibits (repo-seeded and user uploads of PDFs)
+app.use('/exhibits', express.static(path.join(__dirname, 'exhibits')));
 
-// Create uploads directory if it doesn't exist
-const uploadsDir = './uploads';
-if (!fs.existsSync(uploadsDir)) {
-    fs.mkdirSync(uploadsDir);
-}
+// Create directories if they don't exist
+const defaultDocDir = './default-document';
+const exhibitsDir = './exhibits';
+const exhibitsUploadsDir = path.join(exhibitsDir, 'uploads');
+const exhibitsDefaultsDir = path.join(exhibitsDir, 'defaults');
+if (!fs.existsSync(defaultDocDir)) { fs.mkdirSync(defaultDocDir); }
+if (!fs.existsSync(exhibitsDir)) { fs.mkdirSync(exhibitsDir); }
+if (!fs.existsSync(exhibitsUploadsDir)) { fs.mkdirSync(exhibitsUploadsDir, { recursive: true }); }
+if (!fs.existsSync(exhibitsDefaultsDir)) { fs.mkdirSync(exhibitsDefaultsDir, { recursive: true }); }
 
-// Configure multer for file uploads
+// Configure multer for file uploads (DOCX updates go to default document dir)
 const storage = multer.diskStorage({
-    destination: uploadsDir,
+    destination: defaultDocDir,
     filename: (req, file, cb) => {
         cb(null, `${Date.now()}-${file.originalname}`);
     }
 });
 const upload = multer({ storage });
+
+// Helpers
+function writeFileAtomic(targetPath, buffer) {
+    const dir = path.dirname(targetPath);
+    const tmp = path.join(dir, `.${path.basename(targetPath)}.${Date.now()}.tmp`);
+    fs.writeFileSync(tmp, buffer);
+    if (fs.existsSync(targetPath)) {
+        try { fs.unlinkSync(targetPath); } catch (_) {}
+    }
+    fs.renameSync(tmp, targetPath);
+}
+
+// Basic sanity check to avoid zero-byte or non-ZIP (.docx) uploads
+function isLikelyValidDocx(buffer) {
+    try {
+        // DOCX is a ZIP: starts with 'PK' and typically isn't tiny
+        return Buffer.isBuffer(buffer) && buffer.length >= 1024 && buffer[0] === 0x50 && buffer[1] === 0x4b;
+    } catch (_) {
+        return false;
+    }
+}
+
+async function convertDocxToPdf(docxPath) {
+    // If test stub enabled, return a minimal PDF built via pdf-lib
+    if (process.env.DOCX_PDF_STUB === '1') {
+        if (!PDFLib) PDFLib = require('pdf-lib');
+        const { PDFDocument, StandardFonts } = PDFLib;
+        const d = await PDFDocument.create();
+        const p = d.addPage([600, 800]);
+        const f = await d.embedFont(StandardFonts.Helvetica);
+        p.drawText('Stubbed DOCX->PDF', { x: 50, y: 750, size: 16, font: f });
+        p.drawText(`Source: ${path.basename(docxPath)}`, { x: 50, y: 720, size: 12, font: f });
+        return await d.save();
+    }
+    // Try LibreOffice (soffice) headless conversion
+    const outDir = path.dirname(docxPath);
+    const args = ['--headless', '--convert-to', 'pdf', '--outdir', outDir, docxPath];
+    const bin = process.env.SOFFICE_BIN || 'soffice';
+    await new Promise((resolve, reject) => {
+        const proc = spawn(bin, args, { stdio: 'ignore' });
+        proc.on('error', reject);
+        proc.on('exit', (code) => (code === 0 ? resolve() : reject(new Error('soffice failed'))));
+    });
+    const pdfPath = docxPath.replace(/\.docx$/i, '.pdf');
+    const bytes = fs.readFileSync(pdfPath);
+    try { fs.unlinkSync(pdfPath); } catch (_) {}
+    return bytes;
+}
+
+// Exhibits index for uploads (ids -> metadata)
+const EXHIBITS_INDEX_FILE = path.join(exhibitsUploadsDir, 'index.json');
+let exhibitsIndex = {};
+try {
+    if (fs.existsSync(EXHIBITS_INDEX_FILE)) {
+        exhibitsIndex = JSON.parse(fs.readFileSync(EXHIBITS_INDEX_FILE, 'utf8')) || {};
+    }
+} catch (_) { exhibitsIndex = {}; }
+function saveExhibitsIndex() {
+    try { fs.writeFileSync(EXHIBITS_INDEX_FILE, JSON.stringify(exhibitsIndex, null, 2)); } catch (_) {}
+}
+function listDefaultExhibits() {
+    try {
+        const files = fs.readdirSync(exhibitsDefaultsDir).filter(f => f.toLowerCase().endsWith('.pdf'));
+        return files.map(f => ({ filename: f, path: path.join(exhibitsDefaultsDir, f) }));
+    } catch (_) { return []; }
+}
+function sweepOldUploads(ttlHours = 24) {
+    const cutoff = Date.now() - ttlHours * 3600 * 1000;
+    Object.entries(exhibitsIndex).forEach(([id, meta]) => {
+        try {
+            const t = new Date(meta.createdAt).getTime();
+            if (isFinite(t) && t < cutoff) {
+                if (fs.existsSync(meta.path)) { fs.unlinkSync(meta.path); }
+                delete exhibitsIndex[id];
+            }
+        } catch (_) {}
+    });
+    saveExhibitsIndex();
+}
+// Run sweep on start and hourly
+try { sweepOldUploads(Number(process.env.EXHIBITS_TTL_HOURS || 24)); } catch (_) {}
+setInterval(() => { try { sweepOldUploads(Number(process.env.EXHIBITS_TTL_HOURS || 24)); } catch (_) {} }, 3600 * 1000);
 
 // Store current document info and checkout state
 let currentDocument = {
@@ -285,7 +373,7 @@ app.post('/api/save-progress', (req, res) => {
         if (docx) {
             const timestamp = Date.now();
             const fileName = filename || `progress-save-${timestamp}.docx`;
-            const filePath = path.join(uploadsDir, fileName);
+            const filePath = path.join(defaultDocDir, fileName);
             
             // Write base64 data to file
             const buffer = Buffer.from(docx, 'base64');
@@ -363,7 +451,7 @@ app.post('/api/checkin', (req, res) => {
         if (docx) {
             const timestamp = Date.now();
             const fileName = filename || `checkin-${timestamp}.docx`;
-            const filePath = path.join(uploadsDir, fileName);
+            const filePath = path.join(defaultDocDir, fileName);
             
             // Write base64 data to file
             const buffer = Buffer.from(docx, 'base64');
@@ -535,7 +623,7 @@ app.post('/api/upload-docx', (req, res) => {
         // Convert base64 to file
         const timestamp = Date.now();
         const fileName = filename || `word-document-${timestamp}.docx`;
-        const filePath = path.join(uploadsDir, fileName);
+        const filePath = path.join(defaultDocDir, fileName);
         
         // Write base64 data to file
         const buffer = Buffer.from(docx, 'base64');
@@ -573,6 +661,143 @@ app.post('/api/upload-docx', (req, res) => {
     }
 });
 
+// Replace default document (DOCX) with atomic write
+// POST /api/replace-default { base64Docx, originalFilename }
+app.post('/api/replace-default', (req, res) => {
+    try {
+        const { base64Docx, originalFilename } = req.body || {};
+        if (!base64Docx) {
+            return res.status(400).json({ error: 'missing_body', message: 'base64Docx required' });
+        }
+        // Basic type validation by extension of provided filename
+        if (originalFilename && !/\.docx$/i.test(originalFilename)) {
+            return res.status(400).json({ error: 'unsupported_media_type', message: 'Upload a .docx file' });
+        }
+
+        const buffer = Buffer.from(base64Docx, 'base64');
+        // Guard: reject empty/invalid files
+        if (!isLikelyValidDocx(buffer)) {
+            return res.status(400).json({ error: 'invalid_docx', message: 'Uploaded DOCX appears empty or invalid.' });
+        }
+        const targetPath = path.join(defaultDocDir, 'current.docx');
+        writeFileAtomic(targetPath, buffer);
+
+        // Update currentDocument metadata
+        const ts = Date.now();
+        currentDocument = {
+            id: `doc-${ts}`,
+            filename: originalFilename || 'current.docx',
+            filePath: targetPath,
+            lastUpdated: new Date().toISOString()
+        };
+
+        broadcastSSE({
+            type: 'document-uploaded',
+            message: `Default document replaced: ${currentDocument.filename}`,
+            documentId: currentDocument.id,
+            filename: currentDocument.filename,
+            timestamp: new Date().toISOString()
+        });
+
+        res.json({ success: true, currentDocument });
+    } catch (e) {
+        console.error('replace-default error:', e);
+        res.status(500).json({ error: 'replace_default_failed' });
+    }
+});
+
+// Upload an exhibit (PDF only)
+// POST /api/upload-exhibit { base64Pdf, originalFilename }
+app.post('/api/upload-exhibit', (req, res) => {
+    try {
+        const { base64Pdf, originalFilename, userId } = req.body || {};
+        if (!base64Pdf) return res.status(400).json({ error: 'missing_body', message: 'base64Pdf required' });
+        if (originalFilename && !/\.pdf$/i.test(originalFilename)) return res.status(400).json({ error: 'unsupported_media_type', message: 'Upload a .pdf file' });
+        const buffer = Buffer.from(base64Pdf, 'base64');
+        // Per-file size cap: 20 MB
+        if (buffer.length > 20 * 1024 * 1024) return res.status(400).json({ error: 'file_too_large', maxBytes: 20 * 1024 * 1024 });
+        // Per-user quotas (defaults aligned to prototype limits)
+        const maxFiles = Number(process.env.EXHIBITS_MAX_FILES_PER_USER || 2);
+        const maxBytes = Number(process.env.EXHIBITS_MAX_BYTES_PER_USER || (100 * 1024 * 1024));
+        const owner = (userId && String(userId)) || 'anonymous';
+        let userFiles = 0; let userBytes = 0;
+        Object.values(exhibitsIndex).forEach((m) => { if ((m.userId || 'anonymous') === owner) { userFiles += 1; userBytes += Number(m.size || 0); } });
+        if (userFiles + 1 > maxFiles) return res.status(400).json({ error: 'quota_exceeded', reason: 'max_files', maxFiles });
+        if (userBytes + buffer.length > maxBytes) return res.status(400).json({ error: 'quota_exceeded', reason: 'max_bytes', maxBytes });
+        const id = `exh_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`;
+        const filename = originalFilename || `${id}.pdf`;
+        const p = path.join(exhibitsUploadsDir, filename);
+        writeFileAtomic(p, buffer);
+        const meta = { id, path: p, filename, originalFilename: originalFilename || filename, size: buffer.length, createdAt: new Date().toISOString(), userId: owner };
+        exhibitsIndex[id] = meta;
+        saveExhibitsIndex();
+        res.json({ success: true, exhibit: meta });
+    } catch (e) {
+        res.status(500).json({ error: 'upload_exhibit_failed' });
+    }
+});
+
+// List exhibits
+// GET /api/exhibits/list
+app.get('/api/exhibits/list', (req, res) => {
+    try {
+        // Defaults: de-duplicate by case-insensitive name and return at most 1 (seed exhibit)
+        let defs = listDefaultExhibits();
+        const seen = new Set();
+        const uniqueDefs = [];
+        for (const d of defs) {
+            const key = (d.filename || '').toLowerCase();
+            if (key && !seen.has(key)) { seen.add(key); uniqueDefs.push(d); }
+        }
+        const defaults = uniqueDefs.slice(0, 1);
+
+        // Uploads: include only existing files; optionally filter to a user
+        const requestedUserId = (req.query.userId ? String(req.query.userId) : null);
+        const uploads = Object.values(exhibitsIndex)
+            .filter((m) => {
+                try {
+                    const exists = m && m.path && fs.existsSync(m.path);
+                    if (!exists) return false;
+                    if (requestedUserId) return (m.userId || 'anonymous') === requestedUserId;
+                    return true;
+                } catch (_) { return false; }
+            })
+            .sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
+
+        res.json({ success: true, defaults, uploads });
+    } catch (e) {
+        res.status(500).json({ error: 'list_exhibits_failed' });
+    }
+});
+
+// GET /api/exhibits/limits
+app.get('/api/exhibits/limits', (req, res) => {
+    try {
+        const maxFiles = Number(process.env.EXHIBITS_MAX_FILES_PER_USER || 2);
+        const maxBytes = Number(process.env.EXHIBITS_MAX_BYTES_PER_USER || (100 * 1024 * 1024));
+        const perFileMax = 20 * 1024 * 1024;
+        const ttlHours = Number(process.env.EXHIBITS_TTL_HOURS || 24);
+        res.json({ success: true, limits: { maxFiles, maxBytes, perFileMax, ttlHours } });
+    } catch (e) {
+        res.status(500).json({ error: 'limits_failed' });
+    }
+});
+
+// Delete an uploaded exhibit by id
+// POST /api/exhibits/delete { id }
+app.post('/api/exhibits/delete', (req, res) => {
+    try {
+        const { id } = req.body || {};
+        if (!id || !exhibitsIndex[id]) return res.status(404).json({ error: 'exhibit_not_found' });
+        const meta = exhibitsIndex[id];
+        try { if (fs.existsSync(meta.path)) fs.unlinkSync(meta.path); } catch (_) {}
+        delete exhibitsIndex[id];
+        saveExhibitsIndex();
+        res.json({ success: true });
+    } catch (e) {
+        res.status(500).json({ error: 'delete_exhibit_failed' });
+    }
+});
 // Serve DOCX file to SuperDoc viewer
 app.get('/api/document/:documentId', (req, res) => {
     try {
@@ -599,37 +824,51 @@ app.get('/api/current-document', (req, res) => {
 
 // Get default document endpoint
 app.get('/api/default-document', (req, res) => {
-    const defaultFile = 'CONTRACT FOR CONTRACTS.docx';
-    const defaultPath = path.join(uploadsDir, defaultFile);
+    // Highest priority: if we already have a current document on disk, return it
+    try {
+        if (currentDocument.filePath && fs.existsSync(currentDocument.filePath)) {
+            return res.json(currentDocument);
+        }
+    } catch (_) {}
 
-    if (!fs.existsSync(defaultPath)) {
-        return res.status(404).json({ error: 'Default document not found' });
-    }
-
-    const hasCurrent = currentDocument.filePath && fs.existsSync(currentDocument.filePath);
-    if (!hasCurrent) {
-        // Only set the default as the current document if there is no current
+    // Next: use the single source of truth current.docx if present
+    const currentPath = path.join(defaultDocDir, 'current.docx');
+    if (fs.existsSync(currentPath)) {
         currentDocument = {
-            id: 'default-doc',
-            filename: defaultFile,
-            filePath: defaultPath,
+            id: `doc-current`,
+            filename: path.basename(currentPath),
+            filePath: currentPath,
             lastUpdated: new Date().toISOString()
         };
-        console.log('✅ Default document set (no prior current):', defaultFile);
-        // Broadcast only when we actually set the default
-        broadcastSSE({
-            type: 'document-uploaded',
-            message: `Default document available: ${defaultFile}`,
-            documentId: currentDocument.id,
-            filename: defaultFile,
-            timestamp: new Date().toISOString()
-        });
+        console.log('✅ current.docx detected and set as current document');
         return res.json(currentDocument);
     }
 
-    // If there is already a current document, return it (web viewer should show current doc)
-    console.log('✅ Returning current document to web viewer:', currentDocument.filename);
-    return res.json(currentDocument);
+    // Fallback seed (optional): first .docx in default-document directory
+    try {
+        const candidates = fs.readdirSync(defaultDocDir).filter(f => f.toLowerCase().endsWith('.docx'));
+        if (candidates.length > 0) {
+            const seedFile = candidates[0];
+            const seedPath = path.join(defaultDocDir, seedFile);
+            currentDocument = {
+                id: 'default-doc',
+                filename: seedFile,
+                filePath: seedPath,
+                lastUpdated: new Date().toISOString()
+            };
+            console.log('✅ Seed document set (no current present):', seedFile);
+            broadcastSSE({
+                type: 'document-uploaded',
+                message: `Default document available: ${seedFile}`,
+                documentId: currentDocument.id,
+                filename: seedFile,
+                timestamp: new Date().toISOString()
+            });
+            return res.json(currentDocument);
+        }
+    } catch (_) {}
+
+    return res.status(404).json({ error: 'Default document not found' });
 });
 
 // Direct .docx endpoint with stable extension for Word protocol (supports GET and HEAD)
@@ -709,7 +948,7 @@ app.get('/api/get-updated-docx', (req, res) => {
         if (!currentDocument.filePath || !fs.existsSync(currentDocument.filePath)) {
             // Fallback: attempt to load default document automatically
             const defaultFile = 'CONTRACT FOR CONTRACTS.docx';
-            const defaultPath = path.join(uploadsDir, defaultFile);
+            const defaultPath = path.join(defaultDocDir, defaultFile);
             if (fs.existsSync(defaultPath)) {
                 currentDocument = {
                     id: 'default-doc',
@@ -735,6 +974,123 @@ app.get('/api/get-updated-docx', (req, res) => {
     } catch (error) {
         console.error('❌ Get document error:', error);
         res.status(500).json({ error: error.message });
+    }
+});
+
+// ===== COMPILE API =====
+// Merge a primary PDF (client-provided or generated from current DOCX) with exhibit PDFs
+// POST /api/compile { base64Pdf?, primary?, exhibitPath?, exhibits? }
+app.post('/api/compile', async (req, res) => {
+    try {
+        const { base64Pdf, primary, exhibitPath, exhibits, exhibitsById } = req.body || {};
+        if (!PDFLib) PDFLib = require('pdf-lib');
+        const { PDFDocument } = PDFLib;
+
+        // Determine primary bytes
+        let primaryBytes = null;
+        let includePrimary = true;
+        if (primary && primary.type === 'current') {
+            // generate from default-document/current.docx
+            const currentPath = path.join(defaultDocDir, 'current.docx');
+            if (!fs.existsSync(currentPath)) {
+                return res.status(400).json({ error: 'default_document_missing', message: 'No default document found. Use “Replace default document” to upload a .docx, then try again.' });
+            }
+            includePrimary = primary.include !== false;
+            primaryBytes = await convertDocxToPdf(currentPath);
+        } else if (typeof base64Pdf === 'string' && base64Pdf.length > 0) {
+            includePrimary = true;
+            primaryBytes = Buffer.from(base64Pdf, 'base64');
+        } else {
+            return res.status(400).json({ error: 'base64Pdf_or_primary_required' });
+        }
+
+        const primaryDoc = await PDFDocument.load(primaryBytes);
+
+        let merged = primary;
+        const mergedDoc = await PDFDocument.create();
+        const addDocPages = async (doc) => {
+            const pages = await mergedDoc.copyPages(doc, doc.getPageIndices());
+            pages.forEach(p => mergedDoc.addPage(p));
+        };
+        if (includePrimary) {
+            await addDocPages(primaryDoc);
+        }
+
+        // helper: resolve exhibit path
+        const resolveExhibitPath = (inputPath) => path.resolve(inputPath);
+
+        // single exhibitPath for backward compatibility with earlier clients
+        if (exhibitPath && !exhibits) {
+            const abs = resolveExhibitPath(exhibitPath);
+            if (!fs.existsSync(abs)) {
+                return res.status(400).json({ error: 'exhibit_not_found', path: abs });
+            }
+            const exhibitBytes = await fs.promises.readFile(abs);
+            const exhibitDoc = await PDFDocument.load(exhibitBytes);
+            await addDocPages(exhibitDoc);
+        }
+
+        // If exhibitsById provided, resolve ids -> paths using uploads index and defaults directory
+        let resolvedExhibits = Array.isArray(exhibits) ? exhibits.slice() : [];
+        if (!Array.isArray(exhibits) && Array.isArray(exhibitsById)) {
+            // Build from IDs only when explicit exhibits not provided
+            resolvedExhibits = exhibitsById
+                .filter(e => e && e.id)
+                .map(e => {
+                    const meta = exhibitsIndex[e.id];
+                    if (meta && meta.path) return { path: meta.path, include: e.include !== false, order: e.order };
+                    // attempt defaults lookup by filename id as fallback
+                    const defPath = path.join(exhibitsDefaultsDir, `${e.id}.pdf`);
+                    return { path: defPath, include: e.include !== false, order: e.order };
+                });
+        }
+
+        // handle multiple exhibits
+        if (Array.isArray(resolvedExhibits) && resolvedExhibits.length > 0) {
+            // enforce server-side max 2 exhibits
+            const includedCount = resolvedExhibits.filter(a => a && a.include !== false && a.path).length;
+            if (includedCount > 2) {
+                return res.status(400).json({ error: 'too_many_exhibits', max: 2, message: 'At most 2 exhibits allowed in this prototype.' });
+            }
+            const sorted = resolvedExhibits
+                .filter(a => a && a.include !== false && a.path)
+                .sort((a,b) => (Number(a.order)||0) - (Number(b.order)||0));
+
+            // Validate that all included exhibits exist
+            const missing = [];
+            for (const a of sorted) {
+                const abs = resolveExhibitPath(a.path);
+                if (!fs.existsSync(abs)) {
+                    missing.push(abs);
+                }
+            }
+            if (missing.length > 0) {
+                return res.status(400).json({ error: 'exhibits_missing', missing });
+            }
+
+            for (const a of sorted) {
+                const abs = resolveExhibitPath(a.path);
+                const bytes = await fs.promises.readFile(abs);
+                const ed = await PDFDocument.load(bytes);
+                await addDocPages(ed);
+            }
+        }
+
+        // If primary excluded and no exhibits included → error
+        const anyExhibitsIncluded = (Array.isArray(exhibits) && exhibits.some(a => a && a.include !== false && a.path))
+            || (Array.isArray(exhibitsById) && exhibitsById.some(e => e && e.include !== false));
+        if (!includePrimary && !exhibitPath && !anyExhibitsIncluded) {
+            return res.status(400).json({ error: 'no_inputs_selected', message: 'Include the primary document or at least one exhibit.' });
+        }
+
+        merged = mergedDoc;
+
+        const bytes = await merged.save();
+        res.setHeader('Content-Type', 'application/pdf');
+        res.send(Buffer.from(bytes));
+    } catch (e) {
+        console.error('Compile merge failed:', e);
+        res.status(500).json({ error: 'compile_failed' });
     }
 });
 
@@ -1307,8 +1663,9 @@ function getStateMatrixConfig(userRole, platform, docState, currentUser) {
             overrideBtn: false, 
             sendVendorBtn: false,
             checkedInBtns: false, // saveProgressBtn, checkinBtn, cancelBtn
-            viewOnlyBtn: true, // View Latest is always available
-            replaceDefaultBtn: true // Everyone can replace the default/current document
+                viewOnlyBtn: true, // View Latest is always available
+                replaceDefaultBtn: true, // Everyone can replace the default/current document
+                compileBtn: true // Everyone sees COMPILE action
         },
         approvals: {
             canApproveSelf: userRole !== 'viewer',
@@ -1379,9 +1736,13 @@ function getStateMatrixConfig(userRole, platform, docState, currentUser) {
     return result;
 }
 
-app.listen(PORT, () => {
-    console.log(`🔧 API Server running on http://localhost:${PORT}`);
-});
+if (require.main === module) {
+    app.listen(PORT, () => {
+        console.log(`🔧 API Server running on http://localhost:${PORT}`);
+    });
+}
+
+module.exports = app;
 
 
 

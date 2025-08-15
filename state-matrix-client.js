@@ -203,6 +203,10 @@ window.refreshActionsDropdownFromMatrix = function(selectId, config) {
             if (fileEl && typeof fileEl.click === 'function') fileEl.click();
         } catch(_) {}
     }, !!b.replaceDefaultBtn);
+    // Always include COMPILE when matrix says compileBtn=true
+    add('compile', 'COMPILE', () => {
+        try { (window.onWebDocActionChange && window.onWebDocActionChange('compile')) || (window.openCompileModal && window.openCompileModal()); } catch(_){}
+    }, !!b.compileBtn);
     actions.forEach(a => { const opt = document.createElement('option'); opt.value = a.id; opt.textContent = a.label; select.appendChild(opt); });
     const wrapper = select.parentElement || select;
     wrapper.style.display = actions.length ? 'block' : 'none';

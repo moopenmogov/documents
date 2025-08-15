@@ -44,6 +44,11 @@ This doc captures the approach to keep the Web viewer and Word add-in functional
 5. Add SSE event if feature requires real-time updates.
 6. Add UI tests: role × checkout × approvals permutations render the same across platforms.
 
+### Compile/Replace default notes
+- Visibility for `compileBtn` and `replaceDefaultBtn` comes from the existing matrix.
+- Enablement and guardrails (max exhibits, file types, atomic write) are enforced on the server during actions.
+- See `docs/STATE-MATRIX-COMPILE.md` for the compile-specific matrix scope and validations.
+
 ### Anti-patterns to avoid
 - Duplicating rules in both clients; truth must live server-side.
 - Divergent DOM IDs leading to conditional client logic.

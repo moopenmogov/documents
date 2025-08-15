@@ -9,6 +9,90 @@
     <!-- Office JavaScript API -->
     <script type="text/javascript" src="https://appsforoffice.microsoft.com/lib/1/hosted/office.js"></script>
     <script src="../../state-matrix-client.js"></script>
+    <script src="../../shared/compile-client.js"></script>
+    <script>
+    // Fallback: define CompileClient if external script not available in dev host
+    (function(){
+        try {
+            if (window.CompileClient) return;
+            const DEFAULT_BASE_URL = 'http://localhost:3001';
+            function joinUrl(base, path) { return (base || DEFAULT_BASE_URL).replace(/\/$/, '') + path; }
+            function normalizeError(errorBody) {
+                const err = errorBody || {}; const code = err.error || 'unknown_error'; let message = err.message || '';
+                if (!message) {
+                    if (code === 'too_many_exhibits') message = 'At most 2 exhibits allowed in this prototype.';
+                    if (code === 'exhibits_missing') message = 'One or more exhibits could not be found.';
+                    if (code === 'exhibit_not_found') message = 'The exhibit path was not found.';
+                    if (code === 'default_document_missing') message = 'No default document found. Replace default then try again.';
+                    if (code === 'file_too_large') message = 'File exceeds the maximum allowed size.';
+                    if (code === 'quota_exceeded') message = 'Upload limits exceeded for this user.';
+                    if (code === 'unsupported_media_type') message = 'Unsupported file type.';
+                    if (code === 'base64Pdf_or_primary_required') message = 'Primary PDF or server-side primary is required.';
+                }
+                return { code, message, details: err };
+            }
+            async function handleJsonResponse(resp) {
+                const ct = resp.headers.get('content-type') || ''; const isJson = ct.includes('application/json');
+                if (!resp.ok) { const body = isJson ? await resp.json().catch(() => ({})) : {}; throw normalizeError(body); }
+                return isJson ? resp.json() : resp;
+            }
+            async function toBase64(file) {
+                return await new Promise((resolve, reject) => {
+                    try {
+                        const fr = new FileReader();
+                        fr.onload = () => {
+                            try {
+                                const result = fr.result || '';
+                                if (typeof result === 'string') {
+                                    const comma = result.indexOf(',');
+                                    return resolve(comma >= 0 ? result.slice(comma + 1) : result);
+                                }
+                                const bytes = new Uint8Array(result);
+                                let binary = '';
+                                const chunk = 0x8000;
+                                for (let i = 0; i < bytes.length; i += chunk) {
+                                    binary += String.fromCharCode.apply(null, bytes.subarray(i, i + chunk));
+                                }
+                                resolve(btoa(binary));
+                            } catch (e) { reject(e); }
+                        };
+                        fr.onerror = reject;
+                        fr.readAsDataURL(file);
+                    } catch (e) { reject(e); }
+                });
+            }
+            async function getLimits(opts = {}) {
+                const resp = await fetch(joinUrl(opts.baseUrl, '/api/exhibits/limits'), { cache: 'no-store' });
+                const data = await handleJsonResponse(resp); return data.limits;
+            }
+            async function listExhibits(opts = {}) {
+                const resp = await fetch(joinUrl(opts.baseUrl, '/api/exhibits/list'), { cache: 'no-store' });
+                const data = await handleJsonResponse(resp); return { defaults: data.defaults || [], uploads: data.uploads || [] };
+            }
+            async function uploadExhibit(file, userId, opts = {}) {
+                const base64Pdf = await toBase64(file); const payload = { base64Pdf, originalFilename: file && file.name, userId: userId || 'anonymous' };
+                const resp = await fetch(joinUrl(opts.baseUrl, '/api/upload-exhibit'), { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) });
+                const data = await handleJsonResponse(resp); return data.exhibit;
+            }
+            async function deleteExhibit(id, opts = {}) {
+                const resp = await fetch(joinUrl(opts.baseUrl, '/api/exhibits/delete'), { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ id }) });
+                await handleJsonResponse(resp); return true;
+            }
+            async function compilePdf(params = {}, opts = {}) {
+                const payload = {};
+                if (params.primary === 'current' || (params.primary && params.primary.type === 'current')) { payload.primary = { type: 'current', include: params.includePrimary !== false && (params.primary.include !== false) }; }
+                else if (params.base64Pdf) { payload.base64Pdf = params.base64Pdf; }
+                else { payload.primary = { type: 'current', include: true }; }
+                if (Array.isArray(params.exhibitsById)) { payload.exhibitsById = params.exhibitsById.map((e, i) => ({ id: e.id || e, include: e.include !== false, order: e.order != null ? e.order : (i + 1) })); }
+                const resp = await fetch(joinUrl(opts.baseUrl, '/api/compile'), { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(payload) });
+                if (!resp.ok) { let body = {}; try { body = await resp.json(); } catch (_) {} throw normalizeError(body); }
+                return await resp.blob();
+            }
+            window.CompileClient = { getLimits, listExhibits, uploadExhibit, deleteExhibit, compilePdf, normalizeError };
+            console.log('🔧 Fallback CompileClient installed');
+        } catch(_) {}
+    })();
+    </script>
     <script src="../../new-feature-banner.js"></script>
 
     <style>
@@ -1229,6 +1313,227 @@
         }
         if (typeof window.refreshActionsDropdown !== 'function') {
             window.refreshActionsDropdown = function() {};
+        }
+        if (typeof window.openCompileModal !== 'function') {
+            window.openCompileModal = function() {
+                try {
+                    let modal = document.getElementById('compileModalWord');
+                    if (!modal) {
+                        modal = document.createElement('div');
+                        modal.id = 'compileModalWord';
+                        modal.style.position = 'fixed';
+                        modal.style.inset = '0';
+                        modal.style.background = 'rgba(0,0,0,0.35)';
+                        modal.style.display = 'none';
+                        modal.style.zIndex = '9999';
+                        const panel = document.createElement('div');
+                        panel.style.position = 'absolute';
+                        panel.style.left = '50%';
+                        panel.style.top = '25%';
+                        panel.style.transform = 'translateX(-50%)';
+                        panel.style.minWidth = '320px';
+                        panel.style.maxWidth = '520px';
+                        panel.style.background = '#ffffff';
+                        panel.style.borderRadius = '8px';
+                        panel.style.boxShadow = '0 10px 30px rgba(0,0,0,0.2)';
+                        panel.style.padding = '16px';
+                        panel.innerHTML = (
+                            '<div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:8px">'
+                            + '<div style="font-size:16px;font-weight:600">Compile</div>'
+                            + '</div>'
+                            + '<div id="compileBody" style="font-size:13px;color:#334155;margin-bottom:8px"></div>'
+                        );
+                        modal.appendChild(panel);
+                        modal.addEventListener('click', (ev) => { if (ev.target === modal) modal.style.display = 'none'; });
+                        document.body.appendChild(modal);
+                        
+                        // Populate minimal UI
+                        const body = panel.querySelector('#compileBody');
+                        if (body) {
+                            body.innerHTML = ''
+                                + '<div id="compileStatus" style="margin-bottom:8px; display:none;">Compiling…</div>'
+                                + '<div id="exhibitsSection" style="border:1px solid #e5e7eb; border-radius:6px; padding:10px; margin-bottom:10px;">'
+                                + '  <div style="display:flex; align-items:center; justify-content:space-between; margin-bottom:8px;">'
+                                + '    <div style="font-weight:600">Exhibits</div>'
+                                + '    <div></div>'
+                                + '  </div>'
+                                + '  <div id="exhibitsList" style="display:flex; flex-direction:column; gap:6px;"></div>'
+                                + '  <input id="uploadExhibitInput" type="file" accept="application/pdf,.pdf" style="display:none;" />'
+                                + '  <div id="exhibitsHint" style="color:#64748b; font-size:12px; margin-top:6px;">Testing 1, 2… but no more in the prototype (max 2 exhibits).</div>'
+                                + '</div>'
+                                + '<div style="display:flex; align-items:center; justify-content:space-between; gap:10px;">'
+                                + '  <div style="display:flex; align-items:center; gap:10px;">'
+                                + '    <button id="uploadExhibitBtn" class="btn" style="background:#374151;color:#ffffff;">Upload PDF</button>'
+                                + '  </div>'
+                                + '  <div style="display:flex; align-items:center; gap:8px;">'
+                                + '    <button id="compileCancel" class="btn" style="background:#bfdbfe;color:#000;">Cancel</button>'
+                                + '    <button id="compileGo" class="btn" style="background:#1f2937;color:#ffffff;">Compile</button>'
+                                + '  </div>'
+                                + '</div>';
+
+                            const status = body.querySelector('#compileStatus');
+                            const uploadBtn = body.querySelector('#uploadExhibitBtn');
+                            const uploadInput = body.querySelector('#uploadExhibitInput');
+                            const listEl = body.querySelector('#exhibitsList');
+                            const go = body.querySelector('#compileGo');
+                            const cancel = body.querySelector('#compileCancel');
+
+                            let limits = { maxFiles: 2 };
+                            let lastDownloadUrl = null;
+                            let items = []; // { id, title, include, order, kind: 'default'|'upload' }
+
+                            function baseNameNoExt(filename) {
+                                const idx = (filename || '').lastIndexOf('.');
+                                return idx > 0 ? filename.slice(0, idx) : filename;
+                            }
+                            function includedCount() { return items.filter(it => it.include).length; }
+                            function nextOrder() { const inc = items.filter(it => it.include).sort((a,b)=> (a.order||0)-(b.order||0)); return (inc.length ? (inc[inc.length-1].order||0)+1 : 1); }
+                            function compactOrders() { const inc = items.filter(i=>i.include).sort((a,b)=>(a.order||0)-(b.order||0)); inc.forEach((it,idx)=> it.order = idx+1); }
+                            function renderList() {
+                                if (!listEl) return;
+                                listEl.innerHTML = '';
+                                const byOrder = items.slice().sort((a,b)=> (a.order||0)-(b.order||0));
+                                byOrder.forEach((it) => {
+                                    const row = document.createElement('div');
+                                    row.style.display = 'flex';
+                                    row.style.alignItems = 'center';
+                                    row.style.gap = '8px';
+                                    const inputId = `exh_${(it.id||'x')}_${Math.random().toString(36).slice(2,6)}`;
+                                    const chk = document.createElement('input');
+                                    chk.type = 'checkbox';
+                                    chk.id = inputId;
+                                    chk.checked = !!it.include;
+                                    chk.addEventListener('change', () => {
+                                        if (chk.checked) {
+                                            if (includedCount() >= (limits.maxFiles || 2)) {
+                                                chk.checked = false;
+                                                addNotification('Testing 1, 2… but no more in the prototype', 'info');
+                                                return;
+                                            }
+                                            it.include = true; it.order = nextOrder();
+                                        } else {
+                                            it.include = false; it.order = 0; compactOrders();
+                                        }
+                                        // Re-render rows in place without rebuilding DOM to avoid label/checkbox offset
+                                        ord.textContent = '';
+                                    });
+                                    const label = document.createElement('label');
+                                    label.setAttribute('for', inputId);
+                                    label.textContent = `${it.title}`;
+                                    label.style.flex = '1';
+                                    const ord = document.createElement('span');
+                                    ord.style.color = '#64748b';
+                                    ord.style.fontSize = '12px';
+                                    ord.textContent = '';
+                                    row.appendChild(chk);
+                                    row.appendChild(label);
+                                    row.appendChild(ord);
+                                    if (it.kind === 'upload') {
+                                        const del = document.createElement('button');
+                                        del.textContent = 'Delete';
+                                        del.className = 'btn';
+                                        del.style.background = '#dc2626';
+                                        del.style.color = '#ffffff';
+                                        del.addEventListener('click', async () => {
+                                            try {
+                                                await CompileClient.deleteExhibit(it.id);
+                                                items = items.filter(x => x.id !== it.id);
+                                                compactOrders();
+                                                renderList();
+                                                addNotification('🗑️ Exhibit deleted', 'success');
+                                            } catch (e) {
+                                                const norm = CompileClient.normalizeError(e);
+                                                addNotification(`❌ Delete failed: ${norm.message || norm.code}`, 'error');
+                                            }
+                                        });
+                                        row.appendChild(del);
+                                    }
+                                    listEl.appendChild(row);
+                                });
+                            }
+
+                            async function refreshData() {
+                                try {
+                                    limits = await CompileClient.getLimits().catch(() => ({ maxFiles: 2 }));
+                                    const data = await CompileClient.listExhibits();
+                                    const defaults = (data.defaults || []).map(d => ({ id: baseNameNoExt(d.filename), title: d.filename, include: false, order: 0, kind: 'default' }));
+                                    const uid = (window.currentUser && window.currentUser.id) || 'anonymous';
+                                    const uploads = (data.uploads || []).filter(u => (u.userId || 'anonymous') === uid).map(u => ({ id: u.id, title: u.originalFilename || u.filename, include: false, order: 0, kind: 'upload' }));
+                                    items = [...defaults, ...uploads];
+                                    compactOrders();
+                                    renderList();
+                                } catch (_) {
+                                    items = [];
+                                    renderList();
+                                }
+                            }
+
+                            if (uploadBtn && uploadInput) {
+                                uploadBtn.addEventListener('click', () => uploadInput.click());
+                                uploadInput.addEventListener('change', async (ev) => {
+                                    const file = ev.target && ev.target.files && ev.target.files[0];
+                                    if (!file) return;
+                                    try {
+                                        if (includedCount() >= (limits.maxFiles || 2)) {
+                                            addNotification('Testing 1, 2… but no more in the prototype', 'info');
+                                            return;
+                                        }
+                                        const uid = (window.currentUser && window.currentUser.id) || 'anonymous';
+                                        const meta = await CompileClient.uploadExhibit(file, uid);
+                                        // Add new item unchecked by default
+                                        items.push({ id: meta.id, title: meta.originalFilename || meta.filename, include: false, order: 0, kind: 'upload' });
+                                        renderList();
+                                        addNotification('📎 Exhibit uploaded', 'success');
+                                        uploadInput.value = '';
+                                    } catch (e) {
+                                        const norm = CompileClient.normalizeError(e);
+                                        addNotification(`❌ Upload failed: ${norm.message || norm.code}`, 'error');
+                                    }
+                                });
+                            }
+
+                            let isCompiling = false;
+                            if (go) go.addEventListener('click', async () => {
+                                if (isCompiling) return;
+                                isCompiling = true;
+                                const prevGoText = go.textContent;
+                                try { go.disabled = true; if (cancel) cancel.disabled = true; if (uploadBtn) uploadBtn.disabled = true; } catch(_) {}
+                                try {
+                                    if (status) { status.style.display = 'block'; status.textContent = '⏳ Compiling…'; }
+                                    go.textContent = 'Compiling…';
+                                    compactOrders();
+                                    const exhibitsById = items
+                                        .filter(it => it.include)
+                                        .sort((a,b)=>(a.order||0)-(b.order||0))
+                                        .map((it,idx)=> ({ id: it.id, include: true, order: (idx+1) }));
+                                    const includePrimary = true;
+                                    const blob = await CompileClient.compilePdf({ primary: { type: 'current', include: includePrimary }, exhibitsById });
+                                    if (!blob) throw new Error('No content');
+                                    if (status) { status.style.display = 'none'; }
+                                    try { if (lastDownloadUrl) { URL.revokeObjectURL(lastDownloadUrl); lastDownloadUrl = null; } } catch(_) {}
+                                    const url = URL.createObjectURL(blob);
+                                    lastDownloadUrl = url;
+                                    const dl = document.getElementById('compileDownload');
+                                    if (dl) {
+                                        dl.href = url;
+                                        dl.style.display = 'inline-block';
+                                        try { dl.click(); } catch(_) {}
+                                    }
+                                    addNotification('✅ Compiled successfully', 'success');
+                                } catch (e) {
+                                    if (status) { status.style.display = 'none'; }
+                                    const norm = CompileClient.normalizeError(e);
+                                    addNotification(`❌ Compile failed: ${norm.message || norm.code}`, 'error');
+                                } finally { isCompiling = false; try { go.disabled = false; go.textContent = prevGoText; if (cancel) cancel.disabled = false; if (uploadBtn) uploadBtn.disabled = false; } catch(_) {} }
+                            });
+                            if (cancel) cancel.addEventListener('click', () => { modal.style.display = 'none'; });
+
+                            refreshData();
+                        }
+                    }
+                    modal.style.display = 'block';
+                } catch (_) { console.log('COMPILE placeholder'); }
+            };
         }
     } catch (_) {}
 
@@ -5140,6 +5445,7 @@ window.__forceOpenApprovalsTest = function() {
                     add(!!b.overrideBtn, 'overrideBtn', 'Override Check-out', window.overrideCheckout);
                     add(!!b.sendVendorBtn, 'sendVendorBtn', 'Send to Vendor', window.openVendorModal);
                     add(!!b.replaceDefaultBtn, 'replaceDefaultBtn', 'Replace Default Document', window.replaceDefaultDocument || window.showFileDialog);
+                    add(!!b.compileBtn, 'compileBtn', 'Compile', window.openCompileModal);
                     add(true, 'approvalsBtn', 'Approval details', window.openUsersModalWord || window.openUsersModal || window.openUsersModalWeb);
 
                     console.log('🔄 DROPDOWN DEBUG: final actions to be added:', actions.map(a => ({ id: a.id, label: a.label, hasFunction: !!a.fn, functionName: a.fn?.name })));
@@ -5436,6 +5742,26 @@ window.__forceOpenApprovalsTest = function() {
                 // Open modal on button click
                 button.addEventListener('click', function() {
                     modal.style.display = 'block';
+                    // Force autoplay (muted) on open to satisfy autoplay policies
+                    try {
+                        const autoplayUrl = 'https://www.youtube.com/embed/dQw4w9WgXcQ?autoplay=1&mute=1&playsinline=1&enablejsapi=1';
+                        if (video) {
+                            const current = video.src || '';
+                            if (current !== autoplayUrl) {
+                                video.src = '';
+                                video.src = autoplayUrl;
+                            } else {
+                                // Ensure reload if same URL already set
+                                const bust = autoplayUrl + '&t=' + Date.now();
+                                video.src = '';
+                                video.src = bust;
+                            }
+                            const allow = video.getAttribute('allow') || '';
+                            if (!/autoplay/.test(allow)) {
+                                video.setAttribute('allow', (allow ? allow + '; ' : '') + 'autoplay');
+                            }
+                        }
+                    } catch (_) {}
                 });
                 
                 // Close modal when clicking outside the content
