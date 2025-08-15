@@ -93,6 +93,26 @@
         } catch(_) {}
     })();
     </script>
+
+    <script src="../../shared/approvals-client.js"></script>
+    <script>
+        // Word add-in Approvals opener placeholder (UI to be implemented next)
+        window.openApprovalsModalWord = async function() {
+            try {
+                const state = await (window.ApprovalsClient && ApprovalsClient.getState());
+                console.log('WORD approvals state:', state);
+                Office.context.ui.displayDialogAsync('about:blank', { height: 30, width: 30 }, function (asyncResult) {
+                    if (asyncResult.status === Office.AsyncResultStatus.Succeeded) {
+                        const dlg = asyncResult.value;
+                        dlg.messageParent('Approvals UI coming next.');
+                        setTimeout(() => { try { dlg.close(); } catch(_){} }, 1200);
+                    }
+                });
+            } catch (e) {
+                console.error('Approvals open error (word):', e);
+            }
+        };
+    </script>
     <script src="../../new-feature-banner.js"></script>
 
     <style>

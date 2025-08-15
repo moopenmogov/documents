@@ -188,7 +188,7 @@ window.refreshActionsDropdownFromMatrix = function(selectId, config) {
         'approvalsBtn',
         'Approval details',
         () => {
-            const fn = (window.openUsersModalWord || window.openUsersModal || window.openUsersModalWeb);
+            const fn = (window.openApprovalsModalWord || window.openApprovalsModal || window.openApprovalsModalWeb);
             if (typeof fn === 'function') {
                 try { fn(); } catch (e) { console.error('Approvals open error:', e); }
             } else {
@@ -203,8 +203,8 @@ window.refreshActionsDropdownFromMatrix = function(selectId, config) {
             if (fileEl && typeof fileEl.click === 'function') fileEl.click();
         } catch(_) {}
     }, !!b.replaceDefaultBtn);
-    // Always include COMPILE when matrix says compileBtn=true
-    add('compile', 'COMPILE', () => {
+    // Always include Compile when matrix says compileBtn=true
+    add('compile', 'Compile', () => {
         try { (window.onWebDocActionChange && window.onWebDocActionChange('compile')) || (window.openCompileModal && window.openCompileModal()); } catch(_){}
     }, !!b.compileBtn);
     actions.forEach(a => { const opt = document.createElement('option'); opt.value = a.id; opt.textContent = a.label; select.appendChild(opt); });
