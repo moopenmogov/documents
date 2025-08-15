@@ -7186,6 +7186,175 @@
 
     <script src="state-matrix-tests.js"></script>
 
+    <!-- Approvals Modal (Web) -->
+    <div id="approvalsModalWeb" style="display:none; position:fixed; inset:0; z-index:2147483647;">
+        <div style="position:absolute; inset:0; background:rgba(0,0,0,0.5);"></div>
+        <div style="position:absolute; top:50%; left:50%; transform:translate(-50%,-50%); width:min(900px,92vw); max-height:88vh; overflow:auto; background:#fff; border-radius:8px; box-shadow:0 10px 30px rgba(0,0,0,0.25);">
+            <div style="display:flex; align-items:center; justify-content:space-between; padding:14px 18px; border-bottom:1px solid #e5e7eb;">
+                <div style="font-weight:600; font-size:16px;">Approvals <span id="approvalsSummaryWeb" style="font-weight:500; color:#374151; margin-left:6px;"></span></div>
+                <button id="approvalsCloseWeb" class="btn" style="background:#e5e7eb; color:#111827;">Close</button>
+            </div>
+            <style>
+                #approvalsModalWeb .btn { background:#374151 !important; color:#fff !important; border:none !important; border-radius:6px !important; padding:8px 12px !important; cursor:pointer; }
+                #approvalsModalWeb .btn-secondary { background:#bfdbfe !important; color:#1e40af !important; }
+                #approvalsModalWeb .btn-danger { background:#dc2626 !important; color:#fff !important; }
+                #approvalsModalWeb .btn-ghost { background:transparent !important; color:#374151 !important; border:1px solid #e5e7eb !important; }
+                #approvalsModalWeb table { width:100%; border-collapse:collapse; }
+                #approvalsModalWeb th, #approvalsModalWeb td { border-bottom:1px solid #e5e7eb; padding:8px 10px; text-align:left; }
+                #approvalsModalWeb th { background:#f9fafb; font-weight:600; position:sticky; top:0; z-index:1; }
+                #approvalsModalWeb input[type="number"] { width:64px; padding:6px 8px; border:1px solid #e5e7eb; border-radius:6px; }
+                #approvalsModalWeb input[type="text"], #approvalsModalWeb textarea { width:100%; padding:6px 8px; border:1px solid #e5e7eb; border-radius:6px; }
+            </style>
+            <div style="padding:14px 18px; display:flex; justify-content:space-between; gap:8px; align-items:center;">
+                <div>
+                    <button id="approvalsAddUserWeb" class="btn btn-secondary" style="display:none;">Add user</button>
+                </div>
+                <div style="display:flex; gap:8px;">
+                    <button id="approvalsSaveOrderWeb" class="btn btn-ghost">Save order</button>
+                    <button id="approvalsRefreshWeb" class="btn btn-ghost">Refresh</button>
+                </div>
+            </div>
+            <div id="approvalsBodyWeb" style="padding:0 18px 18px 18px;"></div>
+        </div>
+    </div>
+
+    <script>
+        (function(){
+            const modal = document.getElementById('approvalsModalWeb');
+            const closeBtn = document.getElementById('approvalsCloseWeb');
+            if (closeBtn) closeBtn.addEventListener('click', () => { modal.style.display='none'; });
+            if (modal) modal.addEventListener('click', (e) => { if (e.target === modal) modal.style.display='none'; });
+            document.addEventListener('keydown', (e) => { if (e.key === 'Escape' && modal && modal.style.display==='block') modal.style.display='none'; });
+        })();
+
+        async function getWebActorId() {
+            try {
+                const r = await fetch('http://localhost:3001/api/user/web/current', { cache:'no-store' });
+                const j = await r.json();
+                return j && j.user && j.user.id;
+            } catch(_) { return null; }
+        }
+
+        function renderApprovalsTableWeb(state, opts) {
+            const body = document.getElementById('approvalsBodyWeb');
+            if (!body) return;
+            const approvers = (state && state.approvers) ? state.approvers.slice().sort((a,b)=>a.order-b.order) : [];
+            const isEditor = !!opts.isEditor;
+            const actorId = opts.actorId;
+            const summaryEl = document.getElementById('approvalsSummaryWeb');
+            if (summaryEl) summaryEl.textContent = state && state.summary ? `(${state.summary.approvedCount}/${state.summary.totalUsers} approved)` : '';
+            const addBtn = document.getElementById('approvalsAddUserWeb');
+            if (addBtn) addBtn.style.display = isEditor ? 'inline-block' : 'none';
+
+            let html = '';
+            html += '<table>';
+            html += '<thead><tr>' +
+                (isEditor ? '<th style="width:40px;"></th>' : '') +
+                '<th style="width:80px;">Order</th>' +
+                '<th>Human</th>' +
+                '<th style="width:110px;">Approved</th>' +
+                '<th style="width:120px;">Remind</th>' +
+                '<th>Notes</th>' +
+            '</tr></thead>';
+            html += '<tbody>';
+            approvers.forEach((a, idx) => {
+                const canAct = isEditor || a.userId === actorId;
+                html += '<tr data-userid="'+a.userId+'">';
+                if (isEditor) {
+                    html += '<td><button class="btn btn-danger btn-del" title="Delete">🗑️</button></td>';
+                }
+                html += '<td><input type="number" class="inp-order" min="1" value="'+(a.order||idx+1)+'" '+(isEditor?'':'disabled')+'></td>';
+                html += '<td>'+ (a.name || a.userId) +'</td>';
+                const checked = a.status === 'approved' ? 'checked' : '';
+                html += '<td><input type="checkbox" class="chk-approved" '+checked+' '+(canAct?'':'disabled')+'></td>';
+                html += '<td><button class="btn btn-secondary btn-remind" '+(canAct?'':'disabled')+'>Remind</button></td>';
+                html += '<td><input type="text" maxlength="200" class="inp-notes" value="'+(a.notes||'').replace(/"/g,'&quot;')+'" '+(canAct?'':'disabled')+'></td>';
+                html += '</tr>';
+            });
+            html += '</tbody></table>';
+            body.innerHTML = html;
+
+            const rows = Array.from(body.querySelectorAll('tbody tr'));
+            rows.forEach((tr) => {
+                const userId = tr.getAttribute('data-userid');
+                const chk = tr.querySelector('.chk-approved');
+                if (chk) {
+                    chk.addEventListener('change', async () => {
+                        try {
+                            if (chk.checked) {
+                                await ApprovalsClient.approve({ targetUserId: userId, actorId: actorId });
+                            } else {
+                                await ApprovalsClient.reject({ targetUserId: userId, actorId: actorId, comment: '' });
+                            }
+                            const st = await ApprovalsClient.getState();
+                            renderApprovalsTableWeb(st, opts);
+                        } catch (e) { console.error('approve/reject error', e); }
+                    });
+                }
+                const btnRem = tr.querySelector('.btn-remind');
+                if (btnRem) {
+                    btnRem.addEventListener('click', async () => {
+                        btnRem.disabled = true; const prev = btnRem.textContent; btnRem.textContent = 'Sending...';
+                        try { await ApprovalsClient.remind({ targetUserId: userId, actorId: actorId }); btnRem.textContent = 'Sent!'; setTimeout(()=>{ btnRem.textContent = prev; btnRem.disabled = false; }, 1000); } catch(e){ btnRem.textContent = prev; btnRem.disabled = false; }
+                    });
+                }
+                const inpNotes = tr.querySelector('.inp-notes');
+                if (inpNotes) {
+                    inpNotes.addEventListener('change', async () => {
+                        try { await ApprovalsClient.updateNotes({ targetUserId: userId, notes: inpNotes.value, actorId: actorId }); } catch(e){ console.error('notes error', e); }
+                    });
+                }
+                const btnDel = tr.querySelector('.btn-del');
+                if (btnDel) {
+                    btnDel.addEventListener('click', async () => {
+                        if (!confirm('Remove this approver from the list?')) return;
+                        try { await ApprovalsClient.deleteUser({ targetUserId: userId, actorId: actorId }); const st = await ApprovalsClient.getState(); renderApprovalsTableWeb(st, opts); } catch(e){ console.error('delete error', e); }
+                    });
+                }
+            });
+
+            const saveOrderBtn = document.getElementById('approvalsSaveOrderWeb');
+            if (saveOrderBtn) {
+                saveOrderBtn.onclick = async () => {
+                    try {
+                        const order = Array.from(body.querySelectorAll('tbody tr')).map((tr, i) => ({ userId: tr.getAttribute('data-userid'), order: Number(tr.querySelector('.inp-order')?.value || (i+1)) }));
+                        saveOrderBtn.disabled = true; saveOrderBtn.textContent = 'Saving...';
+                        await ApprovalsClient.reorder({ order, actorId: actorId });
+                        const st = await ApprovalsClient.getState();
+                        renderApprovalsTableWeb(st, opts);
+                    } catch(e){ console.error('reorder error', e); }
+                    finally { saveOrderBtn.disabled = false; saveOrderBtn.textContent = 'Save order'; }
+                };
+            }
+            const refreshBtn = document.getElementById('approvalsRefreshWeb');
+            if (refreshBtn) {
+                refreshBtn.onclick = async () => { const st = await ApprovalsClient.getState(); renderApprovalsTableWeb(st, opts); };
+            }
+            const addBtn2 = document.getElementById('approvalsAddUserWeb');
+            if (addBtn2) {
+                addBtn2.onclick = async () => {
+                    const name = prompt('Name'); if (!name) return; const email = prompt('Email'); if (!email) return;
+                    try { await ApprovalsClient.addUser({ name, email, actorId: actorId }); const st = await ApprovalsClient.getState(); renderApprovalsTableWeb(st, opts); } catch(e){ alert((e && e.message) || 'Add user failed'); }
+                };
+            }
+        }
+
+        window.openApprovalsModalWeb = async function() {
+            try {
+                const actorId = await getWebActorId();
+                const statusResp = await fetch('http://localhost:3001/api/status');
+                const statusJson = await statusResp.json();
+                const isEditor = !!(statusJson && statusJson.platformUsers && statusJson.platformUsers.web && statusJson.platformUsers.web.role === 'editor');
+                const state = await ApprovalsClient.getState();
+                document.getElementById('approvalsModalWeb').style.display = 'block';
+                renderApprovalsTableWeb(state, { actorId, isEditor });
+            } catch (e) {
+                console.error('Approvals open error (web):', e);
+                alert('Failed to load approvals state');
+            }
+        };
+    </script>
+
      <!-- Templates Modal (Web) -->
      <style id="templates-modal-styles">
          /* Scoped styles so they only affect the templates modal */
