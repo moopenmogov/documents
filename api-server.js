@@ -480,24 +480,21 @@ app.post('/api/save-progress', (req, res) => {
     try {
         // Save the document if docx data provided
         if (docx) {
-            const timestamp = Date.now();
-            const fileName = filename || `progress-save-${timestamp}.docx`;
-            const filePath = path.join(defaultDocDir, fileName);
-            
-            // Write base64 data to file
             const buffer = Buffer.from(docx, 'base64');
             if (!isWellFormedDocx(buffer)) {
                 return res.status(400).json({ success: false, error: 'invalid_docx' });
             }
-            fs.writeFileSync(filePath, buffer);
+            // Canonical write: always update current.docx atomically
+            const targetPath = path.join(defaultDocDir, 'current.docx');
+            writeFileAtomic(targetPath, buffer);
             
-            // Update current document info
-            currentDocument.id = `doc-${timestamp}`;
-            currentDocument.filename = fileName;
-            currentDocument.filePath = filePath;
+            // Update current document info to canonical current.docx
+            currentDocument.id = 'doc-current';
+            currentDocument.filename = 'current.docx';
+            currentDocument.filePath = targetPath;
             currentDocument.lastUpdated = new Date().toISOString();
             
-            console.log(`💾 Progress saved by ${source}: ${fileName}`);
+            console.log(`💾 Progress saved by ${source}: current.docx (${buffer.length} bytes)`);
         }
         
         // Broadcast save event (document stays checked out)
@@ -561,24 +558,21 @@ app.post('/api/checkin', (req, res) => {
     try {
         // Save the document if docx data provided
         if (docx) {
-            const timestamp = Date.now();
-            const fileName = filename || `checkin-${timestamp}.docx`;
-            const filePath = path.join(defaultDocDir, fileName);
-            
-            // Write base64 data to file
             const buffer = Buffer.from(docx, 'base64');
             if (!isWellFormedDocx(buffer)) {
                 return res.status(400).json({ success: false, error: 'invalid_docx' });
             }
-            fs.writeFileSync(filePath, buffer);
+            // Canonical write: check-in always updates current.docx atomically
+            const targetPath = path.join(defaultDocDir, 'current.docx');
+            writeFileAtomic(targetPath, buffer);
             
-            // Update current document info
-            currentDocument.id = `doc-${timestamp}`;
-            currentDocument.filename = fileName;
-            currentDocument.filePath = filePath;
+            // Update current document info to canonical current.docx
+            currentDocument.id = 'doc-current';
+            currentDocument.filename = 'current.docx';
+            currentDocument.filePath = targetPath;
             currentDocument.lastUpdated = new Date().toISOString();
             
-            console.log(`✅ Document checked in by ${source}: ${fileName}`);
+            console.log(`✅ Document checked in by ${source}: current.docx (${buffer.length} bytes)`);
         }
         
         // Clear checkout state (unlock document)
