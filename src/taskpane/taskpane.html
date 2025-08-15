@@ -3657,58 +3657,66 @@
             }
         }
         
-        // Helper function to get document content as base64
+        // Helper function to get document content as base64 (hardened)
         async function getDocumentAsBase64() {
             return new Promise((resolve, reject) => {
                 Office.context.document.getFileAsync(Office.FileType.Compressed, (result) => {
-                    if (result.status === Office.AsyncResultStatus.Succeeded) {
-                        const file = result.value;
-                        const sliceCount = file.sliceCount;
-                        let docxContent = [];
-                        
-                        const getSlice = (sliceIndex) => {
-                            file.getSliceAsync(sliceIndex, (sliceResult) => {
-                                if (sliceResult.status === Office.AsyncResultStatus.Succeeded) {
-                                    docxContent.push(sliceResult.value.data);
-                                    if (sliceIndex < sliceCount - 1) {
-                                        getSlice(sliceIndex + 1);
-                                    } else {
-                                        file.closeAsync();
-                                        // Convert to base64 using a safe merge + chunked encoding
-                                        // Merge ArrayBuffer slices into one contiguous Uint8Array
-                                        try {
-                                            const totalLength = docxContent.reduce((sum, buf) => sum + (buf && buf.byteLength ? buf.byteLength : 0), 0);
-                                            const merged = new Uint8Array(totalLength);
-                                            let offset = 0;
-                                            for (let i = 0; i < docxContent.length; i++) {
-                                                const buf = docxContent[i];
-                                                if (!buf) continue;
-                                                const view = new Uint8Array(buf);
-                                                merged.set(view, offset);
-                                                offset += view.byteLength;
-                                            }
-                                            const chunkSize = 8192;
-                                            let binaryString = '';
-                                            for (let i = 0; i < merged.length; i += chunkSize) {
-                                                const chunk = merged.subarray(i, i + chunkSize);
-                                                binaryString += String.fromCharCode.apply(null, Array.from(chunk));
-                                            }
-                                            const base64 = btoa(binaryString);
-                                            resolve(base64);
-                                        } catch (mergeErr) {
-                                            reject(new Error('Failed to assemble DOCX data'));
-                                        }
-                                    }
-                                } else {
-                                    reject(new Error('Failed to get document slice'));
-                                }
-                            });
-                        };
-                        
-                        getSlice(0);
-                    } else {
+                    if (result.status !== Office.AsyncResultStatus.Succeeded) {
                         reject(new Error('Failed to get document: ' + result.error.message));
+                        return;
                     }
+                    const file = result.value;
+                    const sliceCount = file.sliceCount;
+                    const allSlices = [];
+
+                    const fetchSlice = (index) => {
+                        file.getSliceAsync(index, (sliceResult) => {
+                            if (sliceResult.status !== Office.AsyncResultStatus.Succeeded) {
+                                reject(new Error('Failed to get document slice: ' + sliceResult.error.message));
+                                return;
+                            }
+                            let sliceData = sliceResult.value.data;
+                            try {
+                                if (sliceData instanceof ArrayBuffer) {
+                                    sliceData = new Uint8Array(sliceData);
+                                } else if (Array.isArray(sliceData)) {
+                                    sliceData = new Uint8Array(sliceData);
+                                } else if (sliceData && sliceData.buffer instanceof ArrayBuffer && typeof sliceData.byteLength === 'number') {
+                                    // Likely a typed array already
+                                    sliceData = new Uint8Array(sliceData.buffer, sliceData.byteOffset || 0, sliceData.byteLength);
+                                } else {
+                                    // Fallback best-effort
+                                    sliceData = new Uint8Array([]);
+                                }
+                                allSlices.push(sliceData);
+                                if (index + 1 < sliceCount) {
+                                    fetchSlice(index + 1);
+                                } else {
+                                    file.closeAsync();
+                                    // Merge
+                                    const totalLength = allSlices.reduce((acc, arr) => acc + (arr ? arr.length : 0), 0);
+                                    const merged = new Uint8Array(totalLength);
+                                    let offset = 0;
+                                    for (const arr of allSlices) {
+                                        if (!arr || !arr.length) continue;
+                                        merged.set(arr, offset);
+                                        offset += arr.length;
+                                    }
+                                    // Chunked base64 encode
+                                    const chunkSize = 8192;
+                                    let binary = '';
+                                    for (let i = 0; i < merged.length; i += chunkSize) {
+                                        const chunk = merged.subarray(i, i + chunkSize);
+                                        binary += String.fromCharCode.apply(null, chunk);
+                                    }
+                                    resolve(btoa(binary));
+                                }
+                            } catch (e) {
+                                reject(new Error('Failed to assemble DOCX data'));
+                            }
+                        });
+                    };
+                    fetchSlice(0);
                 });
             });
         }
