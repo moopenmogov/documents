@@ -46,6 +46,16 @@ function writeFileAtomic(targetPath, buffer) {
     fs.renameSync(tmp, targetPath);
 }
 
+// Basic sanity check to avoid zero-byte or non-ZIP (.docx) uploads
+function isLikelyValidDocx(buffer) {
+    try {
+        // DOCX is a ZIP: starts with 'PK' and typically isn't tiny
+        return Buffer.isBuffer(buffer) && buffer.length >= 1024 && buffer[0] === 0x50 && buffer[1] === 0x4b;
+    } catch (_) {
+        return false;
+    }
+}
+
 async function convertDocxToPdf(docxPath) {
     // If test stub enabled, return a minimal PDF built via pdf-lib
     if (process.env.DOCX_PDF_STUB === '1') {
@@ -665,6 +675,10 @@ app.post('/api/replace-default', (req, res) => {
         }
 
         const buffer = Buffer.from(base64Docx, 'base64');
+        // Guard: reject empty/invalid files
+        if (!isLikelyValidDocx(buffer)) {
+            return res.status(400).json({ error: 'invalid_docx', message: 'Uploaded DOCX appears empty or invalid.' });
+        }
         const targetPath = path.join(defaultDocDir, 'current.docx');
         writeFileAtomic(targetPath, buffer);
 
@@ -727,8 +741,29 @@ app.post('/api/upload-exhibit', (req, res) => {
 // GET /api/exhibits/list
 app.get('/api/exhibits/list', (req, res) => {
     try {
-        const defaults = listDefaultExhibits();
-        const uploads = Object.values(exhibitsIndex).sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
+        // Defaults: de-duplicate by case-insensitive name and return at most 1 (seed exhibit)
+        let defs = listDefaultExhibits();
+        const seen = new Set();
+        const uniqueDefs = [];
+        for (const d of defs) {
+            const key = (d.filename || '').toLowerCase();
+            if (key && !seen.has(key)) { seen.add(key); uniqueDefs.push(d); }
+        }
+        const defaults = uniqueDefs.slice(0, 1);
+
+        // Uploads: include only existing files; optionally filter to a user
+        const requestedUserId = (req.query.userId ? String(req.query.userId) : null);
+        const uploads = Object.values(exhibitsIndex)
+            .filter((m) => {
+                try {
+                    const exists = m && m.path && fs.existsSync(m.path);
+                    if (!exists) return false;
+                    if (requestedUserId) return (m.userId || 'anonymous') === requestedUserId;
+                    return true;
+                } catch (_) { return false; }
+            })
+            .sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
+
         res.json({ success: true, defaults, uploads });
     } catch (e) {
         res.status(500).json({ error: 'list_exhibits_failed' });
@@ -789,37 +824,51 @@ app.get('/api/current-document', (req, res) => {
 
 // Get default document endpoint
 app.get('/api/default-document', (req, res) => {
-    const defaultFile = 'CONTRACT FOR CONTRACTS.docx';
-    const defaultPath = path.join(defaultDocDir, defaultFile);
+    // Highest priority: if we already have a current document on disk, return it
+    try {
+        if (currentDocument.filePath && fs.existsSync(currentDocument.filePath)) {
+            return res.json(currentDocument);
+        }
+    } catch (_) {}
 
-    if (!fs.existsSync(defaultPath)) {
-        return res.status(404).json({ error: 'Default document not found' });
-    }
-
-    const hasCurrent = currentDocument.filePath && fs.existsSync(currentDocument.filePath);
-    if (!hasCurrent) {
-        // Only set the default as the current document if there is no current
+    // Next: use the single source of truth current.docx if present
+    const currentPath = path.join(defaultDocDir, 'current.docx');
+    if (fs.existsSync(currentPath)) {
         currentDocument = {
-            id: 'default-doc',
-            filename: defaultFile,
-            filePath: defaultPath,
+            id: `doc-current`,
+            filename: path.basename(currentPath),
+            filePath: currentPath,
             lastUpdated: new Date().toISOString()
         };
-        console.log('✅ Default document set (no prior current):', defaultFile);
-        // Broadcast only when we actually set the default
-        broadcastSSE({
-            type: 'document-uploaded',
-            message: `Default document available: ${defaultFile}`,
-            documentId: currentDocument.id,
-            filename: defaultFile,
-            timestamp: new Date().toISOString()
-        });
+        console.log('✅ current.docx detected and set as current document');
         return res.json(currentDocument);
     }
 
-    // If there is already a current document, return it (web viewer should show current doc)
-    console.log('✅ Returning current document to web viewer:', currentDocument.filename);
-    return res.json(currentDocument);
+    // Fallback seed (optional): first .docx in default-document directory
+    try {
+        const candidates = fs.readdirSync(defaultDocDir).filter(f => f.toLowerCase().endsWith('.docx'));
+        if (candidates.length > 0) {
+            const seedFile = candidates[0];
+            const seedPath = path.join(defaultDocDir, seedFile);
+            currentDocument = {
+                id: 'default-doc',
+                filename: seedFile,
+                filePath: seedPath,
+                lastUpdated: new Date().toISOString()
+            };
+            console.log('✅ Seed document set (no current present):', seedFile);
+            broadcastSSE({
+                type: 'document-uploaded',
+                message: `Default document available: ${seedFile}`,
+                documentId: currentDocument.id,
+                filename: seedFile,
+                timestamp: new Date().toISOString()
+            });
+            return res.json(currentDocument);
+        }
+    } catch (_) {}
+
+    return res.status(404).json({ error: 'Default document not found' });
 });
 
 // Direct .docx endpoint with stable extension for Word protocol (supports GET and HEAD)
