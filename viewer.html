@@ -5020,9 +5020,8 @@
 
                  
                 
-                // Upload to API server
-
-                const response = await fetch('http://localhost:3001/api/upload-docx', {
+                // Replace default document via API server
+                const response = await fetch('http://localhost:3001/api/replace-default', {
 
                     method: 'POST',
 
@@ -5032,13 +5031,7 @@
 
                     },
 
-                    body: JSON.stringify({
-
-                        docx: base64,
-
-                        filename: file.name
-
-                    })
+                    body: JSON.stringify({ base64Docx: base64, originalFilename: file.name })
 
                 });
 
@@ -5058,7 +5051,8 @@
                 
                 // Load the uploaded document in SuperDoc
 
-                await loadSuperdoc(result.documentId, file.name);
+                const docId = (result && result.currentDocument && result.currentDocument.id) || (result && result.documentId) || 'doc-current';
+                await loadSuperdoc(docId, file.name);
                 
                  
                 
@@ -5246,8 +5240,31 @@
          window.onWebDocActionChange = function(val){
              if (val === 'compile') {
                  try { document.getElementById('compileModal').style.display = 'block'; buildCompileModalWeb(); } catch(_){}
-                 const sel = document.getElementById('webDocActionsSelect');
-                 if (sel) sel.value = '';
+                 const sel = document.getElementById('webDocActionsSelect'); if (sel) sel.value = '';
+             } else if (val === 'finalize') {
+                 (async () => {
+                     try {
+                         const actorId = (window.currentUser && window.currentUser.id) || 'user1';
+                         const r = await fetch('http://localhost:3001/api/finalize', { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({ actorId }) });
+                         if (!r.ok) throw new Error('finalize_failed');
+                         try { window.addNotification && window.addNotification('Finalized. The first approver has been notified.', 'success'); } catch(_) {}
+                     } catch (e) {
+                         try { window.addNotification && window.addNotification('Finalize failed', 'error'); } catch(_) {}
+                     }
+                 })();
+                 const sel = document.getElementById('webDocActionsSelect'); if (sel) sel.value = '';
+             } else if (val === 'unfinalize') {
+                 (async () => {
+                     try {
+                         const actorId = (window.currentUser && window.currentUser.id) || 'user1';
+                         const r = await fetch('http://localhost:3001/api/unfinalize', { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({ actorId }) });
+                         if (!r.ok) throw new Error('unfinalize_failed');
+                         try { window.addNotification && window.addNotification('Moved back to Draft.', 'info'); } catch(_) {}
+                     } catch (e) {
+                         try { window.addNotification && window.addNotification('Unfinalize failed', 'error'); } catch(_) {}
+                     }
+                 })();
+                 const sel = document.getElementById('webDocActionsSelect'); if (sel) sel.value = '';
              }
          };
          window.closeCompileModal = function(){ try { document.getElementById('compileModal').style.display = 'none'; } catch(_){} };

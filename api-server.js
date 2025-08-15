@@ -173,7 +173,8 @@ let currentDocument = {
     id: null,
     filename: null,
     filePath: null,
-    lastUpdated: null
+    lastUpdated: null,
+    isFinal: false
 };
 
 // Document checkout state management - Enhanced for platform users
@@ -709,47 +710,22 @@ app.post('/api/override', (req, res) => {
 // Upload DOCX from Word add-in
 app.post('/api/upload-docx', (req, res) => {
     try {
-        const { docx, filename } = req.body;
-        
-        if (!docx) {
-            return res.status(400).json({ error: 'No DOCX data provided' });
-        }
-        
-        // Convert base64 to file
-        const timestamp = Date.now();
-        const fileName = filename || `word-document-${timestamp}.docx`;
-        const filePath = path.join(defaultDocDir, fileName);
-        
-        // Write base64 data to file
+        const { docx, filename } = req.body || {};
+        if (!docx) return res.status(400).json({ error: 'No DOCX data provided' });
         const buffer = Buffer.from(docx, 'base64');
-        fs.writeFileSync(filePath, buffer);
-        
-        // Update current document
+        if (!isLikelyValidDocx(buffer)) return res.status(400).json({ error: 'invalid_docx' });
+        const targetPath = path.join(defaultDocDir, 'current.docx');
+        writeFileAtomic(targetPath, buffer);
         currentDocument = {
-            id: `doc-${timestamp}`,
-            filename: fileName,
-            filePath: filePath,
-            lastUpdated: new Date().toISOString()
+            id: 'doc-current',
+            filename: 'current.docx',
+            filePath: targetPath,
+            lastUpdated: new Date().toISOString(),
+            isFinal: !!currentDocument.isFinal
         };
-        
-        console.log(`✅ DOCX uploaded: ${fileName} (${buffer.length} bytes)`);
-        
-        // Broadcast SSE event to notify all clients
-        broadcastSSE({
-            type: 'document-uploaded',
-            message: `Document uploaded: ${fileName}`,
-            documentId: currentDocument.id,
-            filename: fileName,
-            timestamp: new Date().toISOString()
-        });
-        
-        res.json({ 
-            success: true, 
-            documentId: currentDocument.id,
-            filename: fileName,
-            message: 'Document uploaded successfully'
-        });
-        
+        console.log(`✅ DOCX set as current (legacy upload): ${filename || 'current.docx'} (${buffer.length} bytes)`);
+        broadcastSSE({ type: 'document-uploaded', message: `Document uploaded: ${currentDocument.filename}`, documentId: currentDocument.id, filename: currentDocument.filename, timestamp: new Date().toISOString() });
+        res.json({ success: true, documentId: currentDocument.id, filename: currentDocument.filename, message: 'Document uploaded successfully' });
     } catch (error) {
         console.error('❌ Upload error:', error);
         res.status(500).json({ error: error.message });
@@ -1641,6 +1617,35 @@ app.post('/api/approvals/update-notes', (req, res) => {
     } catch (_) { res.status(500).json({ error: 'update_notes_failed' }); }
 });
 
+// Toggle finalize state (editor only, must be self-checked-out)
+app.post('/api/finalize', (req, res) => {
+    try {
+        const { actorId } = req.body || {};
+        const actor = webUsers[actorId] || wordUsers[actorId] || allUsers[actorId];
+        if (!actor || actor.role !== 'editor') return res.status(403).json({ error: 'forbidden' });
+        if (!documentState.isCheckedOut || documentState.checkedOutUserId !== actor.id) {
+            return res.status(409).json({ error: 'not_checked_out_by_actor' });
+        }
+        currentDocument.isFinal = true;
+        broadcastSSE({ type: 'document-finalize-updated', isFinal: true, timestamp: new Date().toISOString() });
+        res.json({ success: true, isFinal: true });
+    } catch (e) { res.status(500).json({ error: 'finalize_failed' }); }
+});
+
+app.post('/api/unfinalize', (req, res) => {
+    try {
+        const { actorId } = req.body || {};
+        const actor = webUsers[actorId] || wordUsers[actorId] || allUsers[actorId];
+        if (!actor || actor.role !== 'editor') return res.status(403).json({ error: 'forbidden' });
+        if (!documentState.isCheckedOut || documentState.checkedOutUserId !== actor.id) {
+            return res.status(409).json({ error: 'not_checked_out_by_actor' });
+        }
+        currentDocument.isFinal = false;
+        broadcastSSE({ type: 'document-finalize-updated', isFinal: false, timestamp: new Date().toISOString() });
+        res.json({ success: true, isFinal: false });
+    } catch (e) { res.status(500).json({ error: 'unfinalize_failed' }); }
+});
+
 // Compile health check
 app.get('/api/health/compile', (req, res) => {
     try {
@@ -1905,9 +1910,11 @@ function getStateMatrixConfig(userRole, platform, docState, currentUser) {
             overrideBtn: false, 
             sendVendorBtn: false,
             checkedInBtns: false, // saveProgressBtn, checkinBtn, cancelBtn
-                viewOnlyBtn: true, // View Latest is always available
-                replaceDefaultBtn: true, // Everyone can replace the default/current document
-                compileBtn: true // Everyone sees COMPILE action
+            viewOnlyBtn: true, // View Latest is always available
+            replaceDefaultBtn: true, // Everyone can replace the default/current document
+            compileBtn: true, // Everyone sees COMPILE action
+            finalizeBtn: false,
+            unfinalizeBtn: false
         },
         approvals: {
             canApproveSelf: userRole !== 'viewer',
@@ -1922,6 +1929,10 @@ function getStateMatrixConfig(userRole, platform, docState, currentUser) {
         viewerMessage: {
             show: userRole === 'viewer' && !!(currentDocument.filename && currentDocument.id),
             text: 'You can look but don\'t touch'
+        },
+        finalize: {
+            isFinal: !!currentDocument.isFinal,
+            banner: currentDocument.isFinal ? 'Document is Finalized and Cannot Be Edited.' : ''
         },
         flags: {
             isSelfCheckout,
@@ -1951,6 +1962,7 @@ function getStateMatrixConfig(userRole, platform, docState, currentUser) {
         } else if (isSelfCheckout) {
             // Self checkout: checked-in buttons only
             result.buttons.checkedInBtns = true;
+            if (currentDocument.isFinal) result.buttons.unfinalizeBtn = true; else result.buttons.finalizeBtn = true;
         } else {
             // Someone else has checkout: override + appropriate banner
             result.buttons.overrideBtn = true;

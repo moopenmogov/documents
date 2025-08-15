@@ -1913,10 +1913,10 @@
                         const base64 = (typeof window.ensureBase64FromArrayBuffer === 'function')
                             ? await window.ensureBase64FromArrayBuffer(buffer)
                             : arrayBufferToBase64(buffer);
-                        const resp = await fetch('http://localhost:3001/api/upload-docx', {
+                        const resp = await fetch('http://localhost:3001/api/replace-default', {
                             method: 'POST',
                             headers: { 'Content-Type': 'application/json' },
-                            body: JSON.stringify({ docx: base64, filename: file.name })
+                            body: JSON.stringify({ base64Docx: base64, originalFilename: file.name })
                         });
                         if (!resp.ok) throw new Error(`Upload failed: ${resp.status}`);
                         const resJson = await resp.json().catch(() => ({}));
@@ -2971,10 +2971,10 @@
                 }
 
                 // Upload to server first
-                const uploadResp = await fetch('http://localhost:3001/api/upload-docx', {
+                const uploadResp = await fetch('http://localhost:3001/api/replace-default', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ docx: base64, filename: file.name })
+                    body: JSON.stringify({ base64Docx: base64, originalFilename: file.name })
                 });
                 
                 if (!uploadResp.ok) {
@@ -3629,15 +3629,12 @@
                 }
                 
                 // Upload to API server
-                const response = await fetch('http://localhost:3001/api/upload-docx', {
+                const response = await fetch('http://localhost:3001/api/replace-default', {
                     method: 'POST',
                     headers: {
                         'Content-Type': 'application/json'
                     },
-                    body: JSON.stringify({
-                        docx: docx,
-                        filename: filename
-                    })
+                    body: JSON.stringify({ base64Docx: docx, originalFilename: filename })
                 });
                 
                 if (response.ok) {
@@ -3983,10 +3980,10 @@
                         const base64 = (typeof window.ensureBase64FromArrayBuffer === 'function')
                             ? await window.ensureBase64FromArrayBuffer(buffer)
                             : arrayBufferToBase64(buffer);
-                        const resp = await fetch('http://localhost:3001/api/upload-docx', {
+                        const resp = await fetch('http://localhost:3001/api/replace-default', {
                             method: 'POST',
                             headers: { 'Content-Type': 'application/json' },
-                            body: JSON.stringify({ docx: base64, filename: file.name })
+                            body: JSON.stringify({ base64Docx: base64, originalFilename: file.name })
                         });
                         if (!resp.ok) throw new Error(`Upload failed: ${resp.status}`);
                         const data = await resp.json();
