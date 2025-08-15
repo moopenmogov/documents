@@ -640,6 +640,8 @@ app.post('/api/checkin', (req, res) => {
                 currentDocument.filePath = altPath;
                 currentDocument.lastUpdated = new Date().toISOString();
                 console.warn(`⚠️ current.docx busy; saved check-in to ${currentDocument.filename}`);
+                // Schedule background consolidation back into current.docx
+                try { consolidateToCurrentDocx(altPath); } catch (_) {}
             }
         }
         
