@@ -3,7 +3,7 @@ const cors = require('cors');
 const multer = require('multer');
 const fs = require('fs');
 const path = require('path');
-const { spawn } = require('child_process');
+const { spawn, spawnSync } = require('child_process');
 let PDFLib = null; // lazy-loaded for compile endpoint
 
 const app = express();
@@ -71,7 +71,7 @@ async function convertDocxToPdf(docxPath) {
     // Try LibreOffice (soffice) headless conversion
     const outDir = path.dirname(docxPath);
     const args = ['--headless', '--convert-to', 'pdf', '--outdir', outDir, docxPath];
-    const bin = process.env.SOFFICE_BIN || 'soffice';
+    const bin = getSofficeBinOrNull() || 'soffice';
     await new Promise((resolve, reject) => {
         const proc = spawn(bin, args, { stdio: 'ignore' });
         proc.on('error', reject);
@@ -116,6 +116,57 @@ function sweepOldUploads(ttlHours = 24) {
 // Run sweep on start and hourly
 try { sweepOldUploads(Number(process.env.EXHIBITS_TTL_HOURS || 24)); } catch (_) {}
 setInterval(() => { try { sweepOldUploads(Number(process.env.EXHIBITS_TTL_HOURS || 24)); } catch (_) {} }, 3600 * 1000);
+
+// ===== LibreOffice (soffice) locator =====
+let resolvedSofficeBin = null;
+function resolveSofficePath() {
+    try {
+        // 1) Explicit env override
+        const envPath = process.env.SOFFICE_BIN;
+        if (envPath && fs.existsSync(envPath)) return envPath;
+
+        // 2) System PATH
+        if (process.platform === 'win32') {
+            try {
+                const res = spawnSync('where', ['soffice'], { encoding: 'utf8' });
+                const out = (res.stdout || '').split(/\r?\n/).map(s => s.trim()).filter(Boolean);
+                if (out.length && fs.existsSync(out[0])) return out[0];
+            } catch (_) {}
+        } else {
+            try {
+                const res = spawnSync('which', ['soffice'], { encoding: 'utf8' });
+                const p = (res.stdout || '').trim();
+                if (p && fs.existsSync(p)) return p;
+            } catch (_) {}
+        }
+
+        // 3) Known install paths (Windows)
+        const candidates = [];
+        if (process.platform === 'win32') {
+            candidates.push('C:\\Program Files\\LibreOffice\\program\\soffice.exe');
+            candidates.push('C:\\Program Files (x86)\\LibreOffice\\program\\soffice.exe');
+        } else {
+            candidates.push('/usr/bin/soffice');
+            candidates.push('/usr/local/bin/soffice');
+            candidates.push('/snap/bin/libreoffice');
+        }
+        for (const c of candidates) { if (fs.existsSync(c)) return c; }
+    } catch (_) {}
+    return null;
+}
+
+function getSofficeBinOrNull() {
+    if (resolvedSofficeBin && fs.existsSync(resolvedSofficeBin)) return resolvedSofficeBin;
+    resolvedSofficeBin = resolveSofficePath();
+    return resolvedSofficeBin && fs.existsSync(resolvedSofficeBin) ? resolvedSofficeBin : null;
+}
+
+// Resolve on boot and log
+try {
+    resolvedSofficeBin = getSofficeBinOrNull();
+    if (resolvedSofficeBin) console.log(`🧩 Using LibreOffice: ${resolvedSofficeBin}`);
+    else console.warn('⚠️ LibreOffice (soffice) not found. Set SOFFICE_BIN or install LibreOffice.');
+} catch (_) {}
 
 // Store current document info and checkout state
 let currentDocument = {
@@ -1038,13 +1089,14 @@ app.post('/api/compile', async (req, res) => {
         let primaryBytes = null;
         let includePrimary = true;
         if (primary && primary.type === 'current') {
-            // generate from default-document/current.docx
-            const currentPath = path.join(defaultDocDir, 'current.docx');
-            if (!fs.existsSync(currentPath)) {
+            // Prefer the active currentDocument.filePath; fall back to default-document/current.docx
+            const fallbackPath = path.join(defaultDocDir, 'current.docx');
+            const curPath = (currentDocument && currentDocument.filePath) ? currentDocument.filePath : fallbackPath;
+            if (!fs.existsSync(curPath)) {
                 return res.status(400).json({ error: 'default_document_missing', message: 'No default document found. Use “Replace default document” to upload a .docx, then try again.' });
             }
             includePrimary = primary.include !== false;
-            primaryBytes = await convertDocxToPdf(currentPath);
+            primaryBytes = await convertDocxToPdf(curPath);
         } else if (typeof base64Pdf === 'string' && base64Pdf.length > 0) {
             includePrimary = true;
             primaryBytes = Buffer.from(base64Pdf, 'base64');
@@ -1496,7 +1548,10 @@ app.post('/api/approvals/remind', (req, res) => {
         if (!row) return res.status(404).json({ error: 'target_not_found' });
         state.history.push({ type: 'remind', by: actorId || 'unknown', target: row.userId, at: new Date().toISOString() });
         saveApprovalsState();
-        try { broadcastSSE({ type: 'approvals-reminder-sent', documentId: docId, userId: row.userId, actorId: actorId, message: `Reminder sent to ${row.name}` , timestamp: new Date().toISOString() }); } catch (_) {}
+        try {
+            const { approvedCount, totalUsers } = computeApprovedSummary(docId);
+            broadcastSSE({ type: 'approvals-reminder-sent', documentId: docId, userId: row.userId, actorId: actorId, approved: approvedCount, total: totalUsers, message: `Reminder sent to ${row.name}` , timestamp: new Date().toISOString() });
+        } catch (_) {}
         res.json({ success: true, message: `you emailed a reminder to ${row.name}` });
     } catch (_) { res.status(500).json({ error: 'remind_failed' }); }
 });
@@ -1518,9 +1573,8 @@ app.post('/api/approvals/add-user', (req, res) => {
         const userId = `user_${Date.now().toString(36)}_${Math.random().toString(36).slice(2,6)}`;
         const order = state.approvers.length + 1;
         state.approvers.push({ userId, name, email, order, status: 'none', updatedBy: actor.id, updatedAt: new Date().toISOString(), notes: '' });
-        normalizeOrders(docId);
         saveApprovalsState();
-        try { const summary = computeApprovedSummary(docId); broadcastSSE({ type: 'approvals-list-updated', documentId: docId, action: 'added', userId, summary, timestamp: new Date().toISOString() }); } catch(_){}
+        try { const summary = computeApprovedSummary(docId); const { approvedCount, totalUsers } = summary; broadcastSSE({ type: 'approvals-list-updated', documentId: docId, action: 'added', userId, approved: approvedCount, total: totalUsers, timestamp: new Date().toISOString() }); } catch(_){ }
         res.json({ success: true, approver: state.approvers.find(a => a.userId === userId) });
     } catch (_) { res.status(500).json({ error: 'add_user_failed' }); }
 });
@@ -1537,9 +1591,8 @@ app.post('/api/approvals/delete-user', (req, res) => {
         const state = approvalsByDocument[docId];
         const before = state.approvers.length;
         state.approvers = state.approvers.filter(a => a.userId !== targetUserId);
-        normalizeOrders(docId);
         saveApprovalsState();
-        try { const summary = computeApprovedSummary(docId); broadcastSSE({ type: 'approvals-list-updated', documentId: docId, action: 'deleted', userId: targetUserId, summary, timestamp: new Date().toISOString() }); } catch(_){}
+        try { const summary = computeApprovedSummary(docId); const { approvedCount, totalUsers } = summary; broadcastSSE({ type: 'approvals-list-updated', documentId: docId, action: 'deleted', userId: targetUserId, approved: approvedCount, total: totalUsers, timestamp: new Date().toISOString() }); } catch(_){ }
         res.json({ success: true, removed: before - state.approvers.length });
     } catch (_) { res.status(500).json({ error: 'delete_user_failed' }); }
 });
@@ -1556,9 +1609,8 @@ app.post('/api/approvals/reorder', (req, res) => {
         const state = approvalsByDocument[docId];
         const map = new Map((Array.isArray(order) ? order : []).map(x => [x.userId, Number(x.order) || 0]));
         state.approvers.forEach(a => { if (map.has(a.userId)) a.order = map.get(a.userId); });
-        normalizeOrders(docId);
         saveApprovalsState();
-        try { const summary = computeApprovedSummary(docId); broadcastSSE({ type: 'approvals-list-updated', documentId: docId, action: 'reordered', summary, timestamp: new Date().toISOString() }); } catch(_){}
+        try { const summary = computeApprovedSummary(docId); const { approvedCount, totalUsers } = summary; broadcastSSE({ type: 'approvals-list-updated', documentId: docId, action: 'reordered', approved: approvedCount, total: totalUsers, timestamp: new Date().toISOString() }); } catch(_){ }
         res.json({ success: true, approvers: state.approvers });
     } catch (_) { res.status(500).json({ error: 'reorder_failed' }); }
 });
@@ -1581,9 +1633,51 @@ app.post('/api/approvals/update-notes', (req, res) => {
         row.updatedBy = actor.id;
         row.updatedAt = new Date().toISOString();
         saveApprovalsState();
-        try { broadcastSSE({ type: 'approvals-notes-updated', documentId: docId, userId: row.userId, timestamp: new Date().toISOString() }); } catch(_){}
+        try {
+            const { approvedCount, totalUsers } = computeApprovedSummary(docId);
+            broadcastSSE({ type: 'approvals-notes-updated', documentId: docId, userId: row.userId, approved: approvedCount, total: totalUsers, timestamp: new Date().toISOString() });
+        } catch(_){}
         res.json({ success: true, approver: row });
     } catch (_) { res.status(500).json({ error: 'update_notes_failed' }); }
+});
+
+// Compile health check
+app.get('/api/health/compile', (req, res) => {
+    try {
+        const bin = getSofficeBinOrNull();
+        if (!bin) return res.status(503).json({ ok: false, reason: 'soffice_not_found' });
+        const r = spawnSync(bin, ['--version'], { encoding: 'utf8' });
+        if (r.error) return res.status(500).json({ ok: false, reason: 'spawn_error' });
+        const out = (r.stdout || r.stderr || '').trim();
+        res.json({ ok: true, bin, version: out });
+    } catch (e) {
+        res.status(500).json({ ok: false, error: 'health_check_failed' });
+    }
+});
+
+// Reset approvals to canonical set for the current document
+// POST /api/approvals/reset { documentId, actorId }
+app.post('/api/approvals/reset', (req, res) => {
+    try {
+        const { documentId, actorId } = req.body || {};
+        const actor = webUsers[actorId] || wordUsers[actorId] || allUsers[actorId];
+        if (!actor) return res.status(404).json({ error: 'actor_not_found' });
+        if (actor.role !== 'editor') return res.status(403).json({ error: 'forbidden' });
+        const docId = seedApprovalsListIfMissing(documentId || currentDocument.id || 'default-doc');
+        // Rebuild canonical approvers from webUsers
+        const users = Object.values(webUsers || {});
+        approvalsByDocument[docId] = {
+            approvers: users.map((u, idx) => ({ userId: u.id, name: u.name, email: u.email, order: idx + 1, status: 'none', updatedBy: actor.id, updatedAt: new Date().toISOString(), notes: '' })),
+            history: []
+        };
+        documentApprovals[docId] = {}; // zero all simple approvals map
+        saveApprovalsState();
+        const { approvedCount, totalUsers } = computeApprovedSummary(docId);
+        try { broadcastSSE({ type: 'approvals-list-updated', documentId: docId, action: 'reset', approved: approvedCount, total: totalUsers, timestamp: new Date().toISOString() }); } catch(_) {}
+        res.json({ success: true });
+    } catch (e) {
+        res.status(500).json({ error: 'reset_failed' });
+    }
 });
 
 // Approval matrix - computes per-user approval UI state for an actor
