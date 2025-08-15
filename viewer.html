@@ -4405,18 +4405,20 @@
 
          // Ensure only one modal is visible at a time
          window.closeAllModals = function closeAllModals(){
-             try { document.getElementById('usersModal')?.style.setProperty('display','none','important'); } catch(_){}
-             try { document.getElementById('vendorModal')?.style.setProperty('display','none','important'); } catch(_){}
-             try { document.getElementById('vendorConfirmationModal')?.style.setProperty('display','none','important'); } catch(_){}
-             try { document.getElementById('notificationModal')?.style.setProperty('display','none','important'); } catch(_){}
-             try { document.getElementById('templatesModalWeb')?.style.setProperty('display','none','important'); } catch(_){}
+             try { document.getElementById('usersModal')?.style.setProperty('display','none','important'); } catch(_){ }
+             try { document.getElementById('vendorModal')?.style.setProperty('display','none','important'); } catch(_){ }
+             try { document.getElementById('vendorConfirmationModal')?.style.setProperty('display','none','important'); } catch(_){ }
+             try { document.getElementById('notificationModal')?.style.setProperty('display','none','important'); } catch(_){ }
+             try { document.getElementById('templatesModalWeb')?.style.setProperty('display','none','important'); } catch(_){ }
+             try { document.getElementById('approvalsModalWeb')?.style.setProperty('display','none','important'); } catch(_){ }
              // Ensure hidden modals do not intercept clicks
-             try { document.getElementById('usersModal')?.style.setProperty('pointer-events','none','important'); } catch(_){}
-             try { document.getElementById('vendorModal')?.style.setProperty('pointer-events','none','important'); } catch(_){}
-             try { document.getElementById('vendorConfirmationModal')?.style.setProperty('pointer-events','none','important'); } catch(_){}
-             try { document.getElementById('notificationModal')?.style.setProperty('pointer-events','none','important'); } catch(_){}
-             try { document.getElementById('templatesModalWeb')?.style.setProperty('pointer-events','none','important'); } catch(_){}
-             try { document.getElementById('backToOpenGovModal')?.style.setProperty('pointer-events','none','important'); } catch(_){}
+             try { document.getElementById('usersModal')?.style.setProperty('pointer-events','none','important'); } catch(_){ }
+             try { document.getElementById('vendorModal')?.style.setProperty('pointer-events','none','important'); } catch(_){ }
+             try { document.getElementById('vendorConfirmationModal')?.style.setProperty('pointer-events','none','important'); } catch(_){ }
+             try { document.getElementById('notificationModal')?.style.setProperty('pointer-events','none','important'); } catch(_){ }
+             try { document.getElementById('templatesModalWeb')?.style.setProperty('pointer-events','none','important'); } catch(_){ }
+             try { document.getElementById('backToOpenGovModal')?.style.setProperty('pointer-events','none','important'); } catch(_){ }
+             try { document.getElementById('approvalsModalWeb')?.style.setProperty('pointer-events','none','important'); } catch(_){ }
          };
 
          // Generic modal opener used by all features (vendor, approvals, templates)
