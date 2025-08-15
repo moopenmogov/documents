@@ -23,7 +23,8 @@ describe('Replace default', () => {
 
   it('accepts and atomically writes current.docx', async () => {
     const beforeStat = fs.existsSync(path.join(defaultDir, 'current.docx')) ? fs.statSync(path.join(defaultDir, 'current.docx')).mtimeMs : 0;
-    const payload = Buffer.from('stub-docx-content').toString('base64');
+    // minimally valid-looking zip header for docx
+    const payload = Buffer.concat([Buffer.from('PK'), Buffer.alloc(2048)]).toString('base64');
     const res = await request(app)
       .post('/api/replace-default')
       .send({ base64Docx: payload, originalFilename: 'My Contract.docx' })

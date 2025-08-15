@@ -108,3 +108,38 @@ Technical Breakdown
 - Clear, actionable user escape hatches if all strategies fail
 
 
+
+Add-in DOCX Integrity and View Latest Orchestration — Implementation Notes
+----------------------------------------------------------------------------
+
+Why we saw “corrupted” current.docx
+- The Word add-in exported the active document via Office.js slices, then naively flattened typed arrays and built a massive string before btoa(). For larger documents that approach can create malformed base64 (code-point truncation), resulting in a broken .docx written server-side.
+- Some server endpoints (/api/save-progress, /api/checkin) accepted any PK-prefixed buffer and wrote it directly to disk, so malformed uploads could overwrite the canonical file.
+
+Client-side fixes
+- getDocumentAsBase64():
+  - Merge slices into one contiguous Uint8Array (no array.flat on arbitrary slice structures).
+  - Encode in small chunks (8KB) to a binary string, then btoa() once; avoids stack and code-point issues.
+- View Latest (dropdown/toolbar) unified to a strict 3-step sequence:
+  1) In-place base64 replace (pre-unlock document to reduce GeneralException; multiple insert strategies attempted).
+  2) ms-word protocol fallback using: ms-word:ofe|u|http://localhost:3001/api/document/:id.docx
+  3) Informative error banner with CTAs.
+- Protocol URL must end with .docx for Office to consistently recognize it. We standardized on the .docx-suffixed streaming route.
+
+Server-side fixes
+- Added isWellFormedDocx(buffer) heuristic:
+  - First: ZIP header (PK) and minimum size.
+  - Then: scan for markers typical of a .docx package (e.g., [Content_Types].xml, word/document.xml). If absent, reject as invalid.
+- Applied validation to /api/save-progress and /api/checkin before writing; existing /api/replace-default and /api/upload-docx already validate and/or write atomically.
+- Kept writeFileAtomic for default replacement to avoid partial writes.
+
+Tests to prevent regressions
+- save-progress.test.js: rejects invalid base64 on save-progress/checkin; accepts well-formed docx-like payload (PK + markers) after checkout.
+- replace-default.test.js: uses PK-prefixed payload to pass validation, asserts atomic write and metadata update.
+- view-latest-robust.test.js (contract): dropdown wiring prefers viewLatestRobust and not legacy in-pane-only path.
+
+Operational guidance
+- If in-place insert fails repeatedly in a session, prefer protocol fallback then retry in-pane after Word loads the doc.
+- When replacing the canonical doc, always use /api/replace-default (atomic write + validation). The add-in dropdown wires the hidden file input to this endpoint.
+- If a DOCX becomes corrupted, immediately re-upload a good copy via Replace Default and verify View Latest protocol opens it successfully.
+

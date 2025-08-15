@@ -1,5 +1,16 @@
 {
-  "default-doc": {},
+  "default-doc": {
+    "user3": {
+      "status": "approved",
+      "approvedBy": "user1",
+      "approvedAt": "2025-08-15T22:10:16.252Z"
+    },
+    "user2": {
+      "status": "rejected",
+      "approvedBy": "user1",
+      "approvedAt": "2025-08-15T22:10:16.305Z"
+    }
+  },
   "doc-1755112511679": {
     "user2": {
       "status": "rejected",
@@ -27,6 +38,16 @@
       "status": "approved",
       "approvedBy": "user1",
       "approvedAt": "2025-08-15T19:17:20.789Z"
+    },
+    "user2": {
+      "status": "rejected",
+      "approvedBy": "user1",
+      "approvedAt": "2025-08-15T22:07:35.252Z"
+    },
+    "vendor1": {
+      "status": "approved",
+      "approvedBy": "user1",
+      "approvedAt": "2025-08-15T22:07:53.259Z"
     }
   },
   "doc-1755272017511": {

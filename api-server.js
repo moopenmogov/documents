@@ -56,6 +56,19 @@ function isLikelyValidDocx(buffer) {
     }
 }
 
+// Stronger DOCX validation: ZIP header plus required entries markers
+function isWellFormedDocx(buffer) {
+    if (!isLikelyValidDocx(buffer)) return false;
+    try {
+        const haystack = buffer.toString('utf8');
+        // Look for key parts typically present in .docx packages
+        return haystack.includes('[Content_Types].xml') && (haystack.includes('word/document.xml') || haystack.includes('word/_rels/document.xml.rels'));
+    } catch (_) {
+        // If decoding fails (binary), fall back to minimal check only
+        return true;
+    }
+}
+
 async function convertDocxToPdf(docxPath) {
     // If test stub enabled, return a minimal PDF built via pdf-lib
     if (process.env.DOCX_PDF_STUB === '1') {
@@ -473,6 +486,9 @@ app.post('/api/save-progress', (req, res) => {
             
             // Write base64 data to file
             const buffer = Buffer.from(docx, 'base64');
+            if (!isWellFormedDocx(buffer)) {
+                return res.status(400).json({ success: false, error: 'invalid_docx' });
+            }
             fs.writeFileSync(filePath, buffer);
             
             // Update current document info
@@ -551,6 +567,9 @@ app.post('/api/checkin', (req, res) => {
             
             // Write base64 data to file
             const buffer = Buffer.from(docx, 'base64');
+            if (!isWellFormedDocx(buffer)) {
+                return res.status(400).json({ success: false, error: 'invalid_docx' });
+            }
             fs.writeFileSync(filePath, buffer);
             
             // Update current document info

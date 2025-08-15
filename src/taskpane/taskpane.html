@@ -3674,18 +3674,30 @@
                                         getSlice(sliceIndex + 1);
                                     } else {
                                         file.closeAsync();
-                                        // Convert to base64 using chunked approach to avoid stack overflow
-                                        const uint8Array = new Uint8Array(docxContent.flat());
-                                        const chunkSize = 8192;
-                                        let binaryString = '';
-                                        
-                                        for (let i = 0; i < uint8Array.length; i += chunkSize) {
-                                            const chunk = uint8Array.slice(i, i + chunkSize);
-                                            binaryString += String.fromCharCode.apply(null, chunk);
+                                        // Convert to base64 using a safe merge + chunked encoding
+                                        // Merge ArrayBuffer slices into one contiguous Uint8Array
+                                        try {
+                                            const totalLength = docxContent.reduce((sum, buf) => sum + (buf && buf.byteLength ? buf.byteLength : 0), 0);
+                                            const merged = new Uint8Array(totalLength);
+                                            let offset = 0;
+                                            for (let i = 0; i < docxContent.length; i++) {
+                                                const buf = docxContent[i];
+                                                if (!buf) continue;
+                                                const view = new Uint8Array(buf);
+                                                merged.set(view, offset);
+                                                offset += view.byteLength;
+                                            }
+                                            const chunkSize = 8192;
+                                            let binaryString = '';
+                                            for (let i = 0; i < merged.length; i += chunkSize) {
+                                                const chunk = merged.subarray(i, i + chunkSize);
+                                                binaryString += String.fromCharCode.apply(null, Array.from(chunk));
+                                            }
+                                            const base64 = btoa(binaryString);
+                                            resolve(base64);
+                                        } catch (mergeErr) {
+                                            reject(new Error('Failed to assemble DOCX data'));
                                         }
-                                        
-                                        const base64 = btoa(binaryString);
-                                        resolve(base64);
                                     }
                                 } else {
                                     reject(new Error('Failed to get document slice'));
@@ -3840,39 +3852,40 @@
         (function setupToolbarViewLatest() {
             try {
                 async function viewLatestRobust() {
+                    // 1) Try in-place base64 replace
                     try {
-                        // Prefer our confirmed working flow
-                        if (typeof window.viewLatestSafe === 'function') {
-                            await window.viewLatestSafe();
-                            return;
-                        }
                         if (typeof window.cleanViewLatest === 'function') {
                             await window.cleanViewLatest();
                             return;
                         }
-                        // Last resort
-                        if (typeof window.viewReadOnly === 'function') {
-                            await window.viewReadOnly();
-                            return;
-                        }
-                        throw new Error('No View Latest function available');
                     } catch (e) {
-                        console.error('Toolbar View Latest error:', e);
-                        try { showStatus('documentStatus', `❌ View Latest failed: ${e?.message || e}`, 'error'); } catch (_) {}
-                        // Protocol fallback: open via ms-word handler so user is never blocked
-                        try {
-                            const current = await (await fetch('http://localhost:3001/api/current-document')).json();
-                            const id = current && current.id ? current.id : 'default-doc';
-                            const docUrl = `http://localhost:3001/api/document/${encodeURIComponent(id)}.docx`;
-                            const wordUrl = `ms-word:ofe|u|${encodeURI(docUrl)}`;
-                            window.location.assign(wordUrl);
-                            try { showStatus('documentStatus', '✅ Opened latest in a new window', 'success'); } catch(_) {}
-                            return;
-                        } catch (fallbackErr) {
-                            console.warn('Protocol fallback failed', fallbackErr);
-                        }
+                        console.warn('Robust loader: in-place failed, attempting protocol fallback', e);
                     }
+                    
+                    // 2) ms-word protocol fallback (new Word window)
+                    try {
+                        const current = await (await fetch('http://localhost:3001/api/current-document')).json();
+                        const id = current && current.id ? current.id : 'default-doc';
+                        // Use .docx-suffixed route for best compatibility with the protocol handler
+                        const docUrl = `http://localhost:3001/api/document/${encodeURIComponent(id)}.docx`;
+                        const wordUrl = `ms-word:ofe|u|${encodeURI(docUrl)}`;
+                        window.location.assign(wordUrl);
+                        try { showStatus('documentStatus', '✅ Opened latest in a new window', 'success'); } catch(_) {}
+                        return;
+                    } catch (fallbackErr) {
+                        console.warn('Protocol fallback failed', fallbackErr);
+                    }
+                    
+                    // 3) Informative error banner
+                    try { showStatus('documentStatus', '❌ View Latest failed: no strategy succeeded', 'error'); } catch(_) {}
                 }
+
+                // Expose robust loader globally so dropdowns and any legacy callers use it
+                try {
+                    window.viewLatestRobust = viewLatestRobust;
+                    // Alias the "safe" name to robust to guarantee the 3-step flow everywhere
+                    window.viewLatestSafe = viewLatestRobust;
+                } catch(_) {}
 
                 function bind() {
                     const btn = document.getElementById('btnWordViewLatest');
@@ -5774,7 +5787,7 @@ window.__forceOpenApprovalsTest = function() {
 
                     // Match web order EXACTLY - copied from refreshActionsDropdownFromMatrix
                     const hasDoc = !!config.checkoutStatus?.show;
-                    add(hasDoc && (b.viewOnlyBtn !== false), 'viewOnlyBtn', 'View Latest', window.viewLatestSafe || window.cleanViewLatest || window.viewReadOnly);
+                    add(hasDoc && (b.viewOnlyBtn !== false), 'viewOnlyBtn', 'View Latest', window.viewLatestRobust || window.cleanViewLatest || window.viewReadOnly);
                     add(true, 'shareToWebBtn', 'Open in Web', window.shareToWeb);
                     add(!!b.checkoutBtn, 'checkoutBtn', 'Check-out Document', window.checkoutDocument);
                     add(!!b.checkedInBtns, 'checkinBtn', 'Save & Check-in', window.checkinDocument);
@@ -5864,6 +5877,8 @@ window.__forceOpenApprovalsTest = function() {
             }
             try {
                 window.__documentInsertInProgress = true;
+                // Ensure the document is in an editable state before attempting replacement
+                try { await unlockDocument(); } catch(_) {}
                 const current = await getCurrentOrDefaultDocument();
                 if (!current || !current.id) {
                     showStatus('documentStatus', '⚠️ No document available', 'warning');

@@ -6,9 +6,9 @@
         "name": "Warren Peace",
         "email": "warren@opengov.com",
         "order": 1,
-        "status": "approved",
+        "status": "none",
         "updatedBy": "user1",
-        "updatedAt": "2025-08-15T19:17:16.607Z",
+        "updatedAt": "2025-08-15T22:07:58.818Z",
         "notes": ""
       },
       {
@@ -16,9 +16,9 @@
         "name": "Fun E. Guy",
         "email": "funguy@opengov.com",
         "order": 2,
-        "status": "approved",
+        "status": "none",
         "updatedBy": "user1",
-        "updatedAt": "2025-08-15T19:17:20.789Z",
+        "updatedAt": "2025-08-15T22:07:58.818Z",
         "notes": ""
       },
       {
@@ -28,7 +28,7 @@
         "order": 3,
         "status": "none",
         "updatedBy": "user1",
-        "updatedAt": "2025-08-15T18:41:49.734Z",
+        "updatedAt": "2025-08-15T22:07:58.818Z",
         "notes": ""
       },
       {
@@ -38,7 +38,7 @@
         "order": 4,
         "status": "none",
         "updatedBy": "user1",
-        "updatedAt": "2025-08-15T18:41:49.734Z",
+        "updatedAt": "2025-08-15T22:07:58.818Z",
         "notes": ""
       },
       {
@@ -48,7 +48,7 @@
         "order": 5,
         "status": "none",
         "updatedBy": "user1",
-        "updatedAt": "2025-08-15T18:41:49.734Z",
+        "updatedAt": "2025-08-15T22:07:58.818Z",
         "notes": ""
       }
     ],
@@ -71,9 +71,9 @@
         "name": "Fun E. Guy",
         "email": "funguy@opengov.com",
         "order": 2,
-        "status": "none",
+        "status": "approved",
         "updatedBy": "user1",
-        "updatedAt": "2025-08-15T18:33:08.643Z",
+        "updatedAt": "2025-08-15T22:10:16.252Z",
         "notes": ""
       },
       {
@@ -81,9 +81,9 @@
         "name": "Gettysburger King",
         "email": "gettysburger@opengov.com",
         "order": 3,
-        "status": "none",
+        "status": "rejected",
         "updatedBy": "user1",
-        "updatedAt": "2025-08-15T18:33:08.643Z",
+        "updatedAt": "2025-08-15T22:10:16.305Z",
         "notes": ""
       },
       {
@@ -107,7 +107,22 @@
         "notes": ""
       }
     ],
-    "history": []
+    "history": [
+      {
+        "type": "approve",
+        "by": "user1",
+        "target": "user3",
+        "comment": "LGTM",
+        "at": "2025-08-15T22:10:16.252Z"
+      },
+      {
+        "type": "reject",
+        "by": "user1",
+        "target": "user2",
+        "comment": "Needs changes",
+        "at": "2025-08-15T22:10:16.305Z"
+      }
+    ]
   },
   "doc-1755272017511": {
     "approvers": [
