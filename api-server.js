@@ -46,14 +46,64 @@ function writeFileAtomic(targetPath, buffer) {
             try { fs.unlinkSync(targetPath); } catch (_) {}
         }
         fs.renameSync(tmp, targetPath);
+        try { cleanupAtomicTemps(dir, path.basename(targetPath)); } catch (_) {}
     } catch (e) {
         try {
             // Fallback: copy over the target and then remove tmp
             fs.copyFileSync(tmp, targetPath);
         } finally {
             try { fs.unlinkSync(tmp); } catch (_) {}
+            try { cleanupAtomicTemps(dir, path.basename(targetPath)); } catch (_) {}
         }
     }
+}
+
+// Best-effort removal of leftover atomic temp files (e.g., .current.docx.*.tmp)
+function cleanupAtomicTemps(dir, baseName) {
+    const prefix = `.${baseName}.`;
+    try {
+        const files = fs.readdirSync(dir);
+        for (const name of files) {
+            if (name.startsWith(prefix) && name.endsWith('.tmp')) {
+                try { fs.unlinkSync(path.join(dir, name)); } catch (_) {}
+            }
+        }
+    } catch (_) {}
+}
+
+// Attempt to consolidate a versioned docx back into current.docx with retries (Windows-safe)
+function consolidateToCurrentDocx(fromPath) {
+    const targetPath = path.join(defaultDocDir, 'current.docx');
+    let attempts = 0;
+    const maxAttempts = 12; // ~6 seconds total at 500ms intervals
+    const retry = () => {
+        attempts += 1;
+        try {
+            const data = fs.readFileSync(fromPath);
+            writeFileAtomic(targetPath, data);
+            // Update currentDocument to canonical file and remove alt
+            currentDocument.id = 'doc-current';
+            currentDocument.filename = 'current.docx';
+            currentDocument.filePath = targetPath;
+            currentDocument.lastUpdated = new Date().toISOString();
+            try { fs.unlinkSync(fromPath); } catch (_) {}
+            broadcastSSE({
+                type: 'document-saved',
+                message: 'Document consolidated to current.docx',
+                filename: currentDocument.filename,
+                timestamp: new Date().toISOString(),
+                stillCheckedOut: false
+            });
+            console.log('✅ Consolidated fallback into current.docx');
+        } catch (e) {
+            if (attempts < maxAttempts) {
+                setTimeout(retry, 500);
+            } else {
+                console.warn('⚠️ Failed to consolidate to current.docx after retries; will remain on', fromPath);
+            }
+        }
+    };
+    setTimeout(retry, 500);
 }
 
 // Basic sanity check to avoid zero-byte or non-ZIP (.docx) uploads
