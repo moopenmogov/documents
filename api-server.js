@@ -1492,6 +1492,7 @@ app.post('/api/approvals/remind', (req, res) => {
         if (!row) return res.status(404).json({ error: 'target_not_found' });
         state.history.push({ type: 'remind', by: actorId || 'unknown', target: row.userId, at: new Date().toISOString() });
         saveApprovalsState();
+        try { broadcastSSE({ type: 'approvals-reminder-sent', documentId: docId, userId: row.userId, actorId: actorId, message: `Reminder sent to ${row.name}` , timestamp: new Date().toISOString() }); } catch (_) {}
         res.json({ success: true, message: `you emailed a reminder to ${row.name}` });
     } catch (_) { res.status(500).json({ error: 'remind_failed' }); }
 });
@@ -1515,6 +1516,7 @@ app.post('/api/approvals/add-user', (req, res) => {
         state.approvers.push({ userId, name, email, order, status: 'none', updatedBy: actor.id, updatedAt: new Date().toISOString(), notes: '' });
         normalizeOrders(docId);
         saveApprovalsState();
+        try { const summary = computeApprovedSummary(docId); broadcastSSE({ type: 'approvals-list-updated', documentId: docId, action: 'added', userId, summary, timestamp: new Date().toISOString() }); } catch(_){}
         res.json({ success: true, approver: state.approvers.find(a => a.userId === userId) });
     } catch (_) { res.status(500).json({ error: 'add_user_failed' }); }
 });
@@ -1533,6 +1535,7 @@ app.post('/api/approvals/delete-user', (req, res) => {
         state.approvers = state.approvers.filter(a => a.userId !== targetUserId);
         normalizeOrders(docId);
         saveApprovalsState();
+        try { const summary = computeApprovedSummary(docId); broadcastSSE({ type: 'approvals-list-updated', documentId: docId, action: 'deleted', userId: targetUserId, summary, timestamp: new Date().toISOString() }); } catch(_){}
         res.json({ success: true, removed: before - state.approvers.length });
     } catch (_) { res.status(500).json({ error: 'delete_user_failed' }); }
 });
@@ -1551,6 +1554,7 @@ app.post('/api/approvals/reorder', (req, res) => {
         state.approvers.forEach(a => { if (map.has(a.userId)) a.order = map.get(a.userId); });
         normalizeOrders(docId);
         saveApprovalsState();
+        try { const summary = computeApprovedSummary(docId); broadcastSSE({ type: 'approvals-list-updated', documentId: docId, action: 'reordered', summary, timestamp: new Date().toISOString() }); } catch(_){}
         res.json({ success: true, approvers: state.approvers });
     } catch (_) { res.status(500).json({ error: 'reorder_failed' }); }
 });
@@ -1573,6 +1577,7 @@ app.post('/api/approvals/update-notes', (req, res) => {
         row.updatedBy = actor.id;
         row.updatedAt = new Date().toISOString();
         saveApprovalsState();
+        try { broadcastSSE({ type: 'approvals-notes-updated', documentId: docId, userId: row.userId, timestamp: new Date().toISOString() }); } catch(_){}
         res.json({ success: true, approver: row });
     } catch (_) { res.status(500).json({ error: 'update_notes_failed' }); }
 });
