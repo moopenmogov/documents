@@ -5869,7 +5869,7 @@ window.__forceOpenApprovalsTest = function() {
                 }
                 kickRenderMatrixDropdownOnce();
 
-        // Fresh minimal View Latest loader: prefer server/base64 → raw bytes → open-as-new
+        // Fresh minimal View Latest loader: prefer server/base64 → raw bytes; no protocol fallback
         window.cleanViewLatest = async function() {
             if (window.__documentInsertInProgress) {
                 console.log('⚠️ cleanViewLatest: insert already in progress');
@@ -5877,8 +5877,7 @@ window.__forceOpenApprovalsTest = function() {
             }
             try {
                 window.__documentInsertInProgress = true;
-                // Ensure the document is in an editable state before attempting replacement
-                try { await unlockDocument(); } catch(_) {}
+                // Do NOT attempt to unlock; proceed directly to in-document replacement
                 const current = await getCurrentOrDefaultDocument();
                 if (!current || !current.id) {
                     showStatus('documentStatus', '⚠️ No document available', 'warning');
@@ -5921,7 +5920,7 @@ window.__forceOpenApprovalsTest = function() {
                     try { logRichApiError(eB, 'cleanViewLatest B server/raw'); } catch(_) {}
                 }
 
-                // Step C: ROBUST fallback - replace content in CURRENT document (no new windows)
+                // Step C: Additional in-document strategies; do not open new windows
                 try {
                     const respJson2 = await fetch('http://localhost:3001/api/get-updated-docx', { cache: 'no-store' });
                     if (respJson2.ok) {
@@ -5993,7 +5992,7 @@ window.__forceOpenApprovalsTest = function() {
                     showStatus('documentStatus', '❌ View Latest not available', 'error');
                 }
             } catch (e) {
-                showStatus('documentStatus', `❌ View Latest failed: ${e?.message || e}`, 'error');
+                // Already surfaced by cleanViewLatest; avoid duplicate noise
             }
         };
 
