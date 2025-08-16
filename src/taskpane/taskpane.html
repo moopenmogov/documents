@@ -4509,8 +4509,7 @@
                 // Use actual current document id (fallback to default)
                 async function __getCurrentDocIdWord(){
                     try {
-                        const idFromState = (window.currentDocumentState && window.currentDocumentState.currentDocument && window.currentDocumentState.currentDocument.id) || null;
-                        if (idFromState) return idFromState;
+                        // Always fetch fresh to avoid race with local state during user switches
                         const r = await fetch('http://localhost:3001/api/current-document', { cache: 'no-store' });
                         const j = await r.json();
                         return (j && (j.id || j.documentId)) || 'default-doc';
