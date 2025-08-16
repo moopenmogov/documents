@@ -4101,7 +4101,9 @@
                 const pill = document.getElementById('approvalsPillWord');
                 console.log(`📊 WORD: Found pill element:`, !!pill);
                 if (pill) {
-                    const newText = `${approved || 0}/${total || 0} approved`;
+                    const a = Number.isFinite(approved) ? approved : 0;
+                    const t = Number.isFinite(total) ? total : 0;
+                    const newText = `${a}/${t} approved`;
                     console.log(`📊 WORD: Setting pill text to: "${newText}"`);
                     pill.textContent = newText;
                     // Force repaint in WebView2 if old glyphs linger
@@ -4124,8 +4126,12 @@
                 const currentUser = window.getCurrentUser ? window.getCurrentUser() : null;
                 if (!currentUser) return;
                 
-                // FIXED: Standardize to fixed ID for consistency
-                const documentId = 'default-doc';
+                // Resolve current document id dynamically for accurate approvals count
+                let documentId = 'default-doc';
+                try {
+                    const meta = await getCurrentOrDefaultDocument();
+                    if (meta && meta.id) documentId = meta.id;
+                } catch(_) {}
                 
                 const [mxResp, apprResp] = await Promise.all([
                     fetch(`http://localhost:3001/api/state-matrix?userRole=${encodeURIComponent(getCurrentUserRole())}&platform=word&userId=${encodeURIComponent(currentUser.id)}`),
