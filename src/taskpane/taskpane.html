@@ -4184,8 +4184,12 @@
                     return;
                 }
                 
-                // FIXED: Standardize to fixed ID for consistency
-                const documentId = 'default-doc';
+                // Resolve actual current document id to avoid stale default
+                let documentId = 'default-doc';
+                try {
+                    const meta = await getCurrentOrDefaultDocument();
+                    if (meta && meta.id) documentId = meta.id;
+                } catch(_) {}
                 
                 console.log(`📊 WORD: Fetching approvals for user ${currentUser.id}, doc ${documentId}`);
                 
@@ -4202,7 +4206,8 @@
                     const totalCount = data.summary.totalUsers || 0;
                     
                     console.log(`📊 WORD: Approvals loaded successfully - ${approvedCount}/${totalCount}`); // Success log
-                    if (window.__updateApprovalsPillWord) {
+                    // Set pill strictly from server summary (avoid any interim defaults)
+                    if (typeof window.__updateApprovalsPillWord === 'function') {
                         window.__updateApprovalsPillWord(approvedCount, totalCount);
                     }
                     // Force modal refresh after load
