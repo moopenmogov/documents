@@ -1988,7 +1988,19 @@
                     console.log('SSE connection opened');
                     showStatus('sseStatus', '📡 Connected to real-time events', 'success');
                     // Unified initial load when SSE connects
-                    setTimeout(() => { try { fetchUnifiedStateWord(); } catch(_) {} }, 300);
+                    setTimeout(async () => {
+                        try {
+                            await fetchUnifiedStateWord();
+                            // After unified fetch, force pill to authoritative counts
+                            try {
+                                const meta = await getCurrentOrDefaultDocument();
+                                const docId = (meta && meta.id) || 'default-doc';
+                                const st = await ApprovalsClient.getState({ documentId: docId });
+                                const s = st && st.summary ? st.summary : { approvedCount: 0, totalUsers: 0 };
+                                if (typeof window.__updateApprovalsPillWord === 'function') window.__updateApprovalsPillWord(s.approvedCount, s.totalUsers);
+                            } catch(_) {}
+                        } catch(_) {}
+                    }, 300);
                 };
                 
                 eventSource.onmessage = async function(event) {
