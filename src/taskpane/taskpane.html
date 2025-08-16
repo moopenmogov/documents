@@ -4553,8 +4553,10 @@
                   `</div>`;
 
                 const tbody = modal.querySelector('tbody.tbody');
+                // Resolve actor id once for row-level permissions
+                const actorId = await __getActorIdWord();
                 approvers.forEach((a, idx) => {
-                    const canAct = isEditor || a.userId === actorId;
+                    const canAct = isEditor || (actorId && a.userId === actorId);
                     const tr = document.createElement('tr');
                     tr.setAttribute('data-user-id', a.userId);
                     if (a && a.name) tr.setAttribute('data-user-name', a.name);
