@@ -1,7 +1,24 @@
 Finalize button (remind next approver)
 
 Law ur
--Finalize document: 
+
+Documentation
+Documentation clean-up
+-organize documents, all in the doc folder
+-don't ever over-write docs folder when reverting, only when committing to a future branch
+-rename things
+-delete extra files?
+-plan for docs, eg readme, installatoin instructions, what's human vs machine
+-update readme for public consumptoin
+
+
+
+approvals issue
+- switch to viewer/editor users on the add-in and the modal shows up empty for approvals
+- small 
+- cannot check in a document (check in failed to assemble docx data error) on the add-in. can do it no problem on the web
+- non-editors can only remind themselves. remind should be available for every user who has not approved
+
 
 ANNOTATION
 -variables
