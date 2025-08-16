@@ -2058,7 +2058,10 @@
                             if (typeof data.approved === 'number' && typeof data.total === 'number') {
                                 if (typeof window.__updateApprovalsPillWord === 'function') window.__updateApprovalsPillWord(data.approved, data.total);
                             } else if (window.ApprovalsClient && typeof window.ApprovalsClient.getState === 'function') {
-                                const st = await window.ApprovalsClient.getState();
+                                // Always query for the active document id to avoid mismatched counts
+                                let did = 'default-doc';
+                                try { const meta = await getCurrentOrDefaultDocument(); if (meta && meta.id) did = meta.id; } catch(_) {}
+                                const st = await window.ApprovalsClient.getState({ documentId: did });
                                 const a = st && st.summary ? st.summary.approvedCount : 0;
                                 const t = st && st.summary ? st.summary.totalUsers : 0;
                                 if (typeof window.__updateApprovalsPillWord === 'function') window.__updateApprovalsPillWord(a, t);
@@ -4145,9 +4148,9 @@
                     if (meta && meta.id) documentId = meta.id;
                 } catch(_) {}
                 
-                const [mxResp, apprResp] = await Promise.all([
+                const [mxResp, st] = await Promise.all([
                     fetch(`http://localhost:3001/api/state-matrix?userRole=${encodeURIComponent(getCurrentUserRole())}&platform=word&userId=${encodeURIComponent(currentUser.id)}`),
-                    fetch(`http://localhost:3001/api/approval-matrix?actorPlatform=word&actorId=${encodeURIComponent(currentUser.id)}&documentId=${encodeURIComponent(documentId)}`)
+                    (window.ApprovalsClient && typeof window.ApprovalsClient.getState === 'function') ? window.ApprovalsClient.getState({ documentId }) : null
                 ]);
                 const mxData = await mxResp.json();
                 const apprData = await apprResp.json();
@@ -4170,6 +4173,12 @@
                 // REMOVED: Pill update to prevent race/overwrite - rely on initial load and SSE only
                 // This keeps server as single truth without redundant calcs
                 
+                // If we fetched approvals state, set pill immediately from summary
+                try {
+                    if (st && st.summary && typeof window.__updateApprovalsPillWord === 'function') {
+                        window.__updateApprovalsPillWord(st.summary.approvedCount || 0, st.summary.totalUsers || 0);
+                    }
+                } catch(_) {}
                 // Still rebuild approvals list for modal sync (uses server data)
                 try { loadApprovalsSection(); } catch(_) {}
             } catch(_) {}
