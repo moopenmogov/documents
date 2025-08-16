@@ -4200,31 +4200,16 @@
                     if (meta && meta.id) documentId = meta.id;
                 } catch(_) {}
                 
-                console.log(`📊 WORD: Fetching approvals for user ${currentUser.id}, doc ${documentId}`);
-                
-                const response = await fetch(`http://localhost:3001/api/approval-matrix?actorPlatform=word&actorId=${encodeURIComponent(currentUser.id)}&documentId=${encodeURIComponent(documentId)}`);
-                
-                if (!response.ok) {
-                    throw new Error(`Fetch error: ${response.status} ${response.statusText}`);
+                console.log(`📊 WORD: Fetching approvals/state for doc ${documentId}`);
+                const st = (window.ApprovalsClient && typeof window.ApprovalsClient.getState === 'function')
+                    ? await window.ApprovalsClient.getState({ documentId })
+                    : null;
+                const s = st && st.summary ? st.summary : { approvedCount: 0, totalUsers: 0 };
+                if (typeof window.__updateApprovalsPillWord === 'function') {
+                    window.__updateApprovalsPillWord(s.approvedCount || 0, s.totalUsers || 0);
                 }
-                
-                const data = await response.json();
-                
-                if (data.success && data.summary) {
-                    const approvedCount = data.summary.approvedCount || 0;
-                    const totalCount = data.summary.totalUsers || 0;
-                    
-                    console.log(`📊 WORD: Approvals loaded successfully - ${approvedCount}/${totalCount}`); // Success log
-                    // Set pill strictly from server summary (avoid any interim defaults)
-                    if (typeof window.__updateApprovalsPillWord === 'function') {
-                        window.__updateApprovalsPillWord(approvedCount, totalCount);
-                    }
-                    // Force modal refresh after load
-                    if (typeof loadApprovalsSection === 'function') loadApprovalsSection();
-                } else {
-                    console.warn('📊 WORD: Invalid approvals data:', data); // Warn on bad data
-                    // REMOVED: Don't set to 0/0 - skip invalid data
-                }
+                // Rebuild approvals list (modal/data) from matrix endpoint separately if needed
+                try { loadApprovalsSection(); } catch(_) {}
             } catch (error) {
                 console.error('📊 WORD: Approvals load failed:', error); // Error logging
                 // REMOVED: Don't set to 0/0 on error - prevent overwrite
