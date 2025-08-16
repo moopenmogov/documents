@@ -94,6 +94,21 @@ describe('Approvals API', () => {
     assert.deepEqual(orders, orders.slice().sort((a,b)=>a-b));
   });
 
+  it('serves approvals/state against currentDocument.id after a user switch', async () => {
+    // Simulate Word user switch and ensure approvals/state responds using current doc id
+    const sw = await request(app).post('/api/user/word/switch').send({ userId: 'user2' }).set('Content-Type','application/json');
+    assert.equal(sw.statusCode, 200);
+    // Ensure current document id is available
+    const cur = await request(app).get('/api/current-document');
+    assert.equal(cur.statusCode, 200);
+    const docId = cur.body && (cur.body.id || cur.body.documentId) || 'default-doc';
+    const state = await request(app).get(`/api/approvals/state?documentId=${encodeURIComponent(docId)}`);
+    assert.equal(state.statusCode, 200);
+    assert.equal(state.body.success, true);
+    assert.ok(Array.isArray(state.body.approvers));
+    assert.ok(state.body.approvers.length > 0);
+  });
+
   it('rejects reorder by non-editor', async () => {
     const state = await request(app).get('/api/approvals/state');
     const list = state.body.approvers;

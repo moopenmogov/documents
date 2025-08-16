@@ -40,10 +40,70 @@ function writeFileAtomic(targetPath, buffer) {
     const dir = path.dirname(targetPath);
     const tmp = path.join(dir, `.${path.basename(targetPath)}.${Date.now()}.tmp`);
     fs.writeFileSync(tmp, buffer);
-    if (fs.existsSync(targetPath)) {
-        try { fs.unlinkSync(targetPath); } catch (_) {}
+    // Replace using copy+rename fallback to avoid EPERM on Windows when file is busy
+    try {
+        if (fs.existsSync(targetPath)) {
+            try { fs.unlinkSync(targetPath); } catch (_) {}
+        }
+        fs.renameSync(tmp, targetPath);
+        try { cleanupAtomicTemps(dir, path.basename(targetPath)); } catch (_) {}
+    } catch (e) {
+        try {
+            // Fallback: copy over the target and then remove tmp
+            fs.copyFileSync(tmp, targetPath);
+        } finally {
+            try { fs.unlinkSync(tmp); } catch (_) {}
+            try { cleanupAtomicTemps(dir, path.basename(targetPath)); } catch (_) {}
+        }
     }
-    fs.renameSync(tmp, targetPath);
+}
+
+// Best-effort removal of leftover atomic temp files (e.g., .current.docx.*.tmp)
+function cleanupAtomicTemps(dir, baseName) {
+    const prefix = `.${baseName}.`;
+    try {
+        const files = fs.readdirSync(dir);
+        for (const name of files) {
+            if (name.startsWith(prefix) && name.endsWith('.tmp')) {
+                try { fs.unlinkSync(path.join(dir, name)); } catch (_) {}
+            }
+        }
+    } catch (_) {}
+}
+
+// Attempt to consolidate a versioned docx back into current.docx with retries (Windows-safe)
+function consolidateToCurrentDocx(fromPath) {
+    const targetPath = path.join(defaultDocDir, 'current.docx');
+    let attempts = 0;
+    const maxAttempts = 12; // ~6 seconds total at 500ms intervals
+    const retry = () => {
+        attempts += 1;
+        try {
+            const data = fs.readFileSync(fromPath);
+            writeFileAtomic(targetPath, data);
+            // Update currentDocument to canonical file and remove alt
+            currentDocument.id = 'doc-current';
+            currentDocument.filename = 'current.docx';
+            currentDocument.filePath = targetPath;
+            currentDocument.lastUpdated = new Date().toISOString();
+            try { fs.unlinkSync(fromPath); } catch (_) {}
+            broadcastSSE({
+                type: 'document-saved',
+                message: 'Document consolidated to current.docx',
+                filename: currentDocument.filename,
+                timestamp: new Date().toISOString(),
+                stillCheckedOut: false
+            });
+            console.log('✅ Consolidated fallback into current.docx');
+        } catch (e) {
+            if (attempts < maxAttempts) {
+                setTimeout(retry, 500);
+            } else {
+                console.warn('⚠️ Failed to consolidate to current.docx after retries; will remain on', fromPath);
+            }
+        }
+    };
+    setTimeout(retry, 500);
 }
 
 // Basic sanity check to avoid zero-byte or non-ZIP (.docx) uploads
@@ -480,24 +540,21 @@ app.post('/api/save-progress', (req, res) => {
     try {
         // Save the document if docx data provided
         if (docx) {
-            const timestamp = Date.now();
-            const fileName = filename || `progress-save-${timestamp}.docx`;
-            const filePath = path.join(defaultDocDir, fileName);
-            
-            // Write base64 data to file
             const buffer = Buffer.from(docx, 'base64');
             if (!isWellFormedDocx(buffer)) {
                 return res.status(400).json({ success: false, error: 'invalid_docx' });
             }
-            fs.writeFileSync(filePath, buffer);
+            // Canonical write: always update current.docx atomically
+            const targetPath = path.join(defaultDocDir, 'current.docx');
+            writeFileAtomic(targetPath, buffer);
             
-            // Update current document info
-            currentDocument.id = `doc-${timestamp}`;
-            currentDocument.filename = fileName;
-            currentDocument.filePath = filePath;
+            // Update current document info to canonical current.docx
+            currentDocument.id = 'doc-current';
+            currentDocument.filename = 'current.docx';
+            currentDocument.filePath = targetPath;
             currentDocument.lastUpdated = new Date().toISOString();
             
-            console.log(`💾 Progress saved by ${source}: ${fileName}`);
+            console.log(`💾 Progress saved by ${source}: current.docx (${buffer.length} bytes)`);
         }
         
         // Broadcast save event (document stays checked out)
@@ -561,24 +618,31 @@ app.post('/api/checkin', (req, res) => {
     try {
         // Save the document if docx data provided
         if (docx) {
-            const timestamp = Date.now();
-            const fileName = filename || `checkin-${timestamp}.docx`;
-            const filePath = path.join(defaultDocDir, fileName);
-            
-            // Write base64 data to file
             const buffer = Buffer.from(docx, 'base64');
             if (!isWellFormedDocx(buffer)) {
                 return res.status(400).json({ success: false, error: 'invalid_docx' });
             }
-            fs.writeFileSync(filePath, buffer);
-            
-            // Update current document info
-            currentDocument.id = `doc-${timestamp}`;
-            currentDocument.filename = fileName;
-            currentDocument.filePath = filePath;
-            currentDocument.lastUpdated = new Date().toISOString();
-            
-            console.log(`✅ Document checked in by ${source}: ${fileName}`);
+            // Prefer canonical write to current.docx; fall back to a new versioned file if locked
+            const targetPath = path.join(defaultDocDir, 'current.docx');
+            try {
+                writeFileAtomic(targetPath, buffer);
+                currentDocument.id = 'doc-current';
+                currentDocument.filename = 'current.docx';
+                currentDocument.filePath = targetPath;
+                currentDocument.lastUpdated = new Date().toISOString();
+                console.log(`✅ Document checked in by ${source}: current.docx (${buffer.length} bytes)`);
+            } catch (e) {
+                const timestamp = Date.now();
+                const altPath = path.join(defaultDocDir, `checkin-${timestamp}.docx`);
+                fs.writeFileSync(altPath, buffer);
+                currentDocument.id = `doc-${timestamp}`;
+                currentDocument.filename = path.basename(altPath);
+                currentDocument.filePath = altPath;
+                currentDocument.lastUpdated = new Date().toISOString();
+                console.warn(`⚠️ current.docx busy; saved check-in to ${currentDocument.filename}`);
+                // Schedule background consolidation back into current.docx
+                try { consolidateToCurrentDocx(altPath); } catch (_) {}
+            }
         }
         
         // Clear checkout state (unlock document)

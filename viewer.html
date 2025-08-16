@@ -4224,9 +4224,8 @@
 
                         userId: getCurrentUser()?.id,
 
-                        docx: extractedContent?.data,
-
-                        filename: currentDocumentState.currentDocument?.filename || 'web-checkin.docx'
+                        docx: extractedContent?.data
+                        // filename intentionally omitted; server writes to current.docx
 
                     })
 

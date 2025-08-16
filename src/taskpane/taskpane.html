@@ -491,6 +491,7 @@
                 opacity: 1;
             }
         }
+
         /* Apply animation to all button types with stronger specificity */
         button:active, 
         .btn:active, 
@@ -644,6 +645,7 @@
             font-weight: 600;
             margin: 0;
         }
+        
         .notification-modal-close {
             background: none;
             border: none;
@@ -989,6 +991,7 @@
         .btn { border:none; border-radius:8px; padding:8px 12px; font-weight:600; cursor:pointer; color:#fff !important; }
         .btn[data-action="approve"] { background: #d4edda !important; color: #155724 !important; border: 1px solid #c3e6cb !important; }
         .btn[data-action="reject"] { background: #f8d7da !important; color: #721c24 !important; border: 1px solid #f5c6cb !important; }
+
         /* Add to existing rules where flex-grow appears (e.g., .grow class or similar) */
         .grow-class { flex-grow: 1; -ms-flex-positive: 1; } // Adjust to actual selector, e.g., line 168
 
@@ -1342,6 +1345,7 @@
             console.log('🧭 OfficeExtension: extendedErrorLogging enabled');
         }
     } catch (_) {}
+
     // Back-compat global stubs to prevent legacy calls from throwing
     try {
         if (typeof window.populateDocumentActions !== 'function') {
@@ -1614,6 +1618,7 @@
             try { logRichApiError(err, 'window.error'); } catch(_) { console.warn(err); }
         });
     } catch (_) {}
+
     // --- Self Test: Insert local DOCX via file picker ---
     (function setupSelfTestInsertDocx() {
         try {
@@ -1680,6 +1685,7 @@
             console.warn('Failed to set up Self Test Insert DOCX helpers', e);
         }
     })();
+
     // --- Server Raw Loader: Use the same insert path as Self Test but fetch from API ---
     /* Removed legacy server raw loader UI */
     /* (function setupServerRawLoader() {
@@ -1982,7 +1988,19 @@
                     console.log('SSE connection opened');
                     showStatus('sseStatus', '📡 Connected to real-time events', 'success');
                     // Unified initial load when SSE connects
-                    setTimeout(() => { try { fetchUnifiedStateWord(); } catch(_) {} }, 300);
+                    setTimeout(async () => {
+                        try {
+                            await fetchUnifiedStateWord();
+                            // After unified fetch, force pill to authoritative counts
+                            try {
+                                const meta = await getCurrentOrDefaultDocument();
+                                const docId = (meta && meta.id) || 'default-doc';
+                                const st = await ApprovalsClient.getState({ documentId: docId });
+                                const s = st && st.summary ? st.summary : { approvedCount: 0, totalUsers: 0 };
+                                if (typeof window.__updateApprovalsPillWord === 'function') window.__updateApprovalsPillWord(s.approvedCount, s.totalUsers);
+                            } catch(_) {}
+                        } catch(_) {}
+                    }, 300);
                 };
                 
                 eventSource.onmessage = async function(event) {
@@ -2040,7 +2058,10 @@
                             if (typeof data.approved === 'number' && typeof data.total === 'number') {
                                 if (typeof window.__updateApprovalsPillWord === 'function') window.__updateApprovalsPillWord(data.approved, data.total);
                             } else if (window.ApprovalsClient && typeof window.ApprovalsClient.getState === 'function') {
-                                const st = await window.ApprovalsClient.getState();
+                                // Always query for the active document id to avoid mismatched counts
+                                let did = 'default-doc';
+                                try { const meta = await getCurrentOrDefaultDocument(); if (meta && meta.id) did = meta.id; } catch(_) {}
+                                const st = await window.ApprovalsClient.getState({ documentId: did });
                                 const a = st && st.summary ? st.summary.approvedCount : 0;
                                 const t = st && st.summary ? st.summary.totalUsers : 0;
                                 if (typeof window.__updateApprovalsPillWord === 'function') window.__updateApprovalsPillWord(a, t);
@@ -2126,21 +2147,6 @@
                     } else if (data.type === 'vendor-invited') {
                         showStatus('sseStatus', `📡 ${data.message}`, 'info');
                         // No state matrix update needed for vendor invite
-                    } else if (data.type === 'document-finalize-updated') {
-                        // Apply finalize toggle immediately: banner + lock/unlock + dropdown refresh
-                        try { addNotification(data.isFinal ? 'Finalized. The first approver has been notified.' : 'Moved back to Draft.', data.isFinal ? 'success' : 'info'); } catch(_) {}
-                        try {
-                            if (data.isFinal) { try { await lockDocument(); } catch(_) {} }
-                            else { try { await unlockDocument(); } catch(_) {} }
-                        } catch(_) {}
-                        try {
-                            await fetchDocumentStatus();
-                            await updateUIFromStateMatrix('word', getCurrentUser, getCurrentUserRole, currentDocumentState);
-                            // Rebuild dropdown immediately without requiring user interaction
-                            if (window.__lastStateMatrix && typeof window.renderMatrixActionsDropdown === 'function') {
-                                window.renderMatrixActionsDropdown(window.__lastStateMatrix);
-                            }
-                        } catch (e) { console.warn('Finalize SSE refresh failed:', e); }
                     } else if (data.type === 'permission-changed') {
                         console.log(`📡 WORD: Permission changed for ${data.user.name}`);
                         // Refresh button states if this affects current user
@@ -2179,6 +2185,7 @@
         // User management state (same as web viewer)
         let currentUser = null;
         let allUsers = [];
+        
         // Initialize word-specific user system  
         async function initializeUserSystem() {
             try {
@@ -2536,6 +2543,7 @@
                 }
             });
         }
+        
         // Multi-layer document protection detection
         async function determineDocumentAccess() {
             console.log('🔍 STEP 1: Determining document access levels...');
@@ -2666,6 +2674,9 @@
                 console.log('DISABLED: Would unlock document - SuperDoc handles protection');
             }
         }
+
+
+        
         // Fetch current document status
         async function fetchDocumentStatus() {
             try {
@@ -2886,7 +2897,7 @@
                         source: 'word',
                         userId: getCurrentUser()?.id,
                         docx: docx,
-                        filename: 'word-checkin.docx'
+                        // filename intentionally omitted; server writes to current.docx
                     })
                 });
                 
@@ -3070,7 +3081,7 @@
         
         // Override any checkout
         window.overrideCheckout = async function overrideCheckout() {
-            console.log('🔒 WORD: Calling override API...');
+            console.log('ðŸ" WORD: Calling override API...');
             try {
                 const response = await fetch('http://localhost:3001/api/override', {
                     method: 'POST',
@@ -3079,7 +3090,7 @@
                 });
                 
                 if (response.ok) {
-                    console.log('✅ WORD: Override successful');
+                    console.log('âœ… WORD: Override successful');
                     // Refresh matrix/UI state immediately
                     try {
                         await fetchDocumentStatus();
@@ -3088,10 +3099,10 @@
                         if (window.updateQuickActionsVisibility) updateQuickActionsVisibility();
                     } catch(_) {}
                 } else {
-                    console.error('❌ WORD: Override failed:', response.status);
+                    console.error('âŒ WORD: Override failed:', response.status);
                 }
             } catch (error) {
-                console.error('❌ WORD: Override error:', error);
+                console.error('âŒ WORD: Override error:', error);
             }
         }
         
@@ -3149,6 +3160,7 @@
                 return false;
             }
         }
+
         // Global flags
         window.__documentInsertInProgress = window.__documentInsertInProgress || false;
         window.__pureInsertMode = window.__pureInsertMode !== undefined ? window.__pureInsertMode : true; // Do not modify the document content before/after insert attempts
@@ -3156,8 +3168,10 @@
         window.__baselineStylesJson = window.__baselineStylesJson || null;
         // Default to live mode so SSE/matrix updates reflect immediately
         window.__insertIsolation = window.__insertIsolation !== undefined ? window.__insertIsolation : false;
+        
         // Disable HMR/live reload during pure insert testing to reduce WebView churn
         try { if (window.__pureInsertMode && typeof module !== 'undefined' && module.hot && typeof module.hot.decline === 'function') { module.hot.decline(); console.log('🔕 HMR disabled for pure insert testing'); } } catch(_) {}
+        
         // Load latest document - with state management and resource control
         async function loadLatestIntoCurrentDocument() {
             console.log('📄 View Latest: Loading document with workaround...');
@@ -3657,58 +3671,67 @@
                 showStatus('documentStatus', '❌ Failed to share document: ' + error.message, 'error');
             }
         }
-        // Helper function to get document content as base64
+        
+        // Helper function to get document content as base64 (hardened)
         async function getDocumentAsBase64() {
             return new Promise((resolve, reject) => {
                 Office.context.document.getFileAsync(Office.FileType.Compressed, (result) => {
-                    if (result.status === Office.AsyncResultStatus.Succeeded) {
-                        const file = result.value;
-                        const sliceCount = file.sliceCount;
-                        let docxContent = [];
-                        
-                        const getSlice = (sliceIndex) => {
-                            file.getSliceAsync(sliceIndex, (sliceResult) => {
-                                if (sliceResult.status === Office.AsyncResultStatus.Succeeded) {
-                                    docxContent.push(sliceResult.value.data);
-                                    if (sliceIndex < sliceCount - 1) {
-                                        getSlice(sliceIndex + 1);
-                                    } else {
-                                        file.closeAsync();
-                                        // Convert to base64 using a safe merge + chunked encoding
-                                        // Merge ArrayBuffer slices into one contiguous Uint8Array
-                                        try {
-                                            const totalLength = docxContent.reduce((sum, buf) => sum + (buf && buf.byteLength ? buf.byteLength : 0), 0);
-                                            const merged = new Uint8Array(totalLength);
-                                            let offset = 0;
-                                            for (let i = 0; i < docxContent.length; i++) {
-                                                const buf = docxContent[i];
-                                                if (!buf) continue;
-                                                const view = new Uint8Array(buf);
-                                                merged.set(view, offset);
-                                                offset += view.byteLength;
-                                            }
-                                            const chunkSize = 8192;
-                                            let binaryString = '';
-                                            for (let i = 0; i < merged.length; i += chunkSize) {
-                                                const chunk = merged.subarray(i, i + chunkSize);
-                                                binaryString += String.fromCharCode.apply(null, Array.from(chunk));
-                                            }
-                                            const base64 = btoa(binaryString);
-                                            resolve(base64);
-                                        } catch (mergeErr) {
-                                            reject(new Error('Failed to assemble DOCX data'));
-                                        }
-                                    }
-                                } else {
-                                    reject(new Error('Failed to get document slice'));
-                                }
-                            });
-                        };
-                        
-                        getSlice(0);
-                    } else {
+                    if (result.status !== Office.AsyncResultStatus.Succeeded) {
                         reject(new Error('Failed to get document: ' + result.error.message));
+                        return;
                     }
+                    const file = result.value;
+                    const sliceCount = file.sliceCount;
+                    const allSlices = [];
+
+                    const fetchSlice = (index) => {
+                        file.getSliceAsync(index, (sliceResult) => {
+                            if (sliceResult.status !== Office.AsyncResultStatus.Succeeded) {
+                                reject(new Error('Failed to get document slice: ' + sliceResult.error.message));
+                                return;
+                            }
+                            let sliceData = sliceResult.value.data;
+                            try {
+                                if (sliceData instanceof ArrayBuffer) {
+                                    sliceData = new Uint8Array(sliceData);
+                                } else if (Array.isArray(sliceData)) {
+                                    sliceData = new Uint8Array(sliceData);
+                                } else if (sliceData && sliceData.buffer instanceof ArrayBuffer && typeof sliceData.byteLength === 'number') {
+                                    // Likely a typed array already
+                                    sliceData = new Uint8Array(sliceData.buffer, sliceData.byteOffset || 0, sliceData.byteLength);
+                                } else {
+                                    // Fallback best-effort
+                                    sliceData = new Uint8Array([]);
+                                }
+                                allSlices.push(sliceData);
+                                if (index + 1 < sliceCount) {
+                                    fetchSlice(index + 1);
+                                } else {
+                                    file.closeAsync();
+                                    // Merge
+                                    const totalLength = allSlices.reduce((acc, arr) => acc + (arr ? arr.length : 0), 0);
+                                    const merged = new Uint8Array(totalLength);
+                                    let offset = 0;
+                                    for (const arr of allSlices) {
+                                        if (!arr || !arr.length) continue;
+                                        merged.set(arr, offset);
+                                        offset += arr.length;
+                                    }
+                                    // Chunked base64 encode
+                                    const chunkSize = 8192;
+                                    let binary = '';
+                                    for (let i = 0; i < merged.length; i += chunkSize) {
+                                        const chunk = merged.subarray(i, i + chunkSize);
+                                        binary += String.fromCharCode.apply(null, chunk);
+                                    }
+                                    resolve(btoa(binary));
+                                }
+                            } catch (e) {
+                                reject(new Error('Failed to assemble DOCX data'));
+                            }
+                        });
+                    };
+                    fetchSlice(0);
                 });
             });
         }
@@ -3773,6 +3796,7 @@
                 showStatus('documentStatus', '❌ Failed to lock document', 'error');
             }
         }
+        
         async function unlockDocument() {
             try {
                 // Always try to clean up any locks, even if we think there aren't any
@@ -3803,6 +3827,7 @@
                 showStatus('documentStatus', '❌ Failed to unlock document', 'error');
             }
         }
+        
         // Handle Word Online deletion bug
         async function setupLockProtection() {
             try {
@@ -4074,6 +4099,7 @@
 				console.warn('📊 WORD: Failed to update row from SSE:', e);
 			}
 		}
+
         // Quick pill update function for SSE sync (must be defined before SSE connects)
         function __updateApprovalsPillWord(approved, total) {
             try {
@@ -4090,7 +4116,9 @@
                 const pill = document.getElementById('approvalsPillWord');
                 console.log(`📊 WORD: Found pill element:`, !!pill);
                 if (pill) {
-                    const newText = `${approved || 0}/${total || 0} approved`;
+                    const a = Number.isFinite(approved) ? approved : 0;
+                    const t = Number.isFinite(total) ? total : 0;
+                    const newText = `${a}/${t} approved`;
                     console.log(`📊 WORD: Setting pill text to: "${newText}"`);
                     pill.textContent = newText;
                     // Force repaint in WebView2 if old glyphs linger
@@ -4113,12 +4141,16 @@
                 const currentUser = window.getCurrentUser ? window.getCurrentUser() : null;
                 if (!currentUser) return;
                 
-                // FIXED: Standardize to fixed ID for consistency
-                const documentId = 'default-doc';
+                // Resolve current document id dynamically for accurate approvals count
+                let documentId = 'default-doc';
+                try {
+                    const meta = await getCurrentOrDefaultDocument();
+                    if (meta && meta.id) documentId = meta.id;
+                } catch(_) {}
                 
-                const [mxResp, apprResp] = await Promise.all([
+                const [mxResp, st] = await Promise.all([
                     fetch(`http://localhost:3001/api/state-matrix?userRole=${encodeURIComponent(getCurrentUserRole())}&platform=word&userId=${encodeURIComponent(currentUser.id)}`),
-                    fetch(`http://localhost:3001/api/approval-matrix?actorPlatform=word&actorId=${encodeURIComponent(currentUser.id)}&documentId=${encodeURIComponent(documentId)}`)
+                    (window.ApprovalsClient && typeof window.ApprovalsClient.getState === 'function') ? window.ApprovalsClient.getState({ documentId }) : null
                 ]);
                 const mxData = await mxResp.json();
                 const apprData = await apprResp.json();
@@ -4141,6 +4173,12 @@
                 // REMOVED: Pill update to prevent race/overwrite - rely on initial load and SSE only
                 // This keeps server as single truth without redundant calcs
                 
+                // If we fetched approvals state, set pill immediately from summary
+                try {
+                    if (st && st.summary && typeof window.__updateApprovalsPillWord === 'function') {
+                        window.__updateApprovalsPillWord(st.summary.approvedCount || 0, st.summary.totalUsers || 0);
+                    }
+                } catch(_) {}
                 // Still rebuild approvals list for modal sync (uses server data)
                 try { loadApprovalsSection(); } catch(_) {}
             } catch(_) {}
@@ -4155,33 +4193,23 @@
                     return;
                 }
                 
-                // FIXED: Standardize to fixed ID for consistency
-                const documentId = 'default-doc';
+                // Resolve actual current document id to avoid stale default
+                let documentId = 'default-doc';
+                try {
+                    const meta = await getCurrentOrDefaultDocument();
+                    if (meta && meta.id) documentId = meta.id;
+                } catch(_) {}
                 
-                console.log(`📊 WORD: Fetching approvals for user ${currentUser.id}, doc ${documentId}`);
-                
-                const response = await fetch(`http://localhost:3001/api/approval-matrix?actorPlatform=word&actorId=${encodeURIComponent(currentUser.id)}&documentId=${encodeURIComponent(documentId)}`);
-                
-                if (!response.ok) {
-                    throw new Error(`Fetch error: ${response.status} ${response.statusText}`);
+                console.log(`📊 WORD: Fetching approvals/state for doc ${documentId}`);
+                const st = (window.ApprovalsClient && typeof window.ApprovalsClient.getState === 'function')
+                    ? await window.ApprovalsClient.getState({ documentId })
+                    : null;
+                const s = st && st.summary ? st.summary : { approvedCount: 0, totalUsers: 0 };
+                if (typeof window.__updateApprovalsPillWord === 'function') {
+                    window.__updateApprovalsPillWord(s.approvedCount || 0, s.totalUsers || 0);
                 }
-                
-                const data = await response.json();
-                
-                if (data.success && data.summary) {
-                    const approvedCount = data.summary.approvedCount || 0;
-                    const totalCount = data.summary.totalUsers || 0;
-                    
-                    console.log(`📊 WORD: Approvals loaded successfully - ${approvedCount}/${totalCount}`); // Success log
-                    if (window.__updateApprovalsPillWord) {
-                        window.__updateApprovalsPillWord(approvedCount, totalCount);
-                    }
-                    // Force modal refresh after load
-                    if (typeof loadApprovalsSection === 'function') loadApprovalsSection();
-                } else {
-                    console.warn('📊 WORD: Invalid approvals data:', data); // Warn on bad data
-                    // REMOVED: Don't set to 0/0 - skip invalid data
-                }
+                // Rebuild approvals list (modal/data) from matrix endpoint separately if needed
+                try { loadApprovalsSection(); } catch(_) {}
             } catch (error) {
                 console.error('📊 WORD: Approvals load failed:', error); // Error logging
                 // REMOVED: Don't set to 0/0 on error - prevent overwrite
@@ -4200,10 +4228,13 @@
                     return;
                 }
                 
-                // FIXED: Standardize to fixed ID for consistency
-                const documentId = 'default-doc';
-                
-                const response = await fetch(`http://localhost:3001/api/approval-matrix?actorPlatform=word&actorId=${currentUser.id}&documentId=${documentId}`);
+                // Resolve active document id dynamically (fallback to default-doc)
+                let documentId = 'default-doc';
+                try {
+                    const meta = await getCurrentOrDefaultDocument();
+                    if (meta && meta.id) documentId = meta.id;
+                } catch(_) {}
+                const response = await fetch(`http://localhost:3001/api/approval-matrix?actorPlatform=word&actorId=${currentUser.id}&documentId=${encodeURIComponent(documentId)}`);
                 const data = await response.json();
                 if (!data || !data.success) {
                     if (approvalsList) approvalsList.innerHTML = '<tr><td colspan="4" style="color:#dc3545; font-size:12px; padding:6px;">Failed to load approvals</td></tr>';
@@ -4395,10 +4426,13 @@
 
                 console.log('🎯 Approval action:', { userId, action, actorId: currentUser.id });
                 
-                // FIXED: Standardize to fixed ID for consistency
-                const documentId = 'default-doc';
-                
-                const response = await fetch(`http://localhost:3001/api/document/${documentId}/approvals`, {
+                // Resolve active document id dynamically (fallback to default-doc)
+                let documentId = 'default-doc';
+                try {
+                    const meta = await getCurrentOrDefaultDocument();
+                    if (meta && meta.id) documentId = meta.id;
+                } catch(_) {}
+                const response = await fetch(`http://localhost:3001/api/document/${encodeURIComponent(documentId)}/approvals`, {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({
@@ -4433,7 +4467,9 @@
                 window.addNotification && window.addNotification('❌ Failed to update approval');
             }
         }
+
         // NFB modal implementation removed - using unified implementation below
+
         // Word: real Users/Approvals modal implementation (dedicated container). The opener proxies to this.
         window.__openUsersModalWordImpl = async function() {
             try {
@@ -4490,8 +4526,7 @@
                 // Use actual current document id (fallback to default)
                 async function __getCurrentDocIdWord(){
                     try {
-                        const idFromState = (window.currentDocumentState && window.currentDocumentState.currentDocument && window.currentDocumentState.currentDocument.id) || null;
-                        if (idFromState) return idFromState;
+                        // Always fetch fresh to avoid race with local state during user switches
                         const r = await fetch('http://localhost:3001/api/current-document', { cache: 'no-store' });
                         const j = await r.json();
                         return (j && (j.id || j.documentId)) || 'default-doc';
@@ -4535,8 +4570,10 @@
                   `</div>`;
 
                 const tbody = modal.querySelector('tbody.tbody');
+                // Resolve actor id once for row-level permissions
+                const actorId = await __getActorIdWord();
                 approvers.forEach((a, idx) => {
-                    const canAct = isEditor || a.userId === actorId;
+                    const canAct = isEditor || (actorId && a.userId === actorId);
                     const tr = document.createElement('tr');
                     tr.setAttribute('data-user-id', a.userId);
                     if (a && a.name) tr.setAttribute('data-user-name', a.name);
@@ -4621,8 +4658,8 @@
                             const displayName = tr?.getAttribute('data-user-name') || userId;
                             bar.innerHTML = `<div>You're about to remove approval for <b>${displayName}</b>. Continue?</div>`+
                                             `<div style=\"display:flex; gap:8px;\">`+
-                                            `<button id=\"confirmRemoveWord\" class=\"btn\" style=\"background:#1f2937;color:#fff;border:none;border-radius:6px;padding:8px 12px;\">Confirm</button>`+
-                                            `<button id=\"cancelRemoveWord\" class=\"btn btn-ghost\" style=\"background:#e5e7eb;color:#000;border:1px solid #d1d5db;border-radius:6px;padding:8px 12px;\">Cancel</button>`+
+                                            `<button id=\"confirmRemoveWord\" class=\"btn\">Confirm</button>`+
+                                            `<button id=\"cancelRemoveWord\" class=\"btn btn-ghost\" style=\"background:transparent !important; color:#374151 !important; border:1px solid #e5e7eb !important;\">Cancel</button>`+
                                             `</div>`;
                             const actions = document.querySelector('#approvalsModalWord .actions');
                             actions && actions.parentNode.insertBefore(bar, actions);
@@ -4649,8 +4686,8 @@
                             const displayName = tr?.getAttribute('data-user-name') || userId;
                             bar.innerHTML = `<div>You're about to approve on behalf of <b>${displayName}</b>. Continue?</div>`+
                                             `<div style="display:flex; gap:8px;">`+
-                                            `<button id="confirmApproveWord" class="btn" style="background:#1f2937;color:#fff;border:none;border-radius:6px;padding:8px 12px;">Confirm</button>`+
-                                            `<button id="cancelApproveWord" class="btn btn-ghost" style="background:#e5e7eb;color:#000;border:1px solid #d1d5db;border-radius:6px;padding:8px 12px;">Cancel</button>`+
+                                            `<button id="confirmApproveWord" class="btn">Confirm</button>`+
+                                            `<button id="cancelApproveWord" class="btn btn-ghost" style="background:transparent !important; color:#374151 !important; border:1px solid #e5e7eb !important;">Cancel</button>`+
                                             `</div>`;
                             const actions = document.querySelector('#approvalsModalWord .actions');
                             actions && actions.parentNode.insertBefore(bar, actions);
@@ -4704,8 +4741,8 @@
                                 <div style="display:flex; gap:8px; align-items:center; flex-wrap:wrap;">
                                     <input id="addUserNameWord" type="text" placeholder="Name" style="flex:1; min-width:180px; padding:6px 8px; border:1px solid #e5e7eb; border-radius:6px" />
                                     <input id="addUserEmailWord" type="email" placeholder="Email" style="flex:1; min-width:220px; padding:6px 8px; border:1px solid #e5e7eb; border-radius:6px" />
-                                    <button id="addUserSaveWord" class="btn" style="background:#1f2937;color:#fff;border:none;border-radius:6px;padding:8px 12px;">Save</button>
-                                    <button id="addUserCancelWord" class="btn btn-ghost" style="background:#e5e7eb;color:#000;border:1px solid #d1d5db;border-radius:6px;padding:8px 12px;">Cancel</button>
+                                    <button id="addUserSaveWord" class="btn btn-secondary">Save</button>
+                                    <button id="addUserCancelWord" class="btn btn-ghost" style="background:transparent !important; color:#374151 !important; border:1px solid #e5e7eb !important;">Cancel</button>
                                 </div>
                             `;
                             // Insert above footer actions
@@ -4831,6 +4868,8 @@ window.__forceOpenApprovalsTest = function() {
         document.getElementById('forceClose').onclick = () => { try { m.remove(); b.remove(); } catch(_) {} };
     } catch(_) {}
 };
+                
+        
         // Connect to SSE when Office is ready
         Office.onReady((info) => {
             if (info.host === Office.HostType.Word) {
@@ -5470,6 +5509,7 @@ window.__forceOpenApprovalsTest = function() {
                 console.error('❌ Simple lock failed:', error);
             }
         };
+
         window.debugSafeUnlock = async () => {
             console.log('🔓 SAFE UNLOCK - unlocking without deleting content...');
             try {
@@ -5706,6 +5746,9 @@ window.__forceOpenApprovalsTest = function() {
                 console.log('ℹ️ autoAttachToOpenDocument skipped:', e?.message || e);
             }
         }
+
+
+
         // Matrix-driven unified dropdown (matches web actions 1:1)
         (function setupMatrixActionsDropdown() {
             try {
@@ -5772,85 +5815,21 @@ window.__forceOpenApprovalsTest = function() {
                     if (!config || !config.buttons) return;
                     const b = config.buttons;
                     const actions = [];
-                    const add = (id, label, fn, include) => { if (include && typeof fn === 'function') actions.push({ id, label, fn }); };
+                    const add = (cond, id, label, fn) => { if (cond && typeof fn === 'function') actions.push({ id, label, fn }); };
 
+                    // Match web order EXACTLY - copied from refreshActionsDropdownFromMatrix
                     const hasDoc = !!config.checkoutStatus?.show;
-                    const order = Array.isArray(config.dropdown?.order) ? config.dropdown.order : [
-                        'viewOnlyBtn','shareToWebBtn','checkoutBtn','checkinBtn','cancelBtn','saveProgressBtn','overrideBtn','sendVendorBtn','replaceDefaultBtn','compile','approvalsBtn','finalize','unfinalize'
-                    ];
-                    const map = {
-                        viewOnlyBtn: () => add('viewOnlyBtn', 'View Latest', window.viewLatestRobust || window.cleanViewLatest || window.viewReadOnly, hasDoc && (b.viewOnlyBtn !== false)),
-                        shareToWebBtn: () => add('shareToWebBtn', 'Open in Web', window.shareToWeb, true),
-                        checkoutBtn: () => add('checkoutBtn', 'Check-out Document', window.checkoutDocument, !!b.checkoutBtn),
-                        checkinBtn: () => add('checkinBtn', 'Save & Check-in', window.checkinDocument, !!b.checkedInBtns),
-                        cancelBtn: () => add('cancelBtn', 'Cancel Check-out', window.cancelCheckout, !!b.checkedInBtns),
-                        saveProgressBtn: () => add('saveProgressBtn', 'Save Progress', window.saveProgress, !!b.checkedInBtns),
-                        overrideBtn: () => add('overrideBtn', 'Override Check-out', window.overrideCheckout, !!b.overrideBtn),
-                        sendVendorBtn: () => add('sendVendorBtn', 'Send to Vendor', window.openVendorModal, !!b.sendVendorBtn),
-                        replaceDefaultBtn: () => add('replaceDefaultBtn', 'Replace Default Document', window.replaceDefaultDocument || window.showFileDialog, !!b.replaceDefaultBtn),
-                        compile: () => add('compile', 'Compile', window.openCompileModal, !!b.compileBtn),
-                        approvalsBtn: () => add('approvalsBtn', 'Approval details', window.openUsersModalWord || window.openUsersModal || window.openUsersModalWeb, true),
-                        finalize: () => add('finalize', 'Finalize', async () => {
-                            try {
-                                const fin = (config.finalize && config.finalize.confirm) || {};
-                                const title = fin.title || 'Please confirm you\'d like to finalize.';
-                                const body = fin.body || 'After finalizing, the document is locked and the first approver is notified.';
-                                const label = fin.confirmLabel || 'Finalize';
-                                const tone = fin.toneColor || '#fff3cd';
-                                const toneText = fin.toneTextColor || '#111827';
-                                // Scoped container with style overrides (matches web approach)
-                                const wrap = document.createElement('div');
-                                wrap.id = 'ogFinalizeWord';
-                                const style = document.createElement('style');
-                                style.textContent = '#ogFinalizeWord .btn{background:#1f2937 !important;color:#fff !important;border:none !important;border-radius:6px !important;padding:8px 12px !important;} #ogFinalizeWord .btn-cancel{background:#e5e7eb !important;color:#000 !important;border:1px solid #d1d5db !important;border-radius:6px !important;padding:8px 12px !important;}';
-                                const bar = document.createElement('div');
-                                bar.style.cssText = `margin:8px 0;background:${tone};color:${toneText};border:1px solid #e5e7eb;border-radius:6px;padding:8px 12px;display:flex;justify-content:space-between;align-items:center;gap:8px;`;
-                                bar.innerHTML = `<div><b>${title}</b><div>${body}</div></div>`+
-                                                 `<div style=\"display:flex;gap:8px;\">`+
-                                                 `<button id=\"__fin_confirm\" class=\"btn\">${label}</button>`+
-                                                 `<button id=\"__fin_cancel\" class=\"btn btn-cancel\">Cancel</button>`+
-                                                 `</div>`;
-                                wrap.appendChild(style);
-                                wrap.appendChild(bar);
-                                const host = document.querySelector('.section-body') || document.getElementById('approvalsModalWord') || document.body;
-                                host && host.parentNode && host.parentNode.insertBefore(wrap, host);
-                                const actorId = (window.getCurrentUser && window.getCurrentUser()?.id) || (window.currentUser && window.currentUser.id) || 'user1';
-                                wrap.querySelector('#__fin_confirm').onclick = async () => {
-                                    try { await fetch('http://localhost:3001/api/finalize', { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({ actorId }) }); }
-                                    catch(e){ console.warn(e); }
-                                    finally { try { wrap.remove(); } catch(_) {} }
-                                };
-                                wrap.querySelector('#__fin_cancel').onclick = () => { try { wrap.remove(); } catch(_) {} };
-                            } catch (e) { console.warn('Finalize UI failed', e); }
-                        }, !!b.finalizeBtn),
-                        unfinalize: () => add('unfinalize', 'Move to Draft', async () => {
-                            try {
-                                const fin = (config.finalize && config.finalize.unfinalize) || {};
-                                const title = fin.title || 'Move back to Draft?';
-                                const body = fin.body || 'Editors can edit again; approvals may need to be re-requested.';
-                                const label = fin.confirmLabel || 'Move to Draft';
-                                const tone = fin.toneColor || '#e5e7eb';
-                                const toneText = fin.toneTextColor || '#111827';
-                                const bar = document.createElement('div');
-                                bar.style.cssText = `margin:8px 0;background:${tone};color:${toneText};border:1px solid #e5e7eb;border-radius:6px;padding:8px 12px;display:flex;justify-content:space-between;align-items:center;gap:8px;`;
-                                bar.innerHTML = `<div><b>${title}</b><div>${body}</div></div>`+
-                                                 `<div style=\"display:flex;gap:8px;\">`+
-                                                 `<button id=\"__unfin_confirm\" class=\"btn\" style=\"background:#1f2937;color:#fff;border:none;border-radius:6px;padding:8px 12px;\">${label}</button>`+
-                                                 `<button id=\"__unfin_cancel\" class=\"btn btn-ghost\" style=\"background:#e5e7eb;color:#000;border:1px solid #d1d5db;border-radius:6px;padding:8px 12px;\">Cancel</button>`+
-                                                 `</div>`;
-                                const host = document.querySelector('.section-body') || document.getElementById('approvalsModalWord') || document.body;
-                                host && host.parentNode && host.parentNode.insertBefore(bar, host);
-                                const actorId = (window.getCurrentUser && window.getCurrentUser()?.id) || (window.currentUser && window.currentUser.id) || 'user1';
-                                bar.querySelector('#__unfin_confirm').onclick = async () => {
-                                    try { await fetch('http://localhost:3001/api/unfinalize', { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({ actorId }) }); }
-                                    catch(e){ console.warn(e); }
-                                    finally { try { bar.remove(); } catch(_) {} }
-                                };
-                                bar.querySelector('#__unfin_cancel').onclick = () => { try { bar.remove(); } catch(_) {} };
-                            } catch (e) { console.warn('Unfinalize UI failed', e); }
-                        }, !!b.unfinalizeBtn)
-                    };
-                    order.forEach(key => { if (map[key]) map[key](); });
+                    add(hasDoc && (b.viewOnlyBtn !== false), 'viewOnlyBtn', 'View Latest', window.viewLatestRobust || window.cleanViewLatest || window.viewReadOnly);
+                    add(true, 'shareToWebBtn', 'Open in Web', window.shareToWeb);
+                    add(!!b.checkoutBtn, 'checkoutBtn', 'Check-out Document', window.checkoutDocument);
+                    add(!!b.checkedInBtns, 'checkinBtn', 'Save & Check-in', window.checkinDocument);
+                    add(!!b.checkedInBtns, 'cancelBtn', 'Cancel Check-out', window.cancelCheckout);
+                    add(!!b.checkedInBtns, 'saveProgressBtn', 'Save Progress', window.saveProgress);
+                    add(!!b.overrideBtn, 'overrideBtn', 'Override Check-out', window.overrideCheckout);
+                    add(!!b.sendVendorBtn, 'sendVendorBtn', 'Send to Vendor', window.openVendorModal);
+                    add(!!b.replaceDefaultBtn, 'replaceDefaultBtn', 'Replace Default Document', window.replaceDefaultDocument || window.showFileDialog);
+                    add(!!b.compileBtn, 'compileBtn', 'Compile', window.openCompileModal);
+                    add(true, 'approvalsBtn', 'Approval details', window.openUsersModalWord || window.openUsersModal || window.openUsersModalWeb);
 
                     console.log('🔄 DROPDOWN DEBUG: final actions to be added:', actions.map(a => ({ id: a.id, label: a.label, hasFunction: !!a.fn, functionName: a.fn?.name })));
                     console.log('🔄 DROPDOWN DEBUG: actions details:', actions);
@@ -5922,7 +5901,7 @@ window.__forceOpenApprovalsTest = function() {
                 }
                 kickRenderMatrixDropdownOnce();
 
-        // Fresh minimal View Latest loader: prefer server/base64 → raw bytes → open-as-new
+        // Fresh minimal View Latest loader: prefer server/base64 → raw bytes; no protocol fallback
         window.cleanViewLatest = async function() {
             if (window.__documentInsertInProgress) {
                 console.log('⚠️ cleanViewLatest: insert already in progress');
@@ -5930,8 +5909,7 @@ window.__forceOpenApprovalsTest = function() {
             }
             try {
                 window.__documentInsertInProgress = true;
-                // Ensure the document is in an editable state before attempting replacement
-                try { await unlockDocument(); } catch(_) {}
+                // Do NOT attempt to unlock; proceed directly to in-document replacement
                 const current = await getCurrentOrDefaultDocument();
                 if (!current || !current.id) {
                     showStatus('documentStatus', '⚠️ No document available', 'warning');
@@ -5974,7 +5952,7 @@ window.__forceOpenApprovalsTest = function() {
                     try { logRichApiError(eB, 'cleanViewLatest B server/raw'); } catch(_) {}
                 }
 
-                // Step C: ROBUST fallback - replace content in CURRENT document (no new windows)
+                // Step C: Additional in-document strategies; do not open new windows
                 try {
                     const respJson2 = await fetch('http://localhost:3001/api/get-updated-docx', { cache: 'no-store' });
                     if (respJson2.ok) {
@@ -6046,7 +6024,7 @@ window.__forceOpenApprovalsTest = function() {
                     showStatus('documentStatus', '❌ View Latest not available', 'error');
                 }
             } catch (e) {
-                showStatus('documentStatus', `❌ View Latest failed: ${e?.message || e}`, 'error');
+                // Already surfaced by cleanViewLatest; avoid duplicate noise
             }
         };
 
@@ -6118,6 +6096,7 @@ window.__forceOpenApprovalsTest = function() {
             return { passed, failed, total: tests.length };
         };
     </script>
+    
     <!-- Take Me Back to OpenGov Modal -->
     <div id="backToOpenGovModal" style="display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.5); z-index: 2147483647;">
         <div style="position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); background: white; border-radius: 8px; padding: 20px; max-width: 90vw; max-height: 90vh; box-shadow: 0 4px 20px rgba(0,0,0,0.15);">
@@ -6196,3 +6175,8 @@ window.__forceOpenApprovalsTest = function() {
     
 </body>
 </html>
+
+
+
+
+
