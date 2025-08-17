@@ -2167,6 +2167,16 @@
                                 window.renderMatrixActionsDropdown(window.__lastStateMatrix);
                             }
                         });
+                    } else if (data.type === 'document-finalize-updated') {
+                        // When web finalizes or unfinalizes, update the add-in banner and dropdown
+                        try { showStatus('sseStatus', `📡 Document ${data.isFinal ? 'finalized' : 'moved to Draft'}`, 'info'); } catch(_) {}
+                        try {
+                            await fetchDocumentStatus();
+                            await updateUIFromStateMatrix('word', getCurrentUser, getCurrentUserRole, currentDocumentState);
+                            if (window.__lastStateMatrix && typeof window.renderMatrixActionsDropdown === 'function') {
+                                window.renderMatrixActionsDropdown(window.__lastStateMatrix);
+                            }
+                        } catch (e) { console.warn('WORD: finalize SSE handling failed', e); }
                     } else if (data.type === 'checkout-cancelled') {
                         showStatus('sseStatus', `📡 ${data.message}`, 'info');
                         fetchDocumentStatus().then(() => {
@@ -4800,6 +4810,7 @@
                             inline.innerHTML = `
                                 <div style="display:flex; gap:8px; align-items:center; flex-wrap:wrap;">
                                     <input id="addUserNameWord" type="text" placeholder="Name" style="flex:1; min-width:180px; padding:6px 8px; border:1px solid #e5e7eb; border-radius:6px" />
+                                    <input id="addUserEmailWord" type="email" placeholder="Email" style="flex:1; min-width:220px; padding:6px 8px; border:1px solid #e5e7eb; border-radius:6px" />
                                     <button id="addUserSaveWord" class="btn btn-secondary">Save</button>
                                     <button id="addUserCancelWord" class="btn btn-ghost" style="background:transparent !important; color:#374151 !important; border:1px solid #e5e7eb !important;">Cancel</button>
                                 </div>
@@ -4808,16 +4819,18 @@
                             const actions = modal.querySelector('.actions');
                             actions.parentNode.insertBefore(inline, actions);
                             const inpName = inline.querySelector('#addUserNameWord');
+                            const inpEmail = inline.querySelector('#addUserEmailWord');
                             const btnSave = inline.querySelector('#addUserSaveWord');
                             const btnCancel = inline.querySelector('#addUserCancelWord');
                             btnCancel.addEventListener('click', () => { try { inline.remove(); } catch(_) {} });
                             btnSave.addEventListener('click', async () => {
                                 try {
                                     const name = String(inpName.value || '').trim();
-                                    if (!name) { try { window.addNotification && window.addNotification('Enter name', 'error'); } catch(_) {}; return; }
+                                    const email = String(inpEmail.value || '').trim();
+                                    if (!name || !email) { try { window.addNotification && window.addNotification('Enter name and email', 'error'); } catch(_) {}; return; }
                                     btnSave.disabled = true; btnSave.textContent = 'Adding…';
                                     const actorId = await __getActorIdWord();
-                                    await ApprovalsClient.addUser({ documentId, name, actorId });
+                                    await ApprovalsClient.addUser({ documentId, name, email, actorId });
                                     try { window.addNotification && window.addNotification(`added ${name}`, 'success'); } catch(_) {}
                                     await window.__openUsersModalWordImpl();
                                 } catch(e) {
@@ -4989,6 +5002,7 @@ window.__forceOpenApprovalsTest = function() {
                             
                             // Step 1: Get state matrix config
                             await updateUIFromStateMatrix('word', getCurrentUser, getCurrentUserRole, currentDocumentState);
+                            try { console.log('WORD finalize flags:', window.__lastStateMatrix && window.__lastStateMatrix.finalize, 'buttons:', window.__lastStateMatrix && window.__lastStateMatrix.buttons); } catch(_) {}
                             
                             // Step 2: Immediately populate dropdown with matrix config  
                             if (window.__lastStateMatrix) {
@@ -5901,6 +5915,51 @@ window.__forceOpenApprovalsTest = function() {
                     add(!!b.replaceDefaultBtn, 'replaceDefaultBtn', 'Replace Default Document', window.replaceDefaultDocument || window.showFileDialog);
                     add(!!b.compileBtn, 'compileBtn', 'Compile', window.openCompileModal);
                     add(true, 'approvalsBtn', 'Approval details', window.openUsersModalWord || window.openUsersModal || window.openUsersModalWeb);
+
+                    // Finalize / Move to Draft (Word add-in parity with web)
+                    try {
+                        const fin = config.finalize || {};
+                        add(!!b.finalizeBtn, 'finalize', 'Finalize', async () => {
+                            try {
+                                const meta = fin.confirm || {};
+                                const title = meta.title || "Please confirm you'd like to finalize.";
+                                const body = meta.body || 'After finalizing, the document is locked and the first approver is notified.';
+                                const ok = window.confirm(`${title}\n\n${body}`);
+                                if (!ok) return;
+                                const actorId = (window.getCurrentUser && window.getCurrentUser().id) || 'user1';
+                                const r = await fetch('http://localhost:3001/api/finalize', { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({ actorId }) });
+                                if (!r.ok) throw new Error('finalize_failed');
+                                try { showStatus('documentStatus', '✅ Finalized', 'success'); } catch(_) {}
+                                try {
+                                    await fetchDocumentStatus();
+                                    await updateUIFromStateMatrix('word', getCurrentUser, getCurrentUserRole, currentDocumentState);
+                                    if (window.__lastStateMatrix && typeof window.renderMatrixActionsDropdown === 'function') {
+                                        window.renderMatrixActionsDropdown(window.__lastStateMatrix);
+                                    }
+                                } catch(_) {}
+                            } catch(e) { try { showStatus('documentStatus', '❌ Finalize failed', 'error'); } catch(_) {} }
+                        });
+                        add(!!b.unfinalizeBtn, 'unfinalize', 'Move to Draft', async () => {
+                            try {
+                                const meta = fin.unfinalize || {};
+                                const title = meta.title || 'Move back to Draft?';
+                                const body = meta.body || 'Editors can edit again; approvals may need to be re-requested.';
+                                const ok = window.confirm(`${title}\n\n${body}`);
+                                if (!ok) return;
+                                const actorId = (window.getCurrentUser && window.getCurrentUser().id) || 'user1';
+                                const r = await fetch('http://localhost:3001/api/unfinalize', { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({ actorId }) });
+                                if (!r.ok) throw new Error('unfinalize_failed');
+                                try { showStatus('documentStatus', '✅ Moved to Draft', 'success'); } catch(_) {}
+                                try {
+                                    await fetchDocumentStatus();
+                                    await updateUIFromStateMatrix('word', getCurrentUser, getCurrentUserRole, currentDocumentState);
+                                    if (window.__lastStateMatrix && typeof window.renderMatrixActionsDropdown === 'function') {
+                                        window.renderMatrixActionsDropdown(window.__lastStateMatrix);
+                                    }
+                                } catch(_) {}
+                            } catch(e) { try { showStatus('documentStatus', '❌ Move to Draft failed', 'error'); } catch(_) {} }
+                        });
+                    } catch(_) {}
 
                     console.log('🔄 DROPDOWN DEBUG: final actions to be added:', actions.map(a => ({ id: a.id, label: a.label, hasFunction: !!a.fn, functionName: a.fn?.name })));
                     console.log('🔄 DROPDOWN DEBUG: actions details:', actions);
