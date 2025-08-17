@@ -1861,6 +1861,71 @@
     </style>
 
     <script>
+        // ===== CHAT (SHELL) =====
+        function setupChatInit(){
+            try {
+                const messagesEl = document.getElementById('chatMessages');
+                const inputEl = document.getElementById('chatInput');
+                const sendBtn = document.getElementById('chatSend');
+                if (!messagesEl || !inputEl || !sendBtn) return;
+                function appendMessage(text, role){
+                    const row = document.createElement('div');
+                    row.style.margin = '6px 0';
+                    row.style.display = 'flex';
+                    row.style.gap = '8px';
+                    row.style.alignItems = 'flex-start';
+                    const bubble = document.createElement('div');
+                    bubble.style.padding = '8px 10px';
+                    bubble.style.borderRadius = '10px';
+                    bubble.style.maxWidth = '80%';
+                    bubble.style.whiteSpace = 'pre-wrap';
+                    bubble.style.fontSize = '13px';
+                    if (role === 'user') { bubble.style.background = '#e7f1ff'; bubble.style.marginLeft = 'auto'; }
+                    else { bubble.style.background = '#f8f9fa'; bubble.style.marginRight = 'auto'; }
+                    bubble.textContent = text;
+                    row.appendChild(bubble);
+                    messagesEl.appendChild(row);
+                    try { messagesEl.scrollTop = messagesEl.scrollHeight; } catch(_) {}
+                }
+                // Pre-seed assistant greeting once
+                try { const ph0 = messagesEl.querySelector('div[style*="opacity"]'); if (ph0) ph0.remove(); } catch(_) {}
+                if (!messagesEl.dataset.seeded) {
+                    appendMessage("Hi, I'm OG Assist. How can I help you?", 'bot');
+                    messagesEl.dataset.seeded = '1';
+                }
+                function send(){
+                    const text = (inputEl.value || '').trim();
+                    if (!text) return;
+                    // remove placeholder if present
+                    try { const ph = messagesEl.querySelector('div[style*="opacity"]'); if (ph) ph.remove(); } catch(_) {}
+                    appendMessage(text, 'user');
+                    inputEl.value = '';
+                    // show typing indicator
+                    const typing = document.createElement('div');
+                    typing.id = 'chatTyping';
+                    typing.style.margin = '6px 0';
+                    typing.style.color = '#6c757d';
+                    typing.style.fontSize = '12px';
+                    typing.textContent = 'Assistant is typing…';
+                    messagesEl.appendChild(typing);
+                    try { messagesEl.scrollTop = messagesEl.scrollHeight; } catch(_) {}
+                    // simulate bot reply
+                    setTimeout(() => {
+                        try { typing.remove(); } catch(_) {}
+                        const reply = 'This would be a contextually-aware AI assistant.';
+                        appendMessage(reply, 'bot');
+                    }, 700 + Math.random()*900);
+                }
+                sendBtn.addEventListener('click', send);
+                inputEl.addEventListener('keydown', (e)=>{ if(e.key==='Enter' && !e.shiftKey){ e.preventDefault(); send(); }});
+                window.__chat = { appendMessage };
+            } catch(_) {}
+        }
+        if (document.readyState === 'loading') {
+            document.addEventListener('DOMContentLoaded', setupChatInit);
+        } else {
+            setupChatInit();
+        }
 
         // Work around SuperDoc UMD builds referencing a global __IS_DEBUG__
 
@@ -1908,6 +1973,79 @@
     <!-- PRE-EDITOR 2x2 GRID LAYOUT -->
 
     <script>
+
+        // Resolve and cache the last-known real document id
+        window.__lastDocId = window.__lastDocId || null;
+        window.getWebCurrentDocId = async function getWebCurrentDocId() {
+        try {
+            const doc = await fetch('http://localhost:3001/api/current-document', { cache: 'no-store' }).then(r => r.json());
+            const id = (doc && (doc.id || doc.documentId)) ? (doc.id || doc.documentId) : null;
+            if (id) { window.__lastDocId = id; return id; }
+            return window.__lastDocId; // do not fall back to synthetic ids
+        } catch {
+            return window.__lastDocId; // use last known if available
+        }
+        };
+
+        // Approvals transport shim: pin docId and enforce it across approvals GET/POST
+        (function setupApprovalsTransportShim(){
+            try {
+                const API_BASE = 'http://localhost:3001';
+                let pinnedId = null;
+                async function ensurePinnedId(){
+                    if (pinnedId) return pinnedId;
+                    try { pinnedId = window.__lastDocId || await window.getWebCurrentDocId(); } catch(_) {}
+                    return pinnedId;
+                }
+                // Expose helpers for modal open/close to pin/unpin
+                window.__approvalsPinDocId = async function(){ pinnedId = window.__lastDocId || await window.getWebCurrentDocId(); return pinnedId; };
+                window.__approvalsUnpinDocId = function(){ pinnedId = null; };
+                const origFetch = window.fetch;
+                window.fetch = function(input, init){
+                    try {
+                        let url = typeof input === 'string' ? input : (input && input.url) || '';
+                        const u = new URL(url, location.origin);
+                        const isApprovalsGET = /\/api\/(approvals\/state|approval-matrix)$/.test(u.pathname);
+                        const isApprovalsPOST = /\/api\/approvals\/(approve|reject|add-user|reorder|update-notes)$/.test(u.pathname);
+                        if (isApprovalsGET || isApprovalsPOST) {
+                            // Patch GET query
+                            if (isApprovalsGET) {
+                                const id = pinnedId || window.__lastDocId;
+                                if (id) { u.searchParams.set('documentId', id); input = u.toString(); }
+                            }
+                            // Patch POST JSON body
+                            if (isApprovalsPOST && init && typeof init.body === 'string') {
+                                const h = init.headers && (init.headers['Content-Type'] || init.headers.get?.('Content-Type') || '');
+                                if (/application\/json/i.test(h)) {
+                                    try {
+                                        const body = JSON.parse(init.body||'{}');
+                                        const id = pinnedId || window.__lastDocId;
+                                        if (id) body.documentId = id;
+                                        init = { ...init, body: JSON.stringify(body) };
+                                    } catch(_) {}
+                                }
+                            }
+                        }
+                    } catch(_) {}
+                    return origFetch.apply(this, arguments);
+                };
+                // Pin when users modal opens
+                const openUsersModalOrig = window.openUsersModalWeb;
+                window.openUsersModalWeb = function(){ try { window.__approvalsPinDocId(); } catch(_) {}; return openUsersModalOrig && openUsersModalOrig.apply(this, arguments); };
+            } catch(_) {}
+        })();
+
+        // Pin approvals docId as early as possible so first refresh uses a real id
+        (function pinDocIdOnReady(){
+            try {
+                const pinEarly = async () => { try { await window.__approvalsPinDocId && window.__approvalsPinDocId(); } catch(_) {} };
+                if (document.readyState === 'loading') {
+                    document.addEventListener('DOMContentLoaded', pinEarly);
+                } else {
+                    pinEarly();
+                }
+            } catch(_) {}
+        })();
 
         // Initialize New Feature Banner for web
 
@@ -2071,6 +2209,10 @@
                     <span id="currentUserDisplay" class="user-name">Loading...</span>
                     <span id="currentUserRole" class="user-role">(editor)</span>
                     <span id="approvalsPillWeb" class="pill-blue" style="display:inline-block; padding:4px 10px; border-radius:999px; font-weight:600; font-size:12px; margin-left:8px;">—/— approved</span>
+                    <button id="btnNotificationBell" title="Notifications" aria-label="Open notifications" onclick="openNotificationModal()" style="margin-left:8px; display:inline-flex; align-items:center; justify-content:center; width:28px; height:28px; border-radius:50%; border:1px solid #dee2e6; background:#fff; cursor:pointer; position:relative;">
+                        <span style="font-size:14px;">🔔</span>
+                        <span id="notificationBellBadge" style="display:none; position:absolute; top:-4px; right:-4px; background:#dc3545; color:#fff; border-radius:999px; padding:0 5px; font-size:10px; line-height:16px; min-width:16px; text-align:center;">0</span>
+                    </button>
                 </div>
                  <div class="section-body" style="display:flex; flex-direction:column; gap:8px;">
                      <div style="display:flex; align-items:center; gap:8px; margin-left:-3px;">
@@ -2097,22 +2239,17 @@
 
 
 
-        <!-- Right: Notifications (span 2 rows) -->
-        <div class="grid-card grid-notifications" style="grid-column:2; grid-row:1 / span 2; display:flex; flex-direction:column;">
-
-
-            <div class="notification-window" style="flex:1 1 auto; overflow:auto;">
-
-                <div class="notification-window-header">🔔 Notifications</div>
-
-                <div class="notification-window-body" id="notificationWindowBody_grid">
-
-                    <div class="no-notifications">No notifications yet</div>
-
+        <!-- Right: Chat (span 2 rows) -->
+        <div class="grid-card" style="grid-column:2; grid-row:1 / span 2; display:flex; flex-direction:column; height:130px; min-height:130px; max-height:130px; overflow:hidden;">
+            <div id="chatPanel" style="display:flex; flex-direction:column; gap:8px; padding:10px; height:100%; min-height:0; overflow:hidden;">
+                <div id="chatMessages" style="flex:1 1 auto; overflow:auto; border:1px solid #e9ecef; border-radius:6px; padding:10px; background:#fff; min-height:0;">
+                    <div style="opacity:.6; font-size:12px;">No messages yet</div>
                 </div>
-
+                <div style="display:flex; gap:8px; align-items:flex-start;">
+                    <textarea id="chatInput" rows="2" placeholder="Type a message..." style="flex:1 1 auto; resize:vertical; border:1px solid #dee2e6; border-radius:6px; padding:8px; font-size:13px; max-height:60px;"></textarea>
+                    <button id="chatSend" class="shared-dropdown" style="min-width:90px;">Send</button>
+                </div>
             </div>
-
         </div>
 
     </div>
@@ -2182,7 +2319,7 @@
 
         <div class="notification-modal-backdrop" onclick="closeNotificationModal()"></div>
 
-        <div class="notification-modal-content">
+        <div class="notification-modal-content" onclick="event.stopPropagation()">
 
             <div class="notification-modal-header">
 
@@ -2483,7 +2620,7 @@
                     console.log('📡 Connected to real-time events');
 
                      // Unified initial load when SSE connects
-                     setTimeout(() => { try { fetchUnifiedStateWeb(); } catch(_) {} }, 300);
+                     setTimeout(() => { try { fetchUnifiedStateWeb(); loadInitialApprovalsData(); } catch(_) {} }, 300);
                 };
 
                  
@@ -2620,10 +2757,7 @@
 
                     } else if (data.type === 'approvals-updated' || data.type === 'approvals-list-updated' || data.type === 'approvals-notes-updated' || data.type === 'approvals-reminder-sent') {
                          console.log('📡 WEB SSE: approvals-change received:', data);
-                         // Update pill immediately if counts provided
-                         if (typeof data.approved === 'number' && typeof data.total === 'number' && typeof window.__updateApprovalsPillWeb === 'function') {
-                             window.__updateApprovalsPillWeb(data.approved, data.total);
-                         }
+                         // Pill counts are authoritative from approvals/state; do not use SSE-provided counts to avoid drift
                          // Always re-pull unified snapshot to avoid drift and races
                          fetchUnifiedStateWeb();
                          // If approvals modal is open, refresh only for structural changes; skip on reminder to preserve inline feedback
@@ -2639,7 +2773,8 @@
                                    const statusJson = await statusResp.json();
                                    isEditor = !!(statusJson && statusJson.platformUsers && statusJson.platformUsers.web && statusJson.platformUsers.web.role === 'editor');
                                  } catch(_) {}
-                                 const st = await ApprovalsClient.getState();
+                                 const currentId = (window.currentDocumentState && window.currentDocumentState.currentDocument && window.currentDocumentState.currentDocument.id) || 'default-doc';
+                                 const st = await ApprovalsClient.getState({ documentId: currentId });
                                  if (typeof renderApprovalsTableWeb === 'function') {
                                    renderApprovalsTableWeb(st, { actorId, isEditor });
                                  }
@@ -4397,14 +4532,19 @@
 
             console.log('🔔 Opening notification modal...');
 
-            const modal = document.getElementById('notificationModal');
+            // Use unified modal opener to ensure z-index and pointer-events are correct
+            try { window.openModalById && window.openModalById('notificationModal'); } catch(_) {
+                const modal = document.getElementById('notificationModal');
+                if (modal) {
+                    modal.style.setProperty('display','flex','important');
+                    modal.style.setProperty('position','fixed','important');
+                    modal.style.setProperty('inset','0','important');
+                    modal.style.setProperty('z-index','2147483647','important');
+                    modal.style.setProperty('pointer-events','auto','important');
+                }
+            }
 
-            modal.style.display = 'flex';
-
-             
-            
             // Render current notifications
-
             renderNotifications();
 
         }
@@ -4418,6 +4558,7 @@
             const modal = document.getElementById('notificationModal');
 
             modal.style.display = 'none';
+            try { modal.style.setProperty('pointer-events','none','important'); } catch(_) {}
 
              
             
@@ -4451,6 +4592,8 @@
          window.openModalById = function openModalById(modalId){
              var modal = document.getElementById(modalId);
              if(!modal){ console.warn('Modal not found:', modalId); return; }
+             // Pin approvals docId early when opening users modal
+             try { if (modalId === 'usersModal' && typeof window.__approvalsPinDocId === 'function') window.__approvalsPinDocId(); } catch(_) {}
              try { window.closeAllModals && window.closeAllModals(); } catch(_){}
              try { document.body.appendChild(modal); } catch(_){}
              modal.style.setProperty('display','flex','important');
@@ -4728,6 +4871,19 @@
 
             renderNotifications(); // Update both modal and window
 
+            // Increment bell badge if modal is closed
+            try {
+                const modal = document.getElementById('notificationModal');
+                const isOpen = modal && getComputedStyle(modal).display !== 'none';
+                const badge = document.getElementById('notificationBellBadge');
+                if (badge && !isOpen) {
+                    const current = parseInt(badge.textContent || '0', 10) || 0;
+                    const next = current + 1;
+                    badge.textContent = String(next);
+                    badge.style.display = next > 0 ? 'inline-block' : 'none';
+                }
+            } catch(_) {}
+
              
             
             console.log('📝 Added notification:', notification);
@@ -4851,6 +5007,12 @@
             hasUnreadNotifications = false;
 
             updateNotificationDot();
+
+            // Also clear the bell badge
+            try {
+                const badge = document.getElementById('notificationBellBadge');
+                if (badge) { badge.textContent = '0'; badge.style.display = 'none'; }
+            } catch(_) {}
 
         }
 
@@ -5288,7 +5450,7 @@
                           }
                       };
                   } catch(_) {}
-              }
+             }
          };
          window.closeCompileModal = function(){ try { document.getElementById('compileModal').style.display = 'none'; } catch(_){} };
 
@@ -5558,10 +5720,11 @@
                  const actor = (window.currentUser && window.currentUser.id) ? window.currentUser : (getCurrentUser && getCurrentUser());
                  const actorId = actor && actor.id ? actor.id : null;
                  if (!actorId) return;
-                 const currentId = (window.currentDocumentState && window.currentDocumentState.currentDocument && window.currentDocumentState.currentDocument.id) || 'default-doc';
+                 const currentId = (window.currentDocumentState && window.currentDocumentState.currentDocument && window.currentDocumentState.currentDocument.id) || window.__lastDocId;
+                 const API_BASE = 'http://localhost:3001';
                  const [mxResp, apprResp] = await Promise.all([
-                     fetch(`http://localhost:3001/api/state-matrix?userRole=${encodeURIComponent(getCurrentUserRole())}&platform=web&userId=${encodeURIComponent(actorId)}`),
-                     fetch(`http://localhost:3001/api/approval-matrix?actorPlatform=web&actorId=${encodeURIComponent(actorId)}&documentId=${encodeURIComponent(currentId)}`)
+                     fetch(`${API_BASE}/api/state-matrix?userRole=${encodeURIComponent(getCurrentUserRole())}&platform=web&userId=${encodeURIComponent(actorId)}`),
+                     currentId ? fetch(`${API_BASE}/api/approval-matrix?actorPlatform=web&actorId=${encodeURIComponent(actorId)}&documentId=${encodeURIComponent(currentId)}`) : Promise.resolve({ ok:false, json: async()=>({}) })
                  ]);
                  const mxData = await mxResp.json();
                  const apprData = await apprResp.json();
@@ -5579,13 +5742,16 @@
                          window.applyStateMatrixToUI(unified.matrixConfig);
                      }
                  }
-                 // Authoritative counts for top pill via approvals/state
+                 // Authoritative counts for top pill via approvals/state for the live document id
                  (async () => {
                      try {
-                         const st = await ApprovalsClient.getState();
-                         if (st && st.summary && typeof window.__updateApprovalsPillWeb === 'function') {
-                             window.__updateApprovalsPillWeb(st.summary.approvedCount || 0, st.summary.totalUsers || 0);
-                         }
+                         const currentId = window.__lastDocId || await getWebCurrentDocId();
+                         if (!currentId) return;
+                         console.log('WEB PILL: docId for approvals/state', currentId);
+                         const st = await fetch(`http://localhost:3001/api/approvals/state?documentId=${encodeURIComponent(currentId)}`, { cache: 'no-store' }).then(r => r.json());
+                          if (st && st.summary && typeof window.__updateApprovalsPillWeb === 'function') {
+                              window.__updateApprovalsPillWeb(st.summary.approvedCount || 0, st.summary.totalUsers || 0);
+                          }
                      } catch(_) {}
                  })();
                  try { refreshUsersModal(); } catch(_) {}
@@ -5595,144 +5761,110 @@
          // Load initial approvals data for pill display (called on SSE connect)
          async function loadInitialApprovalsData() {
              try {
-                 const st = await ApprovalsClient.getState();
-                 if (st && st.summary && typeof window.__updateApprovalsPillWeb === 'function') {
-                     console.log(`📊 WEB: Initial approvals loaded - ${st.summary.approvedCount}/${st.summary.totalUsers} approved`);
-                     window.__updateApprovalsPillWeb(st.summary.approvedCount || 0, st.summary.totalUsers || 0);
-                 }
-             } catch (error) {
-                 console.error('📊 WEB: Error loading initial approvals data:', error);
-                 if (window.__updateApprovalsPillWeb) window.__updateApprovalsPillWeb(0, 0);
+                 const id = window.__lastDocId || await window.getWebCurrentDocId();
+                 if (!id) { console.warn('📊 WEB: Skipping initial approvals load (no doc id yet)'); return; }
+                 window.ApprovalsUISyncWeb && window.ApprovalsUISyncWeb.refreshDebounced();
              }
+             catch (error) { console.error('📊 WEB: Error loading initial approvals data:', error); }
          }
+
+        let __usersModalRefreshToken = 0;
 
         async function refreshUsersModal() {
 
             try {
-
-                // Determine current document id; fall back to 'default-doc'
-
-                const currentId = (window.currentDocumentState && window.currentDocumentState.currentDocument && window.currentDocumentState.currentDocument.id) || 'default-doc';
-
+                console.log('WEB MODAL:', new Date().toISOString(), 'start refreshUsersModal');
+                const __token = ++__usersModalRefreshToken;
+                console.log('WEB MODAL: token start =', __token);
+                let currentId = 'doc-current';
+                try {
+                    const doc = await fetch('http://localhost:3001/api/current-document', { cache: 'no-store' }).then(r => r.json());
+                    currentId = (doc && (doc.id || doc.documentId)) ? (doc.id || doc.documentId) : 'doc-current';
+                } catch(e) { console.warn('WEB MODAL: current-document failed', e); }
+                console.log('WEB MODAL: docId =', currentId);
                 const actor = (window.currentUser && window.currentUser.id) ? window.currentUser : (getCurrentUser && getCurrentUser());
-
                 const actorId = actor && actor.id ? actor.id : null;
-
                 const actorRole = actor && actor.role ? actor.role : (getCurrentUserRole && getCurrentUserRole());
-
-
-
-                // Fetch approval matrix (users + per-row config + approvals summary)
-
-                const matrixResp = await fetch(`http://localhost:3001/api/approval-matrix?actorPlatform=web&actorId=${encodeURIComponent(actorId || '')}&documentId=${encodeURIComponent(currentId)}`);
-
-                const matrixData = await matrixResp.json();
-
-                const users = Array.isArray(matrixData.users) ? matrixData.users : [];
-
+                const isEditor = String(actorRole || '').toLowerCase() === 'editor';
+                let matrixData = { matrix: {} };
+                try {
+                    const mr = await fetch(`http://localhost:3001/api/approval-matrix?actorPlatform=web&actorId=${encodeURIComponent(actorId || '')}&documentId=${encodeURIComponent(currentId)}`, { cache: 'no-store' });
+                    matrixData = await mr.json();
+                    console.log('WEB MODAL:', new Date().toISOString(), 'matrix fetched', { ok: mr.ok, users: (matrixData.users||[]).length, matrixKeys: Object.keys(matrixData.matrix||{}).length, token: __token });
+                } catch(e) { console.warn('WEB MODAL: matrix fetch failed (ignored)', e); }
+                const sr = await fetch(`http://localhost:3001/api/approvals/state?documentId=${encodeURIComponent(currentId)}`, { cache: 'no-store' });
+                const stateData = await sr.json();
+                if (__token !== __usersModalRefreshToken) { console.warn('WEB MODAL: stale refresh skipped'); return; }
+                console.log('WEB MODAL:', new Date().toISOString(), 'state fetched', { ok: sr.ok, approvers: (stateData.approvers||[]).length, summary: stateData.summary, token: __token });
+                const approvers = Array.isArray(stateData.approvers) ? stateData.approvers.slice().sort((a,b)=>a.order-b.order) : [];
                 const matrix = matrixData.matrix || {};
-
-                const approvals = Array.isArray(matrixData.approvals) ? matrixData.approvals : [];
-
-
-
+                // Map by userId for status lookup
+                const approvalMap = (approvers || []).reduce((acc, a) => { acc[a.userId] = a; return acc; }, {});
+                console.log('WEB MODAL: computed maps', { approvalMapSize: Object.keys(approvalMap).length, token: __token });
+                const approvedCount = stateData && stateData.summary ? stateData.summary.approvedCount : approvers.filter(a => a.status === 'approved').length;
+                const totalCount = approvers.length;
+                const matrixUsers = Array.isArray(matrixData.users) ? matrixData.users : [];
                 const modalTbody = document.getElementById('usersTableBody');
-
                 const inlineTbody = document.getElementById('usersInlineBody');
-
                 if (modalTbody) modalTbody.innerHTML = '';
-
                 if (inlineTbody) inlineTbody.innerHTML = '';
-
-
-
+                console.log('WEB MODAL: applying rows', { token: __token, rows: approvers.length });
                 // Update header count e.g., "Users (1/3 approved)"
-
-                const approvalMap = (approvals || []).reduce((acc, a) => { acc[a.userId] = a; return acc; }, {});
-
-                const approvedCount = (approvals || []).filter(a => a.status === 'approved').length;
-
-                const totalCount = users.length;
-
                 const usersCardTitle = document.querySelector('.grid-card[style*="grid-column:1; grid-row:1;"] .grid-title');
-
                 if (usersCardTitle) {
-
                     const ui = window.__approvalsUi;
-
                     const title = ui?.title || 'Approvals';
-
                     usersCardTitle.textContent = `${title}`;
-
                     if (ui?.colors?.title) usersCardTitle.style.color = ui.colors.title;
-
                 }
-
                  // REMOVED: Local pill calculation to prevent race condition with SSE events
                  // Only SSE events should update the pill to ensure consistency
                  
                 
                 // Apply shared column headers
-
                 const headerRow = document.getElementById('approvalsHeaderRowWeb');
-
                 const ui = window.__approvalsUi;
-
                 if (headerRow && ui?.columns) {
-
                     headerRow.querySelector('[data-col="user"]').textContent = ui.columns.user || 'User';
-
                     headerRow.querySelector('[data-col="role"]').textContent = ui.columns.role || 'Role';
-
                     headerRow.querySelector('[data-col="status"]').textContent = ui.columns.status || 'Approved';
-
                     headerRow.querySelector('[data-col="actions"]').textContent = ui.columns.actions || 'Actions';
-
                 }
-
-
-
-                users.forEach(u => {
-
+                approvers.forEach(a => {
+                    const canonical = (matrixUsers || []).find(mu => mu.id === a.userId) || {};
+                    const u = { id: a.userId, name: a.name || a.userId, role: canonical.role || '' };
                     const tr = document.createElement('tr');
-
-                     tr.setAttribute('data-user-id', u.id);
+                    tr.setAttribute('data-user-id', u.id);
+                    tr.setAttribute('data-userid', u.id);
+                    tr.setAttribute('data-user-name', u.name);
                     const row = matrix && matrix[u.id] ? matrix[u.id] : { status: 'no', showButtons: true, approveEnabled: true, rejectEnabled: true };
-
-                    const status = approvalMap[u.id]?.status || row.status || 'no';
-
+                    const status = (approvalMap[u.id] && approvalMap[u.id].status) || row.status || 'no';
                     const isApproved = status === 'approved';
-
                     const uiCfg = window.__approvalsUi;
-
                     const pill = isApproved
-
                       ? `<span style=\"display:inline-block;padding:2px 8px;border-radius:12px;font-size:12px;font-weight:600;color:${uiCfg?.colors?.pillApprovedText || '#155724'};background:${uiCfg?.colors?.pillApprovedBg || '#d4edda'};\">${uiCfg?.labels?.approved || 'Approved'}<\/span>`
-
                       : `<span style=\"display:inline-block;padding:2px 8px;border-radius:12px;font-size:12px;font-weight:600;color:${uiCfg?.colors?.pillRejectedText || '#721c24'};background:${uiCfg?.colors?.pillRejectedBg || '#f8d7da'};\">${status === 'rejected' ? (uiCfg?.labels?.rejected || 'Rejected') : (uiCfg?.labels?.no || 'No')}<\/span>`;
-
                     tr.innerHTML = `
 
-                         <td data-col="user" style="padding:8px; border-bottom:1px solid #f1f3f5;">${u.name}</td>
-                         <td data-col="role" style="padding:8px; border-bottom:1px solid #f1f3f5;">${u.role}</td>
-                         <td data-col="status" style="padding:8px; border-bottom:1px solid #f1f3f5; white-space:nowrap;">${pill}</td>
-                         <td data-col="actions" style="padding:8px; border-bottom:1px solid #f1f3f5;">
+                         <td data-col=\"user\" style=\"padding:8px; border-bottom:1px solid #f1f3f5;\">${u.name}</td>
+                         <td data-col=\"role\" style=\"padding:8px; border-bottom:1px solid #f1f3f5;\">${u.role}</td>
+                         <td data-col=\"status\" style=\"padding:8px; border-bottom:1px solid #f1f3f5; white-space:nowrap;\">${pill}</td>
+                         <td data-col=\"actions\" style=\"padding:8px; border-bottom:1px solid #f1f3f5;\">
                             ${row.showButtons ? `
+                                <div style=\\\"display:flex; gap:6px;\\\">`
+ +
+ `
+                                    <button class=\\\"btn\\\" ${(row.approveEnabled && !isApproved) ? '' : 'disabled'} data-action=\\\"approve\\\" data-user=\\\"${u.id}\\\" data-status=\\\"${status}\\\">Approve</button>
 
-                                <div style=\"display:flex; gap:6px;\">
-
-                                    <button class=\"btn\" ${isApproved ? 'disabled' : ''} data-action=\"approve\" data-user=\"${u.id}\" data-status=\"${status}\">Approve</button>
-
-                                    <button class=\"btn\" ${status === 'rejected' ? 'disabled' : ''} data-action=\"reject\" data-user=\"${u.id}\" data-status=\"${status}\">Reject</button>
+                                    <button class=\\\"btn\\\" ${(row.rejectEnabled && status !== 'rejected') ? '' : 'disabled'} data-action=\\\"reject\\\" data-user=\\\"${u.id}\\\" data-status=\\\"${status}\\\">Reject</button>
 
                                 </div>
 
-                            ` : `<span style=\"opacity:.6; font-size:12px;\">No actions</span>`}
+                            ` : `<span style=\\\"opacity:.6; font-size:12px;\\\">No actions</span>`}
 
                         </td>
 
                      `;
-
                      if (modalTbody) {
                          modalTbody.appendChild(tr);
                          console.log('🔍 WEB: Created row for user:', u.name, {
@@ -5741,59 +5873,11 @@
                              isApproved: isApproved,
                              buttonsInHTML: tr.innerHTML.includes('data-action="approve"')
                          });
-                         
-                         // FIX: Apply proper styling via inline styles (highest specificity)
-                         const modalButtons = tr.querySelectorAll('button[data-user]');
-                         modalButtons.forEach(btn => {
-                             const action = btn.getAttribute('data-action');
-                             const isApproveBtn = action === 'approve';
-                             
-                             // Use approved/rejected colors to match status pills
-                             const normalBg = isApproveBtn ? '#d4edda' : '#f8d7da';  // Light green/red
-                             const normalColor = isApproveBtn ? '#155724' : '#721c24';  // Dark green/red
-                             const normalBorder = isApproveBtn ? '#c3e6cb' : '#f5c6cb';  // Medium green/red
-                             const hoverBg = isApproveBtn ? '#c3e6cb' : '#f5c6cb';  // Darker on hover
-                             
-                             btn.style.cssText = `
-                                 background: ${normalBg} !important;
-                                 color: ${normalColor} !important; 
-                                 border: 1px solid ${normalBorder} !important;
-                                 border-radius: 4px !important;
-                                 padding: 6px 10px !important;
-                                 font-size: 12px !important;
-                                 font-weight: 500 !important;
-                                 margin: 0 2px !important;
-                                 cursor: pointer !important;
-                                 display: inline-block !important;
-                                 visibility: visible !important;
-                                 opacity: 1 !important;
-                                 position: relative !important;
-                                 z-index: 1 !important;
-                             `;
-                             
-                             // Add hover effects with matching colors
-                             btn.addEventListener('mouseenter', () => {
-                                 if (!btn.disabled) {
-                                     btn.style.background = `${hoverBg} !important`;
-                                     btn.style.borderColor = `${hoverBg} !important`;
-                                 }
-                             });
-                             btn.addEventListener('mouseleave', () => {
-                                 if (!btn.disabled) {
-                                     btn.style.background = `${normalBg} !important`;
-                                     btn.style.borderColor = `${normalBorder} !important`;
-                                 }
-                             });
-                         });
+                         // styling retained below
                      }
-                 });
-
-
-
+                });
                 // Bind click handlers to update state and re-render
-
                 const bindActions = (root) => {
-
                      const buttons = (root || document).querySelectorAll('button[data-user]');
                      console.log('🔍 WEB: Found approval buttons for binding:', buttons.length);
                      // Debugging removed - buttons now working with inline styling fix
@@ -5861,24 +5945,23 @@
                                      documentId: currentId
                                  });
                                  
-                                await fetch(`http://localhost:3001/api/document/${currentId}/approvals`, {
-
-                                    method: 'POST',
-
-                                    headers: { 'Content-Type': 'application/json' },
-
-                                    body: JSON.stringify({ userId: targetUserId, action: nextAction, actorId: (window.currentUser && window.currentUser.id) || 'user1' })
-
-                                });
+                                if (nextAction === 'approve') {
+                                  await ApprovalsClient.approve({ documentId: currentId, targetUserId: targetUserId, actorId: (window.currentUser && window.currentUser.id) || 'user1' });
+                                } else {
+                                  await ApprovalsClient.reject({ documentId: currentId, targetUserId: targetUserId, actorId: (window.currentUser && window.currentUser.id) || 'user1', comment: '' });
+                                }
 
                             } catch (err) {
 
                                 console.warn('WEB: approval toggle failed', err);
 
                             } finally {
-
-                                try { await refreshUsersModal(); } catch (_) {}
-
+                                // Optimistic: update pill and row locally; avoid immediate full refresh to prevent race
+                                try {
+                                    const newStatus = nextAction === 'approve' ? 'approved' : 'rejected';
+                                    updateUserApprovalStatus(targetUserId, newStatus);
+                                } catch(_) {}
+                                // Let SSE/unified refresh reconcile shortly
                             }
 
                         });
@@ -5891,10 +5974,10 @@
 
                 if (modalTbody) bindActions(modalTbody);
 
+                console.log('WEB MODAL:', new Date().toISOString(), 'end refreshUsersModal', { token: __token });
             } catch (err) {
-
+                console.error('WEB MODAL: refreshUsersModal failed', err);
                 addNotification('Error loading users/approvals', 'error');
-
             }
 
         }
@@ -7271,6 +7354,7 @@
         function renderApprovalsTableWeb(state, opts) {
             const body = document.getElementById('approvalsBodyWeb');
             if (!body) return;
+            const currentId = (window.currentDocumentState && window.currentDocumentState.currentDocument && window.currentDocumentState.currentDocument.id) || 'default-doc';
             const approvers = (state && state.approvers) ? state.approvers.slice().sort((a,b)=>a.order-b.order) : [];
             const isEditor = !!opts.isEditor;
             const actorId = opts.actorId;
@@ -7320,8 +7404,8 @@
                             // If unchecking self, do it immediately. Otherwise require confirmation.
                             if (!chk.checked) {
                                 if (actorId && userId === actorId) {
-                                    await ApprovalsClient.reject({ targetUserId: userId, actorId: actorId, comment: '' });
-                                    const st = await ApprovalsClient.getState();
+                                    await ApprovalsClient.reject({ documentId: currentId, targetUserId: userId, actorId: actorId, comment: '' });
+                                    const st = await ApprovalsClient.getState({ documentId: currentId });
                                     renderApprovalsTableWeb(st, opts);
                                     return;
                                 }
@@ -7346,7 +7430,7 @@
                                 const btnRC = bar.querySelector('#confirmRemoveWeb');
                                 const btnRX = bar.querySelector('#cancelRemoveWeb');
                                 btnRC.onclick = async () => {
-                                    try { btnRC.disabled=true; await ApprovalsClient.reject({ targetUserId: userId, actorId: actorId, comment: '' }); const st = await ApprovalsClient.getState(); renderApprovalsTableWeb(st, opts); }
+                                    try { btnRC.disabled=true; const did = await getWebCurrentDocId(); await ApprovalsClient.reject({ documentId: did, targetUserId: userId, actorId: actorId, comment: '' }); const st = await ApprovalsClient.getState({ documentId: did }); renderApprovalsTableWeb(st, opts); }
                                     catch(e){ console.error(e); }
                                     finally { try { bar.remove(); } catch(_) {} }
                                 };
@@ -7378,7 +7462,7 @@
                                 const btnC = bar.querySelector('#confirmApproveWeb');
                                 const btnX = bar.querySelector('#cancelApproveWeb');
                                 btnC.onclick = async () => {
-                                    try { btnC.disabled=true; await ApprovalsClient.approve({ targetUserId: userId, actorId: actorId }); const st = await ApprovalsClient.getState(); renderApprovalsTableWeb(st, opts); } catch(e){ console.error(e); }
+                                    try { btnC.disabled=true; const did = await getWebCurrentDocId(); await ApprovalsClient.approve({ documentId: did, targetUserId: userId, actorId: actorId }); const st = await ApprovalsClient.getState({ documentId: did }); renderApprovalsTableWeb(st, opts); } catch(e){ console.error(e); }
                                     finally { try { bar.remove(); } catch(_) {} }
                                 };
                                 btnX.onclick = () => { try { bar.remove(); } catch(_) {} };
@@ -7386,23 +7470,29 @@
                             }
                             // normal flow (self or reject)
                             if (chk.checked) {
-                                await ApprovalsClient.approve({ targetUserId: userId, actorId: actorId });
+                                const did = await getWebCurrentDocId();
+                                await ApprovalsClient.approve({ documentId: did, targetUserId: userId, actorId: actorId });
                             } else {
-                                await ApprovalsClient.reject({ targetUserId: userId, actorId: actorId, comment: '' });
+                                const did = await getWebCurrentDocId();
+                                await ApprovalsClient.reject({ documentId: did, targetUserId: userId, actorId: actorId, comment: '' });
                             }
-                            const st = await ApprovalsClient.getState();
+                            const st = await ApprovalsClient.getState({ documentId: await getWebCurrentDocId() });
                             renderApprovalsTableWeb(st, opts);
                         } catch (e) { console.error('approve/reject error', e); }
                     });
                 }
                 const btnRem = tr.querySelector('.btn-remind');
                 if (btnRem) {
+                    // Everyone can remind everyone except themselves
+                    const canRemind = userId !== actorId;
+                    btnRem.disabled = !canRemind;
                     btnRem.addEventListener('click', async () => {
                         const nameCell = tr.querySelector('td:nth-child(' + (isEditor ? 3 : 2) + ')');
                         const displayName = (nameCell && nameCell.textContent ? nameCell.textContent.trim() : userId);
                         btnRem.disabled = true; const prev = btnRem.textContent; btnRem.textContent = 'Sending...';
                         try {
-                            await ApprovalsClient.remind({ targetUserId: userId, actorId: actorId });
+                            const did = await getWebCurrentDocId();
+                            await ApprovalsClient.remind({ documentId: did, targetUserId: userId, actorId: actorId });
                             btnRem.textContent = `emailed ${displayName}`;
                             try { window.addNotification && window.addNotification(`emailed ${displayName}`, 'info'); } catch(_) {}
                             setTimeout(()=>{ btnRem.textContent = prev; btnRem.disabled = false; }, 5000);
@@ -7412,14 +7502,14 @@
                 const inpNotes = tr.querySelector('.inp-notes');
                 if (inpNotes) {
                     inpNotes.addEventListener('change', async () => {
-                        try { await ApprovalsClient.updateNotes({ targetUserId: userId, notes: inpNotes.value, actorId: actorId }); } catch(e){ console.error('notes error', e); }
+                        try { await ApprovalsClient.updateNotes({ documentId: currentId, targetUserId: userId, notes: inpNotes.value, actorId: actorId }); } catch(e){ console.error('notes error', e); }
                     });
                 }
                 const btnDel = tr.querySelector('.btn-del');
                 if (btnDel) {
                     btnDel.addEventListener('click', async () => {
                         if (!confirm('Remove this approver from the list?')) return;
-                        try { await ApprovalsClient.deleteUser({ targetUserId: userId, actorId: actorId }); const st = await ApprovalsClient.getState(); renderApprovalsTableWeb(st, opts); } catch(e){ console.error('delete error', e); }
+                        try { const did = await getWebCurrentDocId(); await ApprovalsClient.deleteUser({ documentId: did, targetUserId: userId, actorId: actorId }); const st = await ApprovalsClient.getState({ documentId: did }); renderApprovalsTableWeb(st, opts); } catch(e){ console.error('delete error', e); }
                     });
                 }
             });
@@ -7430,28 +7520,29 @@
                 if (!(t && t.classList && t.classList.contains('inp-order'))) return;
                     try {
                         const order = Array.from(body.querySelectorAll('tbody tr')).map((tr, i) => ({ userId: tr.getAttribute('data-userid'), order: Number(tr.querySelector('.inp-order')?.value || (i+1)) }));
-                        await ApprovalsClient.reorder({ order, actorId: actorId });
-                        const st = await ApprovalsClient.getState();
+                        const did = await getWebCurrentDocId();
+                        await ApprovalsClient.reorder({ documentId: did, order, actorId: actorId });
+                        const st = await ApprovalsClient.getState({ documentId: did });
                         renderApprovalsTableWeb(st, opts);
                     } catch(e){ console.error('reorder error', e); }
             });
             const refreshBtn = document.getElementById('approvalsRefreshWeb');
             if (refreshBtn) {
-                refreshBtn.onclick = async () => { const st = await ApprovalsClient.getState(); renderApprovalsTableWeb(st, opts); };
+                refreshBtn.onclick = async () => { const st = await ApprovalsClient.getState({ documentId: await getWebCurrentDocId() }); console.log('Hitting the Refresh!'); renderApprovalsTableWeb(st, opts); };
             }
             const resetBtn = document.getElementById('approvalsResetWeb');
             if (resetBtn) {
                 resetBtn.style.display = isEditor ? 'inline-block' : 'none';
                 resetBtn.onclick = async () => {
                     if (!confirm('This will reset approvals to the canonical set and clear all statuses. Continue?')) return;
-                    try { resetBtn.disabled = true; const prev=resetBtn.textContent; resetBtn.textContent='Nuking…'; await fetch('http://localhost:3001/api/approvals/reset', { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({ actorId }) }); const st = await ApprovalsClient.getState(); renderApprovalsTableWeb(st, opts); } catch(e){ console.error('reset error', e); } finally { resetBtn.disabled=false; resetBtn.textContent='Nuke it'; }
+                    try { resetBtn.disabled = true; const prev=resetBtn.textContent; resetBtn.textContent='Nuking…'; const did = await getWebCurrentDocId(); await fetch('http://localhost:3001/api/approvals/reset', { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({ actorId, documentId: did }) }); const st = await ApprovalsClient.getState({ documentId: did }); renderApprovalsTableWeb(st, opts); } catch(e){ console.error('reset error', e); } finally { resetBtn.disabled=false; resetBtn.textContent='Nuke it'; }
                 };
             }
             const addBtn2 = document.getElementById('approvalsAddUserWeb');
             if (addBtn2) {
                 addBtn2.onclick = async () => {
                     const name = prompt('Name'); if (!name) return; const email = prompt('Email'); if (!email) return;
-                    try { await ApprovalsClient.addUser({ name, email, actorId: actorId }); const st = await ApprovalsClient.getState(); renderApprovalsTableWeb(st, opts); } catch(e){ alert((e && e.message) || 'Add user failed'); }
+                    try { const did = await getWebCurrentDocId(); await ApprovalsClient.addUser({ documentId: did, name, email, actorId: actorId }); const st = await ApprovalsClient.getState({ documentId: did }); renderApprovalsTableWeb(st, opts); } catch(e){ alert((e && e.message) || 'Add user failed'); }
                 };
             }
         }
@@ -7462,7 +7553,8 @@
                 const statusResp = await fetch('http://localhost:3001/api/status');
                 const statusJson = await statusResp.json();
                 const isEditor = !!(statusJson && statusJson.platformUsers && statusJson.platformUsers.web && statusJson.platformUsers.web.role === 'editor');
-                const state = await ApprovalsClient.getState();
+                const currentId = (window.currentDocumentState && window.currentDocumentState.currentDocument && window.currentDocumentState.currentDocument.id) || 'default-doc';
+                const state = await ApprovalsClient.getState({ documentId: currentId });
                 if (typeof window.openModalById === 'function') {
                     window.openModalById('approvalsModalWeb');
                 } else {
@@ -7583,6 +7675,33 @@
         })();
     </script>
 
+    // ... existing code ...
+          // Centralized approvals UI refresh (web): resolves docId, fetches state, updates pill, refreshes modal
+          (function(){
+              let t = null;
+              async function refresh(opts={}){
+                  try {
+                      const docId = await (typeof getWebCurrentDocId === 'function' ? getWebCurrentDocId() : (async () => {
+                          const d = await fetch('http://localhost:3001/api/current-document', { cache:'no-store' }).then(r=>r.json());
+                          return (d && (d.id||d.documentId)) ? (d.id||d.documentId) : 'doc-current';
+                      })());
+                      const st = await fetch(`http://localhost:3001/api/approvals/state?documentId=${encodeURIComponent(docId)}`, { cache:'no-store' }).then(r=>r.json());
+                      const sum = st && st.summary ? st.summary : { approvedCount:0, totalUsers:0 };
+                      if (typeof window.__updateApprovalsPillWeb === 'function') {
+                          window.__updateApprovalsPillWeb(sum.approvedCount || 0, sum.totalUsers || 0);
+                      }
+                      try { await refreshUsersModal(); } catch(_) {}
+                  } catch (e) { console.warn('WEB UISync refresh failed', e); }
+              }
+              window.ApprovalsUISyncWeb = {
+                  refreshDebounced(opts={}){
+                      if (t) clearTimeout(t);
+                      t = setTimeout(() => { refresh(opts); }, 100);
+                  },
+                  refresh
+              };
+          })();
+// ... existing code ...
 </body>
 
 </html>
