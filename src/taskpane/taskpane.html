@@ -4810,7 +4810,6 @@
                             inline.innerHTML = `
                                 <div style="display:flex; gap:8px; align-items:center; flex-wrap:wrap;">
                                     <input id="addUserNameWord" type="text" placeholder="Name" style="flex:1; min-width:180px; padding:6px 8px; border:1px solid #e5e7eb; border-radius:6px" />
-                                    <input id="addUserEmailWord" type="email" placeholder="Email" style="flex:1; min-width:220px; padding:6px 8px; border:1px solid #e5e7eb; border-radius:6px" />
                                     <button id="addUserSaveWord" class="btn btn-secondary">Save</button>
                                     <button id="addUserCancelWord" class="btn btn-ghost" style="background:transparent !important; color:#374151 !important; border:1px solid #e5e7eb !important;">Cancel</button>
                                 </div>
@@ -4819,18 +4818,16 @@
                             const actions = modal.querySelector('.actions');
                             actions.parentNode.insertBefore(inline, actions);
                             const inpName = inline.querySelector('#addUserNameWord');
-                            const inpEmail = inline.querySelector('#addUserEmailWord');
                             const btnSave = inline.querySelector('#addUserSaveWord');
                             const btnCancel = inline.querySelector('#addUserCancelWord');
                             btnCancel.addEventListener('click', () => { try { inline.remove(); } catch(_) {} });
                             btnSave.addEventListener('click', async () => {
                                 try {
                                     const name = String(inpName.value || '').trim();
-                                    const email = String(inpEmail.value || '').trim();
-                                    if (!name || !email) { try { window.addNotification && window.addNotification('Enter name and email', 'error'); } catch(_) {}; return; }
+                                    if (!name) { try { window.addNotification && window.addNotification('Enter name', 'error'); } catch(_) {}; return; }
                                     btnSave.disabled = true; btnSave.textContent = 'Adding…';
                                     const actorId = await __getActorIdWord();
-                                    await ApprovalsClient.addUser({ documentId, name, email, actorId });
+                                    await ApprovalsClient.addUser({ documentId, name, actorId });
                                     try { window.addNotification && window.addNotification(`added ${name}`, 'success'); } catch(_) {}
                                     await window.__openUsersModalWordImpl();
                                 } catch(e) {

@@ -46,7 +46,8 @@
     return handleJsonResponse(resp);
   }
   async function addUser({ documentId, name, email, actorId }, opts = {}) {
-    const body = { documentId, name, email, actorId };
+    const body = { documentId, name, actorId };
+    if (email && String(email).trim()) body.email = String(email).trim();
     const resp = await fetch(joinUrl(opts.baseUrl, '/api/approvals/add-user'), { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) });
     return handleJsonResponse(resp);
   }

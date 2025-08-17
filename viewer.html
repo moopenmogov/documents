@@ -7541,8 +7541,8 @@
             const addBtn2 = document.getElementById('approvalsAddUserWeb');
             if (addBtn2) {
                 addBtn2.onclick = async () => {
-                    const name = prompt('Name'); if (!name) return; const email = prompt('Email'); if (!email) return;
-                    try { const did = await getWebCurrentDocId(); await ApprovalsClient.addUser({ documentId: did, name, email, actorId: actorId }); const st = await ApprovalsClient.getState({ documentId: did }); renderApprovalsTableWeb(st, opts); } catch(e){ alert((e && e.message) || 'Add user failed'); }
+                    const name = prompt('Name'); if (!name) return;
+                    try { const did = await getWebCurrentDocId(); await ApprovalsClient.addUser({ documentId: did, name, actorId: actorId }); const st = await ApprovalsClient.getState({ documentId: did }); renderApprovalsTableWeb(st, opts); } catch(e){ alert((e && e.message) || 'Add user failed'); }
                 };
             }
         }
