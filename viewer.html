@@ -2101,22 +2101,21 @@
 
 
 
-        <!-- Right: Notifications (span 2 rows) -->
-        <div class="grid-card grid-notifications" style="grid-column:2; grid-row:1 / span 2; display:flex; flex-direction:column;">
-
-
-            <div class="notification-window" style="flex:1 1 auto; overflow:auto;">
-
-                <div class="notification-window-header">🔔 Notifications</div>
-
-                <div class="notification-window-body" id="notificationWindowBody_grid">
-
-                    <div class="no-notifications">No notifications yet</div>
-
-                </div>
-
+        <!-- Right: Chat (span 2 rows) -->
+        <div class="grid-card" style="grid-column:2; grid-row:1 / span 2; display:flex; flex-direction:column;">
+            <div style="display:flex; align-items:center; justify-content:space-between; padding:8px 10px; border-bottom:1px solid #e9ecef;">
+                <div class="grid-title" style="margin:0;">💬 Chat</div>
+                <div style="font-size:12px; color:#6c757d;">experimental</div>
             </div>
-
+            <div id="chatPanel" style="display:flex; flex-direction:column; gap:8px; padding:10px; height:100%;">
+                <div id="chatMessages" style="flex:1 1 auto; overflow:auto; border:1px solid #e9ecef; border-radius:6px; padding:10px; background:#fff;">
+                    <div style="opacity:.6; font-size:12px;">No messages yet</div>
+                </div>
+                <div style="display:flex; gap:8px; align-items:flex-start;">
+                    <textarea id="chatInput" rows="2" placeholder="Type a message..." style="flex:1 1 auto; resize:vertical; border:1px solid #dee2e6; border-radius:6px; padding:8px; font-size:13px;"></textarea>
+                    <button id="chatSend" class="shared-dropdown" style="min-width:90px;">Send</button>
+                </div>
+            </div>
         </div>
 
     </div>
@@ -4366,6 +4365,42 @@
 
 
         // Save functions will go here
+        // ===== CHAT (SHELL) =====
+        (function setupChat(){
+            try {
+                const messagesEl = document.getElementById('chatMessages');
+                const inputEl = document.getElementById('chatInput');
+                const sendBtn = document.getElementById('chatSend');
+                if (!messagesEl || !inputEl || !sendBtn) return;
+                function appendMessage(text, role){
+                    const row = document.createElement('div');
+                    row.style.margin = '6px 0';
+                    row.style.display = 'flex';
+                    row.style.gap = '8px';
+                    row.style.alignItems = 'flex-start';
+                    const bubble = document.createElement('div');
+                    bubble.style.padding = '8px 10px';
+                    bubble.style.borderRadius = '10px';
+                    bubble.style.maxWidth = '80%';
+                    bubble.style.whiteSpace = 'pre-wrap';
+                    bubble.style.fontSize = '13px';
+                    if (role === 'user') { bubble.style.background = '#e7f1ff'; bubble.style.marginLeft = 'auto'; }
+                    else { bubble.style.background = '#f8f9fa'; bubble.style.marginRight = 'auto'; }
+                    bubble.textContent = text;
+                    row.appendChild(bubble);
+                    messagesEl.insertBefore(row, messagesEl.firstChild);
+                }
+                function send(){
+                    const text = (inputEl.value || '').trim();
+                    if (!text) return;
+                    appendMessage(text, 'user');
+                    inputEl.value = '';
+                }
+                sendBtn.addEventListener('click', send);
+                inputEl.addEventListener('keydown', (e)=>{ if(e.key==='Enter' && !e.shiftKey){ e.preventDefault(); send(); }});
+                window.__chat = { appendMessage };
+            } catch(_) {}
+        })();
 
 
 
@@ -4730,7 +4765,7 @@
 
             updateNotificationDot();
 
-            renderNotifications(); // Update both modal and window
+            renderNotifications(); // Update modal
 
             // Increment bell badge if modal is closed
             try {
@@ -4805,11 +4840,8 @@
 
              
             
-            // Update both modal and transparent window
-
+            // Update modal only (inline notifications box removed in favor of bell modal + chat)
             if (modalBody) modalBody.innerHTML = notificationsHtml;
-
-            if (windowBody) windowBody.innerHTML = notificationsHtml;
 
         }
 
