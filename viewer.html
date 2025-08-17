@@ -1858,33 +1858,46 @@
             background: #006cbe !important;
             border-color: #00518c !important;
         }
-
-        .controls-grid { display: grid; grid-template-columns: 1fr 1fr; grid-template-rows: auto; gap: 12px; padding: 0 20px; align-items: start; }
-
-        .grid-card { background: #ffffff; border: 1px solid #e9ecef; border-radius: 8px; padding: 10px; }
-
-        .grid-title { font-weight: 600; margin-bottom: 6px; color: #495057; font-size: 13px; }
-
-        .grid-actions { display: flex; gap: 6px; flex-wrap: wrap; }
-
-        /* Normalize button baseline */
-
-        .grid-actions * { box-sizing: border-box; }
-
-        .grid-notifications { grid-column: 2; grid-row: 1 / span 2; display: flex; flex-direction: column; }
-
-        .status-bar { font-size: 14px; margin-bottom: 6px; color: #495057; }
-
-        .title-banner-stack { padding: 0.8px 20px 0 20px; }
-        .title-banner-stack .document-title { margin: 4px 0 6px 0; font-weight: 600; font-size: 16px; color: #343a40; text-align:center; }
-
-        .title-banner-stack #viewerMessage { margin: 0 0 6px 0; }
-
-        .title-banner-stack #checkoutStatus { margin: 0 0 10px 0; text-align:center; }
-
     </style>
 
     <script>
+        // ===== CHAT (SHELL) =====
+        (function setupChat(){
+            try {
+                const messagesEl = document.getElementById('chatMessages');
+                const inputEl = document.getElementById('chatInput');
+                const sendBtn = document.getElementById('chatSend');
+                if (!messagesEl || !inputEl || !sendBtn) return;
+                function appendMessage(text, role){
+                    const row = document.createElement('div');
+                    row.style.margin = '6px 0';
+                    row.style.display = 'flex';
+                    row.style.gap = '8px';
+                    row.style.alignItems = 'flex-start';
+                    const bubble = document.createElement('div');
+                    bubble.style.padding = '8px 10px';
+                    bubble.style.borderRadius = '10px';
+                    bubble.style.maxWidth = '80%';
+                    bubble.style.whiteSpace = 'pre-wrap';
+                    bubble.style.fontSize = '13px';
+                    if (role === 'user') { bubble.style.background = '#e7f1ff'; bubble.style.marginLeft = 'auto'; }
+                    else { bubble.style.background = '#f8f9fa'; bubble.style.marginRight = 'auto'; }
+                    bubble.textContent = text;
+                    row.appendChild(bubble);
+                    messagesEl.appendChild(row);
+                    try { messagesEl.scrollTop = messagesEl.scrollHeight; } catch(_) {}
+                }
+                function send(){
+                    const text = (inputEl.value || '').trim();
+                    if (!text) return;
+                    appendMessage(text, 'user');
+                    inputEl.value = '';
+                }
+                sendBtn.addEventListener('click', send);
+                inputEl.addEventListener('keydown', (e)=>{ if(e.key==='Enter' && !e.shiftKey){ e.preventDefault(); send(); }});
+                window.__chat = { appendMessage };
+            } catch(_) {}
+        })();
 
         // Work around SuperDoc UMD builds referencing a global __IS_DEBUG__
 
@@ -1932,6 +1945,15 @@
     <!-- PRE-EDITOR 2x2 GRID LAYOUT -->
 
     <script>
+
+        window.getWebCurrentDocId = async function getWebCurrentDocId() {
+        try {
+            const doc = await fetch('http://localhost:3001/api/current-document', { cache: 'no-store' }).then(r => r.json());
+            return (doc && (doc.id || doc.documentId)) ? (doc.id || doc.documentId) : 'doc-current';
+        } catch {
+            return 'doc-current';
+        }
+        };
 
         // Initialize New Feature Banner for web
 
@@ -1981,7 +2003,477 @@
 
     </script>
 
+    <style>
 
+        .controls-grid { display: grid; grid-template-columns: 1fr 1fr; grid-template-rows: auto auto; gap: 12px; padding: 0 20px; }
+
+        .grid-card { background: #ffffff; border: 1px solid #e9ecef; border-radius: 8px; padding: 10px; }
+
+        .grid-title { font-weight: 600; margin-bottom: 6px; color: #495057; font-size: 13px; }
+
+        .grid-actions { display: flex; gap: 6px; flex-wrap: wrap; }
+
+        /* Normalize button baseline */
+
+        .grid-actions * { box-sizing: border-box; }
+
+        .grid-notifications { grid-column: 2; grid-row: 1 / span 2; display: flex; flex-direction: column; }
+
+        .status-bar { font-size: 14px; margin-bottom: 6px; color: #495057; }
+
+        .title-banner-stack { padding: 0.8px 20px 0 20px; }
+        .title-banner-stack .document-title { margin: 4px 0 6px 0; font-weight: 600; font-size: 16px; color: #343a40; text-align:center; }
+
+        .title-banner-stack #viewerMessage { margin: 0 0 6px 0; }
+
+        .title-banner-stack #checkoutStatus { margin: 0 0 10px 0; text-align:center; }
+
+    </style>
+
+
+
+    <script>
+
+        // Load theme from server and set CSS variables
+
+        (async function applyServerTheme(){
+
+            try {
+
+                const r = await fetch('http://localhost:3001/api/theme');
+
+                const j = await r.json();
+
+                const c = j && j.theme && j.theme.colors;
+
+                if (!c) return;
+
+                const root = document.documentElement;
+
+                Object.entries({
+
+                    '--bg-surface': c.bgSurface,
+
+                    '--bg-muted': c.bgMuted,
+
+                    '--text-primary': c.textPrimary,
+
+                    '--text-muted': c.textMuted,
+
+                    '--border': c.border,
+
+                    '--accent': c.accent,
+
+                    '--status-bg': c.statusBg,
+
+                    '--status-text': c.statusText,
+
+                    '--pill-blue-bg': c.pillBg,
+
+                    '--pill-blue-text': c.pillText,
+
+                    '--viewer-bg': c.viewerBg,
+
+                    '--viewer-text': c.viewerText
+
+                }).forEach(([k,v]) => { if (v) root.style.setProperty(k, v); });
+
+            } catch(_) {}
+
+        })();
+
+    </script>
+
+
+
+    <!-- Title + banners above the two-column grid -->
+
+    <div class="title-banner-stack">
+
+        
+        <p class="document-title" id="document-title" style="margin-bottom:6px; text-align:center;">Title: No document loaded</p>
+
+        <div id="viewerMessage" class="viewer-message" style="display: none;"></div>
+
+        <div id="checkoutStatus" class="checkout-status" style="display: none;"></div>
+
+        <div id="checkoutBanner" class="checkout-banner" style="display: none;"></div>
+
+    </div>
+
+
+
+    <div class="controls-grid">
+
+        <!-- Left: Users + Actions -->
+
+        <div class="grid-card" style="grid-column:1; grid-row:1; background:#fff3cd; border:1px solid #ffeaa7; border-radius:6px;">
+
+
+            <div class="grid-actions" style="align-items:center; gap:8px; padding:8px;">
+
+                <div class="current-user">
+                    <span class="user-label">User:</span>
+                    <span id="currentUserDisplay" class="user-name">Loading...</span>
+                    <span id="currentUserRole" class="user-role">(editor)</span>
+                    <span id="approvalsPillWeb" class="pill-blue" style="display:inline-block; padding:4px 10px; border-radius:999px; font-weight:600; font-size:12px; margin-left:8px;">—/— approved</span>
+                    <button id="btnNotificationBell" title="Notifications" aria-label="Open notifications" onclick="openNotificationModal()" style="margin-left:8px; display:inline-flex; align-items:center; justify-content:center; width:28px; height:28px; border-radius:50%; border:1px solid #dee2e6; background:#fff; cursor:pointer; position:relative;">
+                        <span style="font-size:14px;">🔔</span>
+                        <span id="notificationBellBadge" style="display:none; position:absolute; top:-4px; right:-4px; background:#dc3545; color:#fff; border-radius:999px; padding:0 5px; font-size:10px; line-height:16px; min-width:16px; text-align:center;">0</span>
+                    </button>
+                </div>
+                 <div class="section-body" style="display:flex; flex-direction:column; gap:8px;">
+                     <div style="display:flex; align-items:center; gap:8px; margin-left:-3px;">
+                         <label for="userSwitcher" style="width:120px;">Switch user:</label>
+                         <select id="userSwitcher" class="shared-dropdown user-select" onchange="switchUser(this.value)" style="width:200px;">
+                            <option value="">no change</option>
+                </select>
+                        <button id="templatesBtnWeb" onclick="openTemplatesModal()" class="shared-dropdown" style="margin-left:8px; cursor:pointer; background:#fff !important; color:#111 !important; border:1px solid #dee2e6 !important; border-radius:6px !important; padding:8px 12px !important; display:inline-flex; align-items:center; justify-content:flex-start; text-align:left; width:200px;">Templates</button>
+            </div>
+                     <div style="display:flex; align-items:center; gap:8px;">
+                         <label for="webDocActionsSelect" style="width:115px;">Document actions:</label>
+                         <select id="webDocActionsSelect" class="shared-dropdown user-select" style="width:200px; margin-left:5px;" onfocus="refreshWebDropdownFromMatrix()" onchange="onWebDocActionChange(this.value)">
+                             <option value="">select</option>
+                             <option value="compile">Compile</option>
+                         </select>
+                         <button id="backToOpenGovBtn" class="shared-dropdown" onclick="window.openOpenGovModal && window.openOpenGovModal();" style="margin-left:8px; cursor:pointer; background:#fff !important; color:#111 !important; border:1px solid #dee2e6 !important; border-radius:6px !important; padding:8px 12px !important; display:inline-flex; align-items:center; justify-content:flex-start; text-align:left; width:200px;">Take Me Back to OpenGov</button>
+                     </div>
+                 </div>
+             </div>
+
+            <div id="docActionsDropdown_grid" class="dropdown" style="display:none;"></div>
+
+        </div>
+
+
+
+        <!-- Right: Chat (span 2 rows) -->
+        <div class="grid-card" style="grid-column:2; grid-row:1 / span 2; display:flex; flex-direction:column;">
+            <div style="display:flex; align-items:center; justify-content:space-between; padding:8px 10px; border-bottom:1px solid #e9ecef;">
+                <div class="grid-title" style="margin:0;">💬 Chat</div>
+                <div style="font-size:12px; color:#6c757d;">experimental</div>
+            </div>
+            <div id="chatPanel" style="display:flex; flex-direction:column; gap:8px; padding:10px; height:100%;">
+                <div id="chatMessages" style="flex:1 1 auto; overflow:auto; border:1px solid #e9ecef; border-radius:6px; padding:10px; background:#fff;">
+                    <div style="opacity:.6; font-size:12px;">No messages yet</div>
+                </div>
+                <div style="display:flex; gap:8px; align-items:flex-start;">
+                    <textarea id="chatInput" rows="2" placeholder="Type a message..." style="flex:1 1 auto; resize:vertical; border:1px solid #dee2e6; border-radius:6px; padding:8px; font-size:13px;"></textarea>
+                    <button id="chatSend" class="shared-dropdown" style="min-width:90px;">Send</button>
+                </div>
+            </div>
+        </div>
+
+    </div>
+
+
+
+    <!-- CLEAN 3-COLUMN LAYOUT (legacy center banners removed; single source above) -->
+
+    <div class="main-content-3col" style="display: flex !important; flex-direction: row !important; gap: 20px; padding: 20px; align-items: flex-start !important; width: 100% !important; box-sizing: border-box !important;">
+
+        <div class="left-column buttons-column" style="width: 0 !important; flex-shrink: 0 !important; display: flex !important; flex-direction: column !important; gap: 5px;"></div>
+
+        <div class="right-column" style="display:none;"></div>
+
+    </div>
+
+
+
+
+
+
+    
+    <!-- Hidden file input -->
+
+    <input type="file" id="fileInput" accept=".docx,.doc" style="display: none;" onchange="handleFileSelect(event)">
+
+
+
+    <div class="viewer-container">
+
+        <div id="superdoc-toolbar"></div>
+
+
+
+        <div id="superdoc">
+
+            <div class="empty-state">
+
+                <h2>Welcome to OpenGov Contract Redlining</h2>
+
+                <p>Real-time collaboration and redlining - the future of contracting!</p>
+
+                <p>Ready for document collaboration workflow.</p>
+
+            </div>
+
+        </div>
+
+    </div>
+
+    <!-- COMPILE modal (full) -->
+    <div id="compileModal" style="display:none; position:fixed; inset:0; z-index:2147483647;">
+        <div onclick="closeCompileModal()" style="position:absolute; inset:0; background: rgba(0,0,0,0.35);"></div>
+        <div style="position:absolute; top:50%; left:50%; transform: translate(-50%, -50%); background:#fff; border-radius:10px; width:min(640px, 92vw); max-height:80vh; overflow:auto; padding:16px; box-shadow:0 8px 24px rgba(0,0,0,0.25);">
+            <div style="display:flex; align-items:center; justify-content:space-between; margin-bottom:10px;">
+                <div style="font-size:16px; font-weight:600;">Compile</div>
+            </div>
+            <div id="compileBodyWeb"></div>
+        </div>
+    </div>
+
+
+
+    <!-- Notification Modal -->
+
+    <div id="notificationModal" class="notification-modal" style="display: none;">
+
+        <div class="notification-modal-backdrop" onclick="closeNotificationModal()"></div>
+
+        <div class="notification-modal-content">
+
+            <div class="notification-modal-header">
+
+                <h3 class="notification-modal-title">🔔 Notifications</h3>
+
+                <button class="notification-modal-close" onclick="closeNotificationModal()">×</button>
+
+            </div>
+
+            <div class="notification-modal-body" id="notificationModalBody">
+
+                <div class="no-notifications">
+
+                    No notifications yet
+
+                </div>
+
+            </div>
+
+        </div>
+
+    </div>
+
+
+
+    <!-- Send to Vendor Modal -->
+
+    <div id="vendorModal" class="notification-modal" style="display: none;">
+
+        <div class="notification-modal-backdrop" onclick="closeVendorModal()"></div>
+
+        <div class="notification-modal-content">
+
+            <div class="notification-modal-header">
+
+                <h3 class="notification-modal-title">📤 Send to Vendor</h3>
+
+                <button class="notification-modal-close" onclick="closeVendorModal()">×</button>
+
+                </div>
+
+            <div class="notification-modal-body" style="max-height:70vh; overflow:auto;">
+
+                <form id="vendorForm" onsubmit="sendToVendor(event)">
+
+                    <div style="margin-bottom: 15px;">
+
+                        <label style="display: block; margin-bottom: 5px; font-weight: 600;">Vendor:</label>
+
+                        <input type="text" id="vendorCompany" value="Moti's Builders" readonly 
+
+                               style="width: 100%; padding: 8px; border: 1px solid #ccc; border-radius: 4px; background: #f5f5f5;">
+
+                </div>
+
+                    <div style="margin-bottom: 15px;">
+
+                        <label style="display: block; margin-bottom: 5px; font-weight: 600;">Contact Name:</label>
+
+                        <input type="text" id="vendorName" value="Hoo R. U" required
+
+                               style="width: 100%; padding: 8px; border: 1px solid #ccc; border-radius: 4px;">
+
+                </div>
+
+                    <div style="margin-bottom: 15px;">
+
+                        <label style="display: block; margin-bottom: 5px; font-weight: 600;">Email:</label>
+
+                        <input type="email" id="vendorEmail" value="moti@real.builders" required
+
+                               style="width: 100%; padding: 8px; border: 1px solid #ccc; border-radius: 4px;">
+
+                </div>
+
+                    <div style="margin-bottom: 20px;">
+
+                        <label style="display: block; margin-bottom: 5px; font-weight: 600;">Notes (optional):</label>
+
+                        <textarea id="vendorNotes" placeholder="Add any notes or instructions for the vendor..."
+
+                               style="width: 100%; padding: 8px; border: 1px solid #ccc; border-radius: 4px; resize: vertical; min-height: 80px; font-family: inherit;"></textarea>
+
+                </div>
+
+                    <div style="position:sticky; bottom:0; background:#fff; padding-top:10px; display: flex; gap: 10px; justify-content: flex-end; border-top: 1px solid #e5e7eb; z-index:2;">
+
+                        <button type="button" onclick="closeVendorModal()" 
+
+                                style="padding: 8px 16px !important; border: 1px solid #cbd5e1 !important; background: #ffffff !important; color:#111 !important; border-radius: 4px !important; cursor: pointer !important;">
+
+                            Cancel
+
+                        </button>
+
+                        <button type="submit" 
+
+                                style="padding: 8px 16px !important; border: 1px solid #005ea2 !important; background: #0078d4 !important; color: #ffffff !important; border-radius: 4px !important; cursor: pointer !important;">
+
+                            Send to Vendor
+
+                        </button>
+
+                </div>
+
+                </form>
+
+            </div>
+
+    </div>
+
+
+
+    <!-- Vendor Confirmation Modal -->
+
+    <div id="vendorConfirmationModal" class="notification-modal" style="display: none;">
+
+        <div class="notification-modal-backdrop" onclick="closeVendorConfirmationModal()"></div>
+
+        <div class="notification-modal-content">
+
+            <div class="notification-modal-header">
+
+                <h3 class="notification-modal-title">✅ Confirmation</h3>
+
+                <button class="notification-modal-close" onclick="closeVendorConfirmationModal()">×</button>
+
+            </div>
+
+            <div class="notification-modal-body">
+
+                <p style="text-align: center; font-size: 16px; margin: 20px 0;">Your vendor has been emailed</p>
+
+                <div style="display: flex; justify-content: center;">
+
+                    <button onclick="closeVendorConfirmationModal()" 
+
+                            style="padding: 10px 20px; background: #0078d4; color: white; border: none; border-radius: 4px; cursor: pointer; font-size: 14px;">
+
+                        OK
+
+                    </button>
+
+                </div>
+
+            </div>
+
+        </div>
+
+    </div>
+
+
+
+    <!-- Users Modal -->
+
+    <div id="usersModal" class="notification-modal" style="display:none;">
+
+        <div class="notification-modal-backdrop" onclick="closeUsersModal()"></div>
+
+        <div class="notification-modal-content" style="max-width:700px; width:90%;">
+
+            <div class="notification-modal-header">
+
+                <h3 class="notification-modal-title">👥 Users</h3>
+
+                <button class="notification-modal-close" onclick="closeUsersModal()">×</button>
+
+            </div>
+
+            <div class="notification-modal-body">
+
+                <div id="usersModalBody">
+
+                    <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:8px;">
+
+                        <div style="font-weight:600;">Approval details</div>
+
+                        <button class="btn btn-secondary" onclick="refreshUsersModal()">Refresh</button>
+
+                    </div>
+
+                    <div style="overflow:auto; max-height:50vh; border:1px solid #e9ecef; border-radius:6px;">
+
+                        <table style="width:100%; border-collapse:collapse; font-size:14px;">
+
+                            <thead style="position:sticky; top:0; background:#f8f9fa;">
+
+                                <tr id="approvalsHeaderRowWeb">
+
+                                    <th style="text-align:left; padding:8px; border-bottom:1px solid #e9ecef;" data-col="user">User</th>
+
+                                    <th style="text-align:left; padding:8px; border-bottom:1px solid #e9ecef;" data-col="role">Role</th>
+
+                                    <th style="text-align:left; padding:8px; border-bottom:1px solid #e9ecef; width:110px;" data-col="status">Approved</th>
+
+                                    <th style="text-align:left; padding:8px; border-bottom:1px solid #e9ecef;" data-col="actions">Action</th>
+
+                                </tr>
+
+                            </thead>
+
+                            <tbody id="usersTableBody"></tbody>
+
+                        </table>
+
+                    </div>
+
+                </div>
+
+            </div>
+
+        </div>
+
+    </div>
+
+
+
+    <!-- Load SuperDoc from local node_modules -->
+
+    <script>
+
+        window.testModeToggle = function() {
+
+            console.log(" TESTING MODE TOGGLE...");
+
+            const role = getCurrentUserRole();
+
+            const superdoc = window.currentSuperdoc;
+
+            const toolbar = document.querySelector("#superdoc-toolbar");
+
+            console.log("Role:", role, "Expected:", getSuperdocMode(role));
+
+            console.log("SuperDoc Mode:", superdoc && superdoc.getMode ? superdoc.getMode() : (superdoc && superdoc.mode ? superdoc.mode : "unknown"));
+
+            console.log("Toolbar:", !!toolbar);
+
+            return { role, expectedMode: getSuperdocMode(role), currentMode: superdoc ? superdoc.getDocumentMode() : "none" };
+
+        };
+
+    </script>
 
     <script src="./node_modules/@harbour-enterprises/superdoc/dist/superdoc.umd.js"></script>
 
@@ -2040,7 +2532,7 @@
                     console.log('📡 Connected to real-time events');
 
                      // Unified initial load when SSE connects
-                     setTimeout(() => { try { fetchUnifiedStateWeb(); } catch(_) {} }, 300);
+                     setTimeout(() => { try { fetchUnifiedStateWeb(); loadInitialApprovalsData(); } catch(_) {} }, 300);
                 };
 
                  
@@ -2177,10 +2669,7 @@
 
                     } else if (data.type === 'approvals-updated' || data.type === 'approvals-list-updated' || data.type === 'approvals-notes-updated' || data.type === 'approvals-reminder-sent') {
                          console.log('📡 WEB SSE: approvals-change received:', data);
-                         // Update pill immediately if counts provided
-                         if (typeof data.approved === 'number' && typeof data.total === 'number' && typeof window.__updateApprovalsPillWeb === 'function') {
-                             window.__updateApprovalsPillWeb(data.approved, data.total);
-                         }
+                         // Pill counts are authoritative from approvals/state; do not use SSE-provided counts to avoid drift
                          // Always re-pull unified snapshot to avoid drift and races
                          fetchUnifiedStateWeb();
                          // If approvals modal is open, refresh only for structural changes; skip on reminder to preserve inline feedback
@@ -2196,7 +2685,8 @@
                                    const statusJson = await statusResp.json();
                                    isEditor = !!(statusJson && statusJson.platformUsers && statusJson.platformUsers.web && statusJson.platformUsers.web.role === 'editor');
                                  } catch(_) {}
-                                 const st = await ApprovalsClient.getState();
+                                 const currentId = (window.currentDocumentState && window.currentDocumentState.currentDocument && window.currentDocumentState.currentDocument.id) || 'default-doc';
+                                 const st = await ApprovalsClient.getState({ documentId: currentId });
                                  if (typeof renderApprovalsTableWeb === 'function') {
                                    renderApprovalsTableWeb(st, { actorId, isEditor });
                                  }
@@ -3919,62 +4409,6 @@
 
 
         // Save functions will go here
-        // ===== CHAT (SHELL) =====
-        (function setupChat(){
-            try {
-                const messagesEl = document.getElementById('chatMessages');
-                const inputEl = document.getElementById('chatInput');
-                const sendBtn = document.getElementById('chatSend');
-                const leftCard = document.getElementById('leftActionsCard');
-                const chatCard = document.getElementById('chatCard');
-                function ensureChatHeightMatchesLeft(){
-                    try {
-                        if (!leftCard || !chatCard) return;
-                        const h = leftCard.offsetHeight;
-                        if (h && h > 0) {
-                            chatCard.style.height = h + 'px';
-                            chatCard.style.maxHeight = h + 'px';
-                            chatCard.style.minHeight = h + 'px';
-                        }
-                    } catch(_) {}
-                }
-                // initial sizing and on resize
-                ensureChatHeightMatchesLeft();
-                window.addEventListener('resize', ensureChatHeightMatchesLeft);
-                if (!messagesEl || !inputEl || !sendBtn) return;
-                function appendMessage(text, role){
-                    const row = document.createElement('div');
-                    row.style.margin = '6px 0';
-                    row.style.display = 'flex';
-                    row.style.gap = '8px';
-                    row.style.alignItems = 'flex-start';
-                    const bubble = document.createElement('div');
-                    bubble.style.padding = '8px 10px';
-                    bubble.style.borderRadius = '10px';
-                    bubble.style.maxWidth = '80%';
-                    bubble.style.whiteSpace = 'pre-wrap';
-                    bubble.style.fontSize = '13px';
-                    if (role === 'user') { bubble.style.background = '#e7f1ff'; bubble.style.marginLeft = 'auto'; }
-                    else { bubble.style.background = '#f8f9fa'; bubble.style.marginRight = 'auto'; }
-                    bubble.textContent = text;
-                    row.appendChild(bubble);
-                    messagesEl.appendChild(row);
-                    // keep scroll at bottom
-                    try { messagesEl.scrollTop = messagesEl.scrollHeight; } catch(_) {}
-                    // maintain fixed container height
-                    ensureChatHeightMatchesLeft();
-                }
-                function send(){
-                    const text = (inputEl.value || '').trim();
-                    if (!text) return;
-                    appendMessage(text, 'user');
-                    inputEl.value = '';
-                }
-                sendBtn.addEventListener('click', send);
-                inputEl.addEventListener('keydown', (e)=>{ if(e.key==='Enter' && !e.shiftKey){ e.preventDefault(); send(); }});
-                window.__chat = { appendMessage };
-            } catch(_) {}
-        })();
 
 
 
@@ -4339,7 +4773,7 @@
 
             updateNotificationDot();
 
-            renderNotifications(); // Update modal
+            renderNotifications(); // Update both modal and window
 
             // Increment bell badge if modal is closed
             try {
@@ -4414,8 +4848,11 @@
 
              
             
-            // Update modal only (inline notifications box removed in favor of bell modal + chat)
+            // Update both modal and transparent window
+
             if (modalBody) modalBody.innerHTML = notificationsHtml;
+
+            if (windowBody) windowBody.innerHTML = notificationsHtml;
 
         }
 
@@ -4917,7 +5354,7 @@
                           }
                       };
                   } catch(_) {}
-              }
+             }
          };
          window.closeCompileModal = function(){ try { document.getElementById('compileModal').style.display = 'none'; } catch(_){} };
 
@@ -5188,9 +5625,10 @@
                  const actorId = actor && actor.id ? actor.id : null;
                  if (!actorId) return;
                  const currentId = (window.currentDocumentState && window.currentDocumentState.currentDocument && window.currentDocumentState.currentDocument.id) || 'default-doc';
+                 const API_BASE = 'http://localhost:3001';
                  const [mxResp, apprResp] = await Promise.all([
-                     fetch(`http://localhost:3001/api/state-matrix?userRole=${encodeURIComponent(getCurrentUserRole())}&platform=web&userId=${encodeURIComponent(actorId)}`),
-                     fetch(`http://localhost:3001/api/approval-matrix?actorPlatform=web&actorId=${encodeURIComponent(actorId)}&documentId=${encodeURIComponent(currentId)}`)
+                     fetch(`${API_BASE}/api/state-matrix?userRole=${encodeURIComponent(getCurrentUserRole())}&platform=web&userId=${encodeURIComponent(actorId)}`),
+                     fetch(`${API_BASE}/api/approval-matrix?actorPlatform=web&actorId=${encodeURIComponent(actorId)}&documentId=${encodeURIComponent(currentId)}`)
                  ]);
                  const mxData = await mxResp.json();
                  const apprData = await apprResp.json();
@@ -5208,13 +5646,15 @@
                          window.applyStateMatrixToUI(unified.matrixConfig);
                      }
                  }
-                 // Authoritative counts for top pill via approvals/state
+                 // Authoritative counts for top pill via approvals/state for the live document id
                  (async () => {
                      try {
-                         const st = await ApprovalsClient.getState();
-                         if (st && st.summary && typeof window.__updateApprovalsPillWeb === 'function') {
-                             window.__updateApprovalsPillWeb(st.summary.approvedCount || 0, st.summary.totalUsers || 0);
-                         }
+                         const currentId = await getWebCurrentDocId();
+                         console.log('WEB PILL: docId for approvals/state', currentId);
+                         const st = await fetch(`http://localhost:3001/api/approvals/state?documentId=${encodeURIComponent(currentId)}`, { cache: 'no-store' }).then(r => r.json());
+                          if (st && st.summary && typeof window.__updateApprovalsPillWeb === 'function') {
+                              window.__updateApprovalsPillWeb(st.summary.approvedCount || 0, st.summary.totalUsers || 0);
+                          }
                      } catch(_) {}
                  })();
                  try { refreshUsersModal(); } catch(_) {}
@@ -5223,145 +5663,100 @@
 
          // Load initial approvals data for pill display (called on SSE connect)
          async function loadInitialApprovalsData() {
-             try {
-                 const st = await ApprovalsClient.getState();
-                 if (st && st.summary && typeof window.__updateApprovalsPillWeb === 'function') {
-                     console.log(`📊 WEB: Initial approvals loaded - ${st.summary.approvedCount}/${st.summary.totalUsers} approved`);
-                     window.__updateApprovalsPillWeb(st.summary.approvedCount || 0, st.summary.totalUsers || 0);
-                 }
-             } catch (error) {
-                 console.error('📊 WEB: Error loading initial approvals data:', error);
-                 if (window.__updateApprovalsPillWeb) window.__updateApprovalsPillWeb(0, 0);
-             }
+             try { window.ApprovalsUISyncWeb && window.ApprovalsUISyncWeb.refreshDebounced(); }
+             catch (error) { console.error('📊 WEB: Error loading initial approvals data:', error); if (window.__updateApprovalsPillWeb) window.__updateApprovalsPillWeb(0, 0); }
          }
 
         async function refreshUsersModal() {
 
             try {
-
-                // Determine current document id; fall back to 'default-doc'
-
-                const currentId = (window.currentDocumentState && window.currentDocumentState.currentDocument && window.currentDocumentState.currentDocument.id) || 'default-doc';
-
+                console.log('WEB MODAL: start refreshUsersModal');
+                let currentId = 'doc-current';
+                try {
+                    const doc = await fetch('http://localhost:3001/api/current-document', { cache: 'no-store' }).then(r => r.json());
+                    currentId = (doc && (doc.id || doc.documentId)) ? (doc.id || doc.documentId) : 'doc-current';
+                } catch(e) { console.warn('WEB MODAL: current-document failed', e); }
+                console.log('WEB MODAL: docId =', currentId);
                 const actor = (window.currentUser && window.currentUser.id) ? window.currentUser : (getCurrentUser && getCurrentUser());
-
                 const actorId = actor && actor.id ? actor.id : null;
-
                 const actorRole = actor && actor.role ? actor.role : (getCurrentUserRole && getCurrentUserRole());
-
-
-
-                // Fetch approval matrix (users + per-row config + approvals summary)
-
-                const matrixResp = await fetch(`http://localhost:3001/api/approval-matrix?actorPlatform=web&actorId=${encodeURIComponent(actorId || '')}&documentId=${encodeURIComponent(currentId)}`);
-
-                const matrixData = await matrixResp.json();
-
-                const users = Array.isArray(matrixData.users) ? matrixData.users : [];
-
+                const isEditor = String(actorRole || '').toLowerCase() === 'editor';
+                let matrixData = { matrix: {} };
+                try {
+                    const mr = await fetch(`http://localhost:3001/api/approval-matrix?actorPlatform=web&actorId=${encodeURIComponent(actorId || '')}&documentId=${encodeURIComponent(currentId)}`, { cache: 'no-store' });
+                    matrixData = await mr.json();
+                    console.log('WEB MODAL: matrix fetched (for flags only)', { ok: mr.ok, users: (matrixData.users||[]).length });
+                } catch(e) { console.warn('WEB MODAL: matrix fetch failed (ignored)', e); }
+                const sr = await fetch(`http://localhost:3001/api/approvals/state?documentId=${encodeURIComponent(currentId)}`, { cache: 'no-store' });
+                const stateData = await sr.json();
+                console.log('WEB MODAL: state fetched (authoritative roster)', { ok: sr.ok, approvers: (stateData.approvers||[]).length, summary: stateData.summary });
+                const approvers = Array.isArray(stateData.approvers) ? stateData.approvers.slice().sort((a,b)=>a.order-b.order) : [];
                 const matrix = matrixData.matrix || {};
-
-                const approvals = Array.isArray(matrixData.approvals) ? matrixData.approvals : [];
-
-
-
+                // Map by userId for status lookup
+                const approvalMap = (approvers || []).reduce((acc, a) => { acc[a.userId] = a; return acc; }, {});
+                const approvedCount = stateData && stateData.summary ? stateData.summary.approvedCount : approvers.filter(a => a.status === 'approved').length;
+                const totalCount = approvers.length;
+                const matrixUsers = Array.isArray(matrixData.users) ? matrixData.users : [];
                 const modalTbody = document.getElementById('usersTableBody');
-
                 const inlineTbody = document.getElementById('usersInlineBody');
-
                 if (modalTbody) modalTbody.innerHTML = '';
-
                 if (inlineTbody) inlineTbody.innerHTML = '';
-
-
-
                 // Update header count e.g., "Users (1/3 approved)"
-
-                const approvalMap = (approvals || []).reduce((acc, a) => { acc[a.userId] = a; return acc; }, {});
-
-                const approvedCount = (approvals || []).filter(a => a.status === 'approved').length;
-
-                const totalCount = users.length;
-
                 const usersCardTitle = document.querySelector('.grid-card[style*="grid-column:1; grid-row:1;"] .grid-title');
-
                 if (usersCardTitle) {
-
                     const ui = window.__approvalsUi;
-
                     const title = ui?.title || 'Approvals';
-
                     usersCardTitle.textContent = `${title}`;
-
                     if (ui?.colors?.title) usersCardTitle.style.color = ui.colors.title;
-
                 }
-
                  // REMOVED: Local pill calculation to prevent race condition with SSE events
                  // Only SSE events should update the pill to ensure consistency
                  
                 
                 // Apply shared column headers
-
                 const headerRow = document.getElementById('approvalsHeaderRowWeb');
-
                 const ui = window.__approvalsUi;
-
                 if (headerRow && ui?.columns) {
-
                     headerRow.querySelector('[data-col="user"]').textContent = ui.columns.user || 'User';
-
                     headerRow.querySelector('[data-col="role"]').textContent = ui.columns.role || 'Role';
-
                     headerRow.querySelector('[data-col="status"]').textContent = ui.columns.status || 'Approved';
-
                     headerRow.querySelector('[data-col="actions"]').textContent = ui.columns.actions || 'Actions';
-
                 }
-
-
-
-                users.forEach(u => {
-
+                approvers.forEach(a => {
+                    const canonical = (matrixUsers || []).find(mu => mu.id === a.userId) || {};
+                    const u = { id: a.userId, name: a.name || a.userId, role: canonical.role || '' };
                     const tr = document.createElement('tr');
-
-                     tr.setAttribute('data-user-id', u.id);
+                    tr.setAttribute('data-user-id', u.id);
+                    tr.setAttribute('data-userid', u.id);
+                    tr.setAttribute('data-user-name', u.name);
                     const row = matrix && matrix[u.id] ? matrix[u.id] : { status: 'no', showButtons: true, approveEnabled: true, rejectEnabled: true };
-
-                    const status = approvalMap[u.id]?.status || row.status || 'no';
-
+                    const status = (approvalMap[u.id] && approvalMap[u.id].status) || row.status || 'no';
                     const isApproved = status === 'approved';
-
                     const uiCfg = window.__approvalsUi;
-
                     const pill = isApproved
-
                       ? `<span style=\"display:inline-block;padding:2px 8px;border-radius:12px;font-size:12px;font-weight:600;color:${uiCfg?.colors?.pillApprovedText || '#155724'};background:${uiCfg?.colors?.pillApprovedBg || '#d4edda'};\">${uiCfg?.labels?.approved || 'Approved'}<\/span>`
-
                       : `<span style=\"display:inline-block;padding:2px 8px;border-radius:12px;font-size:12px;font-weight:600;color:${uiCfg?.colors?.pillRejectedText || '#721c24'};background:${uiCfg?.colors?.pillRejectedBg || '#f8d7da'};\">${status === 'rejected' ? (uiCfg?.labels?.rejected || 'Rejected') : (uiCfg?.labels?.no || 'No')}<\/span>`;
-
                     tr.innerHTML = `
 
-                         <td data-col="user" style="padding:8px; border-bottom:1px solid #f1f3f5;">${u.name}</td>
-                         <td data-col="role" style="padding:8px; border-bottom:1px solid #f1f3f5;">${u.role}</td>
-                         <td data-col="status" style="padding:8px; border-bottom:1px solid #f1f3f5; white-space:nowrap;">${pill}</td>
-                         <td data-col="actions" style="padding:8px; border-bottom:1px solid #f1f3f5;">
+                         <td data-col=\"user\" style=\"padding:8px; border-bottom:1px solid #f1f3f5;\">${u.name}</td>
+                         <td data-col=\"role\" style=\"padding:8px; border-bottom:1px solid #f1f3f5;\">${u.role}</td>
+                         <td data-col=\"status\" style=\"padding:8px; border-bottom:1px solid #f1f3f5; white-space:nowrap;\">${pill}</td>
+                         <td data-col=\"actions\" style=\"padding:8px; border-bottom:1px solid #f1f3f5;\">
                             ${row.showButtons ? `
+                                <div style=\\\"display:flex; gap:6px;\\\">`
+ +
+ `
+                                    <button class=\\\"btn\\\" ${(row.approveEnabled && !isApproved) ? '' : 'disabled'} data-action=\\\"approve\\\" data-user=\\\"${u.id}\\\" data-status=\\\"${status}\\\">Approve</button>
 
-                                <div style=\"display:flex; gap:6px;\">
-
-                                    <button class=\"btn\" ${isApproved ? 'disabled' : ''} data-action=\"approve\" data-user=\"${u.id}\" data-status=\"${status}\">Approve</button>
-
-                                    <button class=\"btn\" ${status === 'rejected' ? 'disabled' : ''} data-action=\"reject\" data-user=\"${u.id}\" data-status=\"${status}\">Reject</button>
+                                    <button class=\\\"btn\\\" ${(row.rejectEnabled && status !== 'rejected') ? '' : 'disabled'} data-action=\\\"reject\\\" data-user=\\\"${u.id}\\\" data-status=\\\"${status}\\\">Reject</button>
 
                                 </div>
 
-                            ` : `<span style=\"opacity:.6; font-size:12px;\">No actions</span>`}
+                            ` : `<span style=\\\"opacity:.6; font-size:12px;\\\">No actions</span>`}
 
                         </td>
 
                      `;
-
                      if (modalTbody) {
                          modalTbody.appendChild(tr);
                          console.log('🔍 WEB: Created row for user:', u.name, {
@@ -5370,59 +5765,11 @@
                              isApproved: isApproved,
                              buttonsInHTML: tr.innerHTML.includes('data-action="approve"')
                          });
-                         
-                         // FIX: Apply proper styling via inline styles (highest specificity)
-                         const modalButtons = tr.querySelectorAll('button[data-user]');
-                         modalButtons.forEach(btn => {
-                             const action = btn.getAttribute('data-action');
-                             const isApproveBtn = action === 'approve';
-                             
-                             // Use approved/rejected colors to match status pills
-                             const normalBg = isApproveBtn ? '#d4edda' : '#f8d7da';  // Light green/red
-                             const normalColor = isApproveBtn ? '#155724' : '#721c24';  // Dark green/red
-                             const normalBorder = isApproveBtn ? '#c3e6cb' : '#f5c6cb';  // Medium green/red
-                             const hoverBg = isApproveBtn ? '#c3e6cb' : '#f5c6cb';  // Darker on hover
-                             
-                             btn.style.cssText = `
-                                 background: ${normalBg} !important;
-                                 color: ${normalColor} !important; 
-                                 border: 1px solid ${normalBorder} !important;
-                                 border-radius: 4px !important;
-                                 padding: 6px 10px !important;
-                                 font-size: 12px !important;
-                                 font-weight: 500 !important;
-                                 margin: 0 2px !important;
-                                 cursor: pointer !important;
-                                 display: inline-block !important;
-                                 visibility: visible !important;
-                                 opacity: 1 !important;
-                                 position: relative !important;
-                                 z-index: 1 !important;
-                             `;
-                             
-                             // Add hover effects with matching colors
-                             btn.addEventListener('mouseenter', () => {
-                                 if (!btn.disabled) {
-                                     btn.style.background = `${hoverBg} !important`;
-                                     btn.style.borderColor = `${hoverBg} !important`;
-                                 }
-                             });
-                             btn.addEventListener('mouseleave', () => {
-                                 if (!btn.disabled) {
-                                     btn.style.background = `${normalBg} !important`;
-                                     btn.style.borderColor = `${normalBorder} !important`;
-                                 }
-                             });
-                         });
+                         // styling retained below
                      }
-                 });
-
-
-
+                });
                 // Bind click handlers to update state and re-render
-
                 const bindActions = (root) => {
-
                      const buttons = (root || document).querySelectorAll('button[data-user]');
                      console.log('🔍 WEB: Found approval buttons for binding:', buttons.length);
                      // Debugging removed - buttons now working with inline styling fix
@@ -5490,15 +5837,11 @@
                                      documentId: currentId
                                  });
                                  
-                                await fetch(`http://localhost:3001/api/document/${currentId}/approvals`, {
-
-                                    method: 'POST',
-
-                                    headers: { 'Content-Type': 'application/json' },
-
-                                    body: JSON.stringify({ userId: targetUserId, action: nextAction, actorId: (window.currentUser && window.currentUser.id) || 'user1' })
-
-                                });
+                                if (nextAction === 'approve') {
+                                  await ApprovalsClient.approve({ documentId: currentId, targetUserId: targetUserId, actorId: (window.currentUser && window.currentUser.id) || 'user1' });
+                                } else {
+                                  await ApprovalsClient.reject({ documentId: currentId, targetUserId: targetUserId, actorId: (window.currentUser && window.currentUser.id) || 'user1', comment: '' });
+                                }
 
                             } catch (err) {
 
@@ -5520,10 +5863,10 @@
 
                 if (modalTbody) bindActions(modalTbody);
 
+                console.log('WEB MODAL: end refreshUsersModal');
             } catch (err) {
-
+                console.error('WEB MODAL: refreshUsersModal failed', err);
                 addNotification('Error loading users/approvals', 'error');
-
             }
 
         }
@@ -6900,6 +7243,7 @@
         function renderApprovalsTableWeb(state, opts) {
             const body = document.getElementById('approvalsBodyWeb');
             if (!body) return;
+            const currentId = (window.currentDocumentState && window.currentDocumentState.currentDocument && window.currentDocumentState.currentDocument.id) || 'default-doc';
             const approvers = (state && state.approvers) ? state.approvers.slice().sort((a,b)=>a.order-b.order) : [];
             const isEditor = !!opts.isEditor;
             const actorId = opts.actorId;
@@ -6949,8 +7293,8 @@
                             // If unchecking self, do it immediately. Otherwise require confirmation.
                             if (!chk.checked) {
                                 if (actorId && userId === actorId) {
-                                    await ApprovalsClient.reject({ targetUserId: userId, actorId: actorId, comment: '' });
-                                    const st = await ApprovalsClient.getState();
+                                    await ApprovalsClient.reject({ documentId: currentId, targetUserId: userId, actorId: actorId, comment: '' });
+                                    const st = await ApprovalsClient.getState({ documentId: currentId });
                                     renderApprovalsTableWeb(st, opts);
                                     return;
                                 }
@@ -6975,7 +7319,7 @@
                                 const btnRC = bar.querySelector('#confirmRemoveWeb');
                                 const btnRX = bar.querySelector('#cancelRemoveWeb');
                                 btnRC.onclick = async () => {
-                                    try { btnRC.disabled=true; await ApprovalsClient.reject({ targetUserId: userId, actorId: actorId, comment: '' }); const st = await ApprovalsClient.getState(); renderApprovalsTableWeb(st, opts); }
+                                    try { btnRC.disabled=true; const did = await getWebCurrentDocId(); await ApprovalsClient.reject({ documentId: did, targetUserId: userId, actorId: actorId, comment: '' }); const st = await ApprovalsClient.getState({ documentId: did }); renderApprovalsTableWeb(st, opts); }
                                     catch(e){ console.error(e); }
                                     finally { try { bar.remove(); } catch(_) {} }
                                 };
@@ -7007,7 +7351,7 @@
                                 const btnC = bar.querySelector('#confirmApproveWeb');
                                 const btnX = bar.querySelector('#cancelApproveWeb');
                                 btnC.onclick = async () => {
-                                    try { btnC.disabled=true; await ApprovalsClient.approve({ targetUserId: userId, actorId: actorId }); const st = await ApprovalsClient.getState(); renderApprovalsTableWeb(st, opts); } catch(e){ console.error(e); }
+                                    try { btnC.disabled=true; const did = await getWebCurrentDocId(); await ApprovalsClient.approve({ documentId: did, targetUserId: userId, actorId: actorId }); const st = await ApprovalsClient.getState({ documentId: did }); renderApprovalsTableWeb(st, opts); } catch(e){ console.error(e); }
                                     finally { try { bar.remove(); } catch(_) {} }
                                 };
                                 btnX.onclick = () => { try { bar.remove(); } catch(_) {} };
@@ -7015,23 +7359,29 @@
                             }
                             // normal flow (self or reject)
                             if (chk.checked) {
-                                await ApprovalsClient.approve({ targetUserId: userId, actorId: actorId });
+                                const did = await getWebCurrentDocId();
+                                await ApprovalsClient.approve({ documentId: did, targetUserId: userId, actorId: actorId });
                             } else {
-                                await ApprovalsClient.reject({ targetUserId: userId, actorId: actorId, comment: '' });
+                                const did = await getWebCurrentDocId();
+                                await ApprovalsClient.reject({ documentId: did, targetUserId: userId, actorId: actorId, comment: '' });
                             }
-                            const st = await ApprovalsClient.getState();
+                            const st = await ApprovalsClient.getState({ documentId: await getWebCurrentDocId() });
                             renderApprovalsTableWeb(st, opts);
                         } catch (e) { console.error('approve/reject error', e); }
                     });
                 }
                 const btnRem = tr.querySelector('.btn-remind');
                 if (btnRem) {
+                    // Everyone can remind everyone except themselves
+                    const canRemind = userId !== actorId;
+                    btnRem.disabled = !canRemind;
                     btnRem.addEventListener('click', async () => {
                         const nameCell = tr.querySelector('td:nth-child(' + (isEditor ? 3 : 2) + ')');
                         const displayName = (nameCell && nameCell.textContent ? nameCell.textContent.trim() : userId);
                         btnRem.disabled = true; const prev = btnRem.textContent; btnRem.textContent = 'Sending...';
                         try {
-                            await ApprovalsClient.remind({ targetUserId: userId, actorId: actorId });
+                            const did = await getWebCurrentDocId();
+                            await ApprovalsClient.remind({ documentId: did, targetUserId: userId, actorId: actorId });
                             btnRem.textContent = `emailed ${displayName}`;
                             try { window.addNotification && window.addNotification(`emailed ${displayName}`, 'info'); } catch(_) {}
                             setTimeout(()=>{ btnRem.textContent = prev; btnRem.disabled = false; }, 5000);
@@ -7041,14 +7391,14 @@
                 const inpNotes = tr.querySelector('.inp-notes');
                 if (inpNotes) {
                     inpNotes.addEventListener('change', async () => {
-                        try { await ApprovalsClient.updateNotes({ targetUserId: userId, notes: inpNotes.value, actorId: actorId }); } catch(e){ console.error('notes error', e); }
+                        try { await ApprovalsClient.updateNotes({ documentId: currentId, targetUserId: userId, notes: inpNotes.value, actorId: actorId }); } catch(e){ console.error('notes error', e); }
                     });
                 }
                 const btnDel = tr.querySelector('.btn-del');
                 if (btnDel) {
                     btnDel.addEventListener('click', async () => {
                         if (!confirm('Remove this approver from the list?')) return;
-                        try { await ApprovalsClient.deleteUser({ targetUserId: userId, actorId: actorId }); const st = await ApprovalsClient.getState(); renderApprovalsTableWeb(st, opts); } catch(e){ console.error('delete error', e); }
+                        try { const did = await getWebCurrentDocId(); await ApprovalsClient.deleteUser({ documentId: did, targetUserId: userId, actorId: actorId }); const st = await ApprovalsClient.getState({ documentId: did }); renderApprovalsTableWeb(st, opts); } catch(e){ console.error('delete error', e); }
                     });
                 }
             });
@@ -7059,28 +7409,29 @@
                 if (!(t && t.classList && t.classList.contains('inp-order'))) return;
                     try {
                         const order = Array.from(body.querySelectorAll('tbody tr')).map((tr, i) => ({ userId: tr.getAttribute('data-userid'), order: Number(tr.querySelector('.inp-order')?.value || (i+1)) }));
-                        await ApprovalsClient.reorder({ order, actorId: actorId });
-                        const st = await ApprovalsClient.getState();
+                        const did = await getWebCurrentDocId();
+                        await ApprovalsClient.reorder({ documentId: did, order, actorId: actorId });
+                        const st = await ApprovalsClient.getState({ documentId: did });
                         renderApprovalsTableWeb(st, opts);
                     } catch(e){ console.error('reorder error', e); }
             });
             const refreshBtn = document.getElementById('approvalsRefreshWeb');
             if (refreshBtn) {
-                refreshBtn.onclick = async () => { const st = await ApprovalsClient.getState(); renderApprovalsTableWeb(st, opts); };
+                refreshBtn.onclick = async () => { const st = await ApprovalsClient.getState({ documentId: await getWebCurrentDocId() }); console.log('Hitting the Refresh!'); renderApprovalsTableWeb(st, opts); };
             }
             const resetBtn = document.getElementById('approvalsResetWeb');
             if (resetBtn) {
                 resetBtn.style.display = isEditor ? 'inline-block' : 'none';
                 resetBtn.onclick = async () => {
                     if (!confirm('This will reset approvals to the canonical set and clear all statuses. Continue?')) return;
-                    try { resetBtn.disabled = true; const prev=resetBtn.textContent; resetBtn.textContent='Nuking…'; await fetch('http://localhost:3001/api/approvals/reset', { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({ actorId }) }); const st = await ApprovalsClient.getState(); renderApprovalsTableWeb(st, opts); } catch(e){ console.error('reset error', e); } finally { resetBtn.disabled=false; resetBtn.textContent='Nuke it'; }
+                    try { resetBtn.disabled = true; const prev=resetBtn.textContent; resetBtn.textContent='Nuking…'; const did = await getWebCurrentDocId(); await fetch('http://localhost:3001/api/approvals/reset', { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({ actorId, documentId: did }) }); const st = await ApprovalsClient.getState({ documentId: did }); renderApprovalsTableWeb(st, opts); } catch(e){ console.error('reset error', e); } finally { resetBtn.disabled=false; resetBtn.textContent='Nuke it'; }
                 };
             }
             const addBtn2 = document.getElementById('approvalsAddUserWeb');
             if (addBtn2) {
                 addBtn2.onclick = async () => {
                     const name = prompt('Name'); if (!name) return; const email = prompt('Email'); if (!email) return;
-                    try { await ApprovalsClient.addUser({ name, email, actorId: actorId }); const st = await ApprovalsClient.getState(); renderApprovalsTableWeb(st, opts); } catch(e){ alert((e && e.message) || 'Add user failed'); }
+                    try { const did = await getWebCurrentDocId(); await ApprovalsClient.addUser({ documentId: did, name, email, actorId: actorId }); const st = await ApprovalsClient.getState({ documentId: did }); renderApprovalsTableWeb(st, opts); } catch(e){ alert((e && e.message) || 'Add user failed'); }
                 };
             }
         }
@@ -7091,7 +7442,8 @@
                 const statusResp = await fetch('http://localhost:3001/api/status');
                 const statusJson = await statusResp.json();
                 const isEditor = !!(statusJson && statusJson.platformUsers && statusJson.platformUsers.web && statusJson.platformUsers.web.role === 'editor');
-                const state = await ApprovalsClient.getState();
+                const currentId = (window.currentDocumentState && window.currentDocumentState.currentDocument && window.currentDocumentState.currentDocument.id) || 'default-doc';
+                const state = await ApprovalsClient.getState({ documentId: currentId });
                 if (typeof window.openModalById === 'function') {
                     window.openModalById('approvalsModalWeb');
                 } else {
@@ -7212,6 +7564,33 @@
         })();
     </script>
 
+    // ... existing code ...
+          // Centralized approvals UI refresh (web): resolves docId, fetches state, updates pill, refreshes modal
+          (function(){
+              let t = null;
+              async function refresh(opts={}){
+                  try {
+                      const docId = await (typeof getWebCurrentDocId === 'function' ? getWebCurrentDocId() : (async () => {
+                          const d = await fetch('http://localhost:3001/api/current-document', { cache:'no-store' }).then(r=>r.json());
+                          return (d && (d.id||d.documentId)) ? (d.id||d.documentId) : 'doc-current';
+                      })());
+                      const st = await fetch(`http://localhost:3001/api/approvals/state?documentId=${encodeURIComponent(docId)}`, { cache:'no-store' }).then(r=>r.json());
+                      const sum = st && st.summary ? st.summary : { approvedCount:0, totalUsers:0 };
+                      if (typeof window.__updateApprovalsPillWeb === 'function') {
+                          window.__updateApprovalsPillWeb(sum.approvedCount || 0, sum.totalUsers || 0);
+                      }
+                      try { await refreshUsersModal(); } catch(_) {}
+                  } catch (e) { console.warn('WEB UISync refresh failed', e); }
+              }
+              window.ApprovalsUISyncWeb = {
+                  refreshDebounced(opts={}){
+                      if (t) clearTimeout(t);
+                      t = setTimeout(() => { refresh(opts); }, 100);
+                  },
+                  refresh
+              };
+          })();
+// ... existing code ...
 </body>
 
 </html>
