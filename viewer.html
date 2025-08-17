@@ -2071,6 +2071,10 @@
                     <span id="currentUserDisplay" class="user-name">Loading...</span>
                     <span id="currentUserRole" class="user-role">(editor)</span>
                     <span id="approvalsPillWeb" class="pill-blue" style="display:inline-block; padding:4px 10px; border-radius:999px; font-weight:600; font-size:12px; margin-left:8px;">—/— approved</span>
+                    <button id="btnNotificationBell" title="Notifications" aria-label="Open notifications" onclick="openNotificationModal()" style="margin-left:8px; display:inline-flex; align-items:center; justify-content:center; width:28px; height:28px; border-radius:50%; border:1px solid #dee2e6; background:#fff; cursor:pointer; position:relative;">
+                        <span style="font-size:14px;">🔔</span>
+                        <span id="notificationBellBadge" style="display:none; position:absolute; top:-4px; right:-4px; background:#dc3545; color:#fff; border-radius:999px; padding:0 5px; font-size:10px; line-height:16px; min-width:16px; text-align:center;">0</span>
+                    </button>
                 </div>
                  <div class="section-body" style="display:flex; flex-direction:column; gap:8px;">
                      <div style="display:flex; align-items:center; gap:8px; margin-left:-3px;">
@@ -4728,6 +4732,19 @@
 
             renderNotifications(); // Update both modal and window
 
+            // Increment bell badge if modal is closed
+            try {
+                const modal = document.getElementById('notificationModal');
+                const isOpen = modal && getComputedStyle(modal).display !== 'none';
+                const badge = document.getElementById('notificationBellBadge');
+                if (badge && !isOpen) {
+                    const current = parseInt(badge.textContent || '0', 10) || 0;
+                    const next = current + 1;
+                    badge.textContent = String(next);
+                    badge.style.display = next > 0 ? 'inline-block' : 'none';
+                }
+            } catch(_) {}
+
              
             
             console.log('📝 Added notification:', notification);
@@ -4851,6 +4868,12 @@
             hasUnreadNotifications = false;
 
             updateNotificationDot();
+
+            // Also clear the bell badge
+            try {
+                const badge = document.getElementById('notificationBellBadge');
+                if (badge) { badge.textContent = '0'; badge.style.display = 'none'; }
+            } catch(_) {}
 
         }
 
