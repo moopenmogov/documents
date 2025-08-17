@@ -1974,14 +1974,78 @@
 
     <script>
 
+        // Resolve and cache the last-known real document id
+        window.__lastDocId = window.__lastDocId || null;
         window.getWebCurrentDocId = async function getWebCurrentDocId() {
         try {
             const doc = await fetch('http://localhost:3001/api/current-document', { cache: 'no-store' }).then(r => r.json());
-            return (doc && (doc.id || doc.documentId)) ? (doc.id || doc.documentId) : 'doc-current';
+            const id = (doc && (doc.id || doc.documentId)) ? (doc.id || doc.documentId) : null;
+            if (id) { window.__lastDocId = id; return id; }
+            return window.__lastDocId; // do not fall back to synthetic ids
         } catch {
-            return 'doc-current';
+            return window.__lastDocId; // use last known if available
         }
         };
+
+        // Approvals transport shim: pin docId and enforce it across approvals GET/POST
+        (function setupApprovalsTransportShim(){
+            try {
+                const API_BASE = 'http://localhost:3001';
+                let pinnedId = null;
+                async function ensurePinnedId(){
+                    if (pinnedId) return pinnedId;
+                    try { pinnedId = window.__lastDocId || await window.getWebCurrentDocId(); } catch(_) {}
+                    return pinnedId;
+                }
+                // Expose helpers for modal open/close to pin/unpin
+                window.__approvalsPinDocId = async function(){ pinnedId = window.__lastDocId || await window.getWebCurrentDocId(); return pinnedId; };
+                window.__approvalsUnpinDocId = function(){ pinnedId = null; };
+                const origFetch = window.fetch;
+                window.fetch = function(input, init){
+                    try {
+                        let url = typeof input === 'string' ? input : (input && input.url) || '';
+                        const u = new URL(url, location.origin);
+                        const isApprovalsGET = /\/api\/(approvals\/state|approval-matrix)$/.test(u.pathname);
+                        const isApprovalsPOST = /\/api\/approvals\/(approve|reject|add-user|reorder|update-notes)$/.test(u.pathname);
+                        if (isApprovalsGET || isApprovalsPOST) {
+                            // Patch GET query
+                            if (isApprovalsGET) {
+                                const id = pinnedId || window.__lastDocId;
+                                if (id) { u.searchParams.set('documentId', id); input = u.toString(); }
+                            }
+                            // Patch POST JSON body
+                            if (isApprovalsPOST && init && typeof init.body === 'string') {
+                                const h = init.headers && (init.headers['Content-Type'] || init.headers.get?.('Content-Type') || '');
+                                if (/application\/json/i.test(h)) {
+                                    try {
+                                        const body = JSON.parse(init.body||'{}');
+                                        const id = pinnedId || window.__lastDocId;
+                                        if (id) body.documentId = id;
+                                        init = { ...init, body: JSON.stringify(body) };
+                                    } catch(_) {}
+                                }
+                            }
+                        }
+                    } catch(_) {}
+                    return origFetch.apply(this, arguments);
+                };
+                // Pin when users modal opens
+                const openUsersModalOrig = window.openUsersModalWeb;
+                window.openUsersModalWeb = function(){ try { window.__approvalsPinDocId(); } catch(_) {}; return openUsersModalOrig && openUsersModalOrig.apply(this, arguments); };
+            } catch(_) {}
+        })();
+
+        // Pin approvals docId as early as possible so first refresh uses a real id
+        (function pinDocIdOnReady(){
+            try {
+                const pinEarly = async () => { try { await window.__approvalsPinDocId && window.__approvalsPinDocId(); } catch(_) {} };
+                if (document.readyState === 'loading') {
+                    document.addEventListener('DOMContentLoaded', pinEarly);
+                } else {
+                    pinEarly();
+                }
+            } catch(_) {}
+        })();
 
         // Initialize New Feature Banner for web
 
@@ -4528,6 +4592,8 @@
          window.openModalById = function openModalById(modalId){
              var modal = document.getElementById(modalId);
              if(!modal){ console.warn('Modal not found:', modalId); return; }
+             // Pin approvals docId early when opening users modal
+             try { if (modalId === 'usersModal' && typeof window.__approvalsPinDocId === 'function') window.__approvalsPinDocId(); } catch(_) {}
              try { window.closeAllModals && window.closeAllModals(); } catch(_){}
              try { document.body.appendChild(modal); } catch(_){}
              modal.style.setProperty('display','flex','important');
@@ -5654,11 +5720,11 @@
                  const actor = (window.currentUser && window.currentUser.id) ? window.currentUser : (getCurrentUser && getCurrentUser());
                  const actorId = actor && actor.id ? actor.id : null;
                  if (!actorId) return;
-                 const currentId = (window.currentDocumentState && window.currentDocumentState.currentDocument && window.currentDocumentState.currentDocument.id) || 'default-doc';
+                 const currentId = (window.currentDocumentState && window.currentDocumentState.currentDocument && window.currentDocumentState.currentDocument.id) || window.__lastDocId;
                  const API_BASE = 'http://localhost:3001';
                  const [mxResp, apprResp] = await Promise.all([
                      fetch(`${API_BASE}/api/state-matrix?userRole=${encodeURIComponent(getCurrentUserRole())}&platform=web&userId=${encodeURIComponent(actorId)}`),
-                     fetch(`${API_BASE}/api/approval-matrix?actorPlatform=web&actorId=${encodeURIComponent(actorId)}&documentId=${encodeURIComponent(currentId)}`)
+                     currentId ? fetch(`${API_BASE}/api/approval-matrix?actorPlatform=web&actorId=${encodeURIComponent(actorId)}&documentId=${encodeURIComponent(currentId)}`) : Promise.resolve({ ok:false, json: async()=>({}) })
                  ]);
                  const mxData = await mxResp.json();
                  const apprData = await apprResp.json();
@@ -5679,7 +5745,8 @@
                  // Authoritative counts for top pill via approvals/state for the live document id
                  (async () => {
                      try {
-                         const currentId = await getWebCurrentDocId();
+                         const currentId = window.__lastDocId || await getWebCurrentDocId();
+                         if (!currentId) return;
                          console.log('WEB PILL: docId for approvals/state', currentId);
                          const st = await fetch(`http://localhost:3001/api/approvals/state?documentId=${encodeURIComponent(currentId)}`, { cache: 'no-store' }).then(r => r.json());
                           if (st && st.summary && typeof window.__updateApprovalsPillWeb === 'function') {
@@ -5693,14 +5760,22 @@
 
          // Load initial approvals data for pill display (called on SSE connect)
          async function loadInitialApprovalsData() {
-             try { window.ApprovalsUISyncWeb && window.ApprovalsUISyncWeb.refreshDebounced(); }
-             catch (error) { console.error('📊 WEB: Error loading initial approvals data:', error); if (window.__updateApprovalsPillWeb) window.__updateApprovalsPillWeb(0, 0); }
+             try {
+                 const id = window.__lastDocId || await window.getWebCurrentDocId();
+                 if (!id) { console.warn('📊 WEB: Skipping initial approvals load (no doc id yet)'); return; }
+                 window.ApprovalsUISyncWeb && window.ApprovalsUISyncWeb.refreshDebounced();
+             }
+             catch (error) { console.error('📊 WEB: Error loading initial approvals data:', error); }
          }
+
+        let __usersModalRefreshToken = 0;
 
         async function refreshUsersModal() {
 
             try {
-                console.log('WEB MODAL: start refreshUsersModal');
+                console.log('WEB MODAL:', new Date().toISOString(), 'start refreshUsersModal');
+                const __token = ++__usersModalRefreshToken;
+                console.log('WEB MODAL: token start =', __token);
                 let currentId = 'doc-current';
                 try {
                     const doc = await fetch('http://localhost:3001/api/current-document', { cache: 'no-store' }).then(r => r.json());
@@ -5715,15 +5790,17 @@
                 try {
                     const mr = await fetch(`http://localhost:3001/api/approval-matrix?actorPlatform=web&actorId=${encodeURIComponent(actorId || '')}&documentId=${encodeURIComponent(currentId)}`, { cache: 'no-store' });
                     matrixData = await mr.json();
-                    console.log('WEB MODAL: matrix fetched (for flags only)', { ok: mr.ok, users: (matrixData.users||[]).length });
+                    console.log('WEB MODAL:', new Date().toISOString(), 'matrix fetched', { ok: mr.ok, users: (matrixData.users||[]).length, matrixKeys: Object.keys(matrixData.matrix||{}).length, token: __token });
                 } catch(e) { console.warn('WEB MODAL: matrix fetch failed (ignored)', e); }
                 const sr = await fetch(`http://localhost:3001/api/approvals/state?documentId=${encodeURIComponent(currentId)}`, { cache: 'no-store' });
                 const stateData = await sr.json();
-                console.log('WEB MODAL: state fetched (authoritative roster)', { ok: sr.ok, approvers: (stateData.approvers||[]).length, summary: stateData.summary });
+                if (__token !== __usersModalRefreshToken) { console.warn('WEB MODAL: stale refresh skipped'); return; }
+                console.log('WEB MODAL:', new Date().toISOString(), 'state fetched', { ok: sr.ok, approvers: (stateData.approvers||[]).length, summary: stateData.summary, token: __token });
                 const approvers = Array.isArray(stateData.approvers) ? stateData.approvers.slice().sort((a,b)=>a.order-b.order) : [];
                 const matrix = matrixData.matrix || {};
                 // Map by userId for status lookup
                 const approvalMap = (approvers || []).reduce((acc, a) => { acc[a.userId] = a; return acc; }, {});
+                console.log('WEB MODAL: computed maps', { approvalMapSize: Object.keys(approvalMap).length, token: __token });
                 const approvedCount = stateData && stateData.summary ? stateData.summary.approvedCount : approvers.filter(a => a.status === 'approved').length;
                 const totalCount = approvers.length;
                 const matrixUsers = Array.isArray(matrixData.users) ? matrixData.users : [];
@@ -5731,6 +5808,7 @@
                 const inlineTbody = document.getElementById('usersInlineBody');
                 if (modalTbody) modalTbody.innerHTML = '';
                 if (inlineTbody) inlineTbody.innerHTML = '';
+                console.log('WEB MODAL: applying rows', { token: __token, rows: approvers.length });
                 // Update header count e.g., "Users (1/3 approved)"
                 const usersCardTitle = document.querySelector('.grid-card[style*="grid-column:1; grid-row:1;"] .grid-title');
                 if (usersCardTitle) {
@@ -5878,9 +5956,12 @@
                                 console.warn('WEB: approval toggle failed', err);
 
                             } finally {
-
-                                try { await refreshUsersModal(); } catch (_) {}
-
+                                // Optimistic: update pill and row locally; avoid immediate full refresh to prevent race
+                                try {
+                                    const newStatus = nextAction === 'approve' ? 'approved' : 'rejected';
+                                    updateUserApprovalStatus(targetUserId, newStatus);
+                                } catch(_) {}
+                                // Let SSE/unified refresh reconcile shortly
                             }
 
                         });
@@ -5893,7 +5974,7 @@
 
                 if (modalTbody) bindActions(modalTbody);
 
-                console.log('WEB MODAL: end refreshUsersModal');
+                console.log('WEB MODAL:', new Date().toISOString(), 'end refreshUsersModal', { token: __token });
             } catch (err) {
                 console.error('WEB MODAL: refreshUsersModal failed', err);
                 addNotification('Error loading users/approvals', 'error');
@@ -7460,8 +7541,8 @@
             const addBtn2 = document.getElementById('approvalsAddUserWeb');
             if (addBtn2) {
                 addBtn2.onclick = async () => {
-                    const name = prompt('Name'); if (!name) return;
-                    try { const did = await getWebCurrentDocId(); await ApprovalsClient.addUser({ documentId: did, name, actorId: actorId }); const st = await ApprovalsClient.getState({ documentId: did }); renderApprovalsTableWeb(st, opts); } catch(e){ alert((e && e.message) || 'Add user failed'); }
+                    const name = prompt('Name'); if (!name) return; const email = prompt('Email'); if (!email) return;
+                    try { const did = await getWebCurrentDocId(); await ApprovalsClient.addUser({ documentId: did, name, email, actorId: actorId }); const st = await ApprovalsClient.getState({ documentId: did }); renderApprovalsTableWeb(st, opts); } catch(e){ alert((e && e.message) || 'Add user failed'); }
                 };
             }
         }
