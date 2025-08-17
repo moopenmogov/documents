@@ -1959,7 +1959,7 @@
 
     <style>
 
-        .controls-grid { display: grid; grid-template-columns: 1fr 1fr; grid-template-rows: auto auto; gap: 12px; padding: 0 20px; }
+        .controls-grid { display: grid; grid-template-columns: 1fr 1fr; grid-template-rows: auto auto; gap: 12px; padding: 0 20px; align-items: stretch; }
 
         .grid-card { background: #ffffff; border: 1px solid #e9ecef; border-radius: 8px; padding: 10px; }
 
@@ -2061,7 +2061,7 @@
 
         <!-- Left: Users + Actions -->
 
-        <div class="grid-card" style="grid-column:1; grid-row:1; background:#fff3cd; border:1px solid #ffeaa7; border-radius:6px;">
+        <div id="leftActionsCard" class="grid-card" style="grid-column:1; grid-row:1; background:#fff3cd; border:1px solid #ffeaa7; border-radius:6px;">
 
 
             <div class="grid-actions" style="align-items:center; gap:8px; padding:8px;">
@@ -2102,17 +2102,17 @@
 
 
         <!-- Right: Chat (span 2 rows) -->
-        <div class="grid-card" style="grid-column:2; grid-row:1 / span 2; display:flex; flex-direction:column;">
-            <div style="display:flex; align-items:center; justify-content:space-between; padding:8px 10px; border-bottom:1px solid #e9ecef;">
+        <div id="chatCard" class="grid-card" style="grid-column:2; grid-row:1; display:flex; flex-direction:column; min-height:0; overflow:hidden;">
+            <div style="display:flex; align-items:center; justify-content:space-between; padding:8px 10px; border-bottom:1px solid #e9ecef; flex:0 0 auto;">
                 <div class="grid-title" style="margin:0;">💬 Chat</div>
                 <div style="font-size:12px; color:#6c757d;">experimental</div>
             </div>
-            <div id="chatPanel" style="display:flex; flex-direction:column; gap:8px; padding:10px; height:100%;">
-                <div id="chatMessages" style="flex:1 1 auto; overflow:auto; border:1px solid #e9ecef; border-radius:6px; padding:10px; background:#fff;">
+            <div id="chatPanel" style="display:flex; flex-direction:column; gap:8px; padding:10px; height:100%; min-height:0; overflow:hidden;">
+                <div id="chatMessages" style="flex:1 1 auto; overflow:auto; border:1px solid #e9ecef; border-radius:6px; padding:10px; background:#fff; min-height:0;">
                     <div style="opacity:.6; font-size:12px;">No messages yet</div>
                 </div>
                 <div style="display:flex; gap:8px; align-items:flex-start;">
-                    <textarea id="chatInput" rows="2" placeholder="Type a message..." style="flex:1 1 auto; resize:vertical; border:1px solid #dee2e6; border-radius:6px; padding:8px; font-size:13px;"></textarea>
+                    <textarea id="chatInput" rows="2" placeholder="Type a message..." style="flex:0 0 auto; resize:vertical; border:1px solid #dee2e6; border-radius:6px; padding:8px; font-size:13px; width:100%; max-height:120px;"></textarea>
                     <button id="chatSend" class="shared-dropdown" style="min-width:90px;">Send</button>
                 </div>
             </div>
