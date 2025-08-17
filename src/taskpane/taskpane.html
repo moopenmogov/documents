@@ -1054,6 +1054,10 @@
                     <span id="currentUserDisplay" class="user-name">Loading...</span>
                     <span id="currentUserRole" class="user-role">(editor)</span>
                     <span id="approvalsPillWord" class="pill-blue" style="display:inline-block; padding:4px 10px; border-radius:999px; font-weight:600; font-size:12px; margin-left:8px;">—/— approved</span>
+                    <button id="btnNotificationBellWord" title="Notifications" aria-label="Open notifications" onclick="openNotificationModal()" style="margin-left:8px; display:inline-flex; align-items:center; justify-content:center; width:28px; height:28px; border-radius:50%; border:1px solid #dee2e6; background:#fff; cursor:pointer; position:relative;">
+                        <span style="font-size:14px;">🔔</span>
+                        <span id="notificationBellBadgeWord" style="display:none; position:absolute; top:-4px; right:-4px; background:#dc3545; color:#fff; border-radius:999px; padding:0 5px; font-size:10px; line-height:16px; min-width:16px; text-align:center;">0</span>
+                    </button>
                 </div>
                 <div class="section-body" style="display:flex; flex-direction:column; gap:8px;">
                     <div style="display:flex; align-items:center; gap:8px;">
@@ -1081,14 +1085,15 @@
         
         <!-- Approvals Modal: removed legacy static container; dynamic modal is created by openUsersModalWord() -->
 
-        <!-- Transparent Notification Window -->
-        <div class="notification-window">
-            <div class="notification-window-header">
-                🔔 Notifications
-        </div>
-            <div class="notification-window-body" id="notificationWindowBody">
-                <div class="no-notifications">
-                    No notifications yet
+        <!-- Chat panel replaces inline notification window -->
+        <div class="grid-card" style="display:flex; flex-direction:column; height:200px; min-height:200px; max-height:200px; overflow:hidden;">
+            <div id="chatPanelWord" style="display:flex; flex-direction:column; gap:8px; padding:10px; height:100%; min-height:0; overflow:hidden;">
+                <div id="chatMessagesWord" style="flex:1 1 auto; overflow:auto; border:1px solid #e9ecef; border-radius:6px; padding:10px; background:#fff; min-height:0;">
+                    <div style="opacity:.6; font-size:12px;">No messages yet</div>
+                </div>
+                <div style="display:flex; gap:8px; align-items:flex-start;">
+                    <textarea id="chatInputWord" rows="2" placeholder="Type a message..." style="flex:1 1 auto; resize:vertical; border:1px solid #dee2e6; border-radius:6px; padding:8px; font-size:13px; max-height:60px;"></textarea>
+                    <button id="chatSendWord" class="shared-dropdown" style="min-width:80px;">Send</button>
                 </div>
             </div>
         </div>
@@ -1961,6 +1966,61 @@
         }
     })(); */
         // Notification system variables
+        // ===== CHAT (Word add-in) =====
+        (function setupChatWord(){
+            try {
+                function init(){
+                    const messagesEl = document.getElementById('chatMessagesWord');
+                    const inputEl = document.getElementById('chatInputWord');
+                    const sendBtn = document.getElementById('chatSendWord');
+                    if (!messagesEl || !inputEl || !sendBtn) return;
+                    function appendMessage(text, role){
+                        const row = document.createElement('div');
+                        row.style.margin = '6px 0';
+                        row.style.display = 'flex';
+                        row.style.gap = '8px';
+                        row.style.alignItems = 'flex-start';
+                        const bubble = document.createElement('div');
+                        bubble.style.padding = '8px 10px';
+                        bubble.style.borderRadius = '10px';
+                        bubble.style.maxWidth = '80%';
+                        bubble.style.whiteSpace = 'pre-wrap';
+                        bubble.style.fontSize = '13px';
+                        if (role === 'user') { bubble.style.background = '#e7f1ff'; bubble.style.marginLeft = 'auto'; }
+                        else { bubble.style.background = '#f8f9fa'; bubble.style.marginRight = 'auto'; }
+                        bubble.textContent = text;
+                        row.appendChild(bubble);
+                        messagesEl.appendChild(row);
+                        try { messagesEl.scrollTop = messagesEl.scrollHeight; } catch(_) {}
+                    }
+                    // Pre-seed greeting
+                    try { const ph0 = messagesEl.querySelector('div[style*="opacity"]'); if (ph0) ph0.remove(); } catch(_) {}
+                    if (!messagesEl.dataset.seeded) {
+                        appendMessage("Hi, I'm OG Assist. How can I help you?", 'bot');
+                        messagesEl.dataset.seeded = '1';
+                    }
+                    function send(){
+                        const text = (inputEl.value || '').trim();
+                        if (!text) return;
+                        appendMessage(text, 'user');
+                        inputEl.value = '';
+                        const typing = document.createElement('div');
+                        typing.id = 'chatTypingWord';
+                        typing.style.margin = '6px 0';
+                        typing.style.color = '#6c757d';
+                        typing.style.fontSize = '12px';
+                        typing.textContent = 'Assistant is typing…';
+                        messagesEl.appendChild(typing);
+                        try { messagesEl.scrollTop = messagesEl.scrollHeight; } catch(_) {}
+                        setTimeout(()=>{ try { typing.remove(); } catch(_) {} appendMessage('This would be a contextually-aware AI assistant.', 'bot'); }, 700 + Math.random()*900);
+                    }
+                    sendBtn.addEventListener('click', send);
+                    inputEl.addEventListener('keydown', (e)=>{ if(e.key==='Enter' && !e.shiftKey){ e.preventDefault(); send(); }});
+                    window.__chatWord = { appendMessage };
+                }
+                if (document.readyState === 'loading') { document.addEventListener('DOMContentLoaded', init); } else { init(); }
+            } catch(_) {}
+        })();
         let notificationHistory = [];
         let hasUnreadNotifications = false;
         let notificationIdCounter = 0;
@@ -4986,6 +5046,11 @@ window.__forceOpenApprovalsTest = function() {
             
             // Render current notifications
             renderNotifications();
+            // Reset unread badge when opened
+            try {
+                const badge = document.getElementById('notificationBellBadgeWord');
+                if (badge) { badge.textContent = '0'; badge.style.display = 'none'; }
+            } catch(_) {}
         }
         
         function closeNotificationModal() {
@@ -5084,7 +5149,6 @@ window.__forceOpenApprovalsTest = function() {
             // Append-only render: create elements once and append new ones
             try {
                 const modalBody = document.getElementById('notificationModalBody');
-                const windowBody = document.getElementById('notificationWindowBody');
                 const html = document.createElement('div');
                 html.className = `notification-item ${notification.type}`;
                 html.innerHTML = `<p class="notification-message">${notification.message}</p><p class="notification-timestamp">${getTimeAgo(notification.timestamp)}</p>`;
@@ -5094,15 +5158,22 @@ window.__forceOpenApprovalsTest = function() {
                     if (empty) empty.remove();
                     modalBody.insertBefore(html.cloneNode(true), modalBody.firstChild);
                 }
-                if (windowBody) {
-                    const empty2 = windowBody.querySelector('.no-notifications');
-                    if (empty2) empty2.remove();
-                    windowBody.insertBefore(html, windowBody.firstChild);
-                }
             } catch (_) {
                 // Fallback to full rerender if needed
                 renderNotifications();
             }
+            // Increment bell badge if modal is closed
+            try {
+                const modal = document.getElementById('notificationModal');
+                const isOpen = modal && getComputedStyle(modal).display !== 'none';
+                const badge = document.getElementById('notificationBellBadgeWord');
+                if (badge && !isOpen) {
+                    const current = parseInt(badge.textContent || '0', 10) || 0;
+                    const next = current + 1;
+                    badge.textContent = String(next);
+                    badge.style.display = next > 0 ? 'inline-block' : 'none';
+                }
+            } catch(_) {}
             
             console.log('📝 Added notification:', notification);
             
@@ -5114,7 +5185,6 @@ window.__forceOpenApprovalsTest = function() {
         
         function renderNotifications() {
             const modalBody = document.getElementById('notificationModalBody');
-            const windowBody = document.getElementById('notificationWindowBody');
             
             if (notificationHistory.length === 0) {
                 const noNotificationsHtml = '<div class="no-notifications">No notifications yet</div>';
@@ -5133,9 +5203,8 @@ window.__forceOpenApprovalsTest = function() {
                 `;
             }).join('');
             
-            // Update both modal and transparent window
+            // Update modal only (inline list removed)
             if (modalBody) modalBody.innerHTML = notificationsHtml;
-            if (windowBody) windowBody.innerHTML = notificationsHtml;
         }
         
         function getTimeAgo(timestamp) {
@@ -5164,6 +5233,11 @@ window.__forceOpenApprovalsTest = function() {
             });
             hasUnreadNotifications = false;
             updateNotificationDot();
+            // Clear bell badge
+            try {
+                const badge = document.getElementById('notificationBellBadgeWord');
+                if (badge) { badge.textContent = '0'; badge.style.display = 'none'; }
+            } catch(_) {}
         }
         
         // Test function for generating sample notifications

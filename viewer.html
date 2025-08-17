@@ -1862,7 +1862,7 @@
 
     <script>
         // ===== CHAT (SHELL) =====
-        (function setupChat(){
+        function setupChatInit(){
             try {
                 const messagesEl = document.getElementById('chatMessages');
                 const inputEl = document.getElementById('chatInput');
@@ -1887,6 +1887,12 @@
                     messagesEl.appendChild(row);
                     try { messagesEl.scrollTop = messagesEl.scrollHeight; } catch(_) {}
                 }
+                // Pre-seed assistant greeting once
+                try { const ph0 = messagesEl.querySelector('div[style*="opacity"]'); if (ph0) ph0.remove(); } catch(_) {}
+                if (!messagesEl.dataset.seeded) {
+                    appendMessage("Hi, I'm OG Assist. How can I help you?", 'bot');
+                    messagesEl.dataset.seeded = '1';
+                }
                 function send(){
                     const text = (inputEl.value || '').trim();
                     if (!text) return;
@@ -1906,8 +1912,7 @@
                     // simulate bot reply
                     setTimeout(() => {
                         try { typing.remove(); } catch(_) {}
-                        const words = ['Certainly','Interesting','Let\'s','consider','that','approach','briefly','then','continue','forward'];
-                        const reply = Array.from({length: Math.floor(Math.random()*8)+3}, () => words[Math.floor(Math.random()*words.length)]).join(' ') + '.';
+                        const reply = 'This would be a contextually-aware AI assistant.';
                         appendMessage(reply, 'bot');
                     }, 700 + Math.random()*900);
                 }
@@ -1915,7 +1920,12 @@
                 inputEl.addEventListener('keydown', (e)=>{ if(e.key==='Enter' && !e.shiftKey){ e.preventDefault(); send(); }});
                 window.__chat = { appendMessage };
             } catch(_) {}
-        })();
+        }
+        if (document.readyState === 'loading') {
+            document.addEventListener('DOMContentLoaded', setupChatInit);
+        } else {
+            setupChatInit();
+        }
 
         // Work around SuperDoc UMD builds referencing a global __IS_DEBUG__
 
@@ -2166,17 +2176,13 @@
 
 
         <!-- Right: Chat (span 2 rows) -->
-        <div class="grid-card" style="grid-column:2; grid-row:1 / span 2; display:flex; flex-direction:column;">
-            <div style="display:flex; align-items:center; justify-content:space-between; padding:6px 10px; border-bottom:1px solid #e9ecef;">
-                <div class="grid-title" style="margin:0;">💬 Chat</div>
-                <div style="font-size:11px; color:#6c757d;">experimental</div>
-            </div>
-            <div id="chatPanel" style="display:flex; flex-direction:column; gap:8px; padding:10px; height:100%;">
-                <div id="chatMessages" style="flex:1 1 auto; overflow:auto; border:1px solid #e9ecef; border-radius:6px; padding:10px; background:#fff;">
+        <div class="grid-card" style="grid-column:2; grid-row:1 / span 2; display:flex; flex-direction:column; height:130px; min-height:130px; max-height:130px; overflow:hidden;">
+            <div id="chatPanel" style="display:flex; flex-direction:column; gap:8px; padding:10px; height:100%; min-height:0; overflow:hidden;">
+                <div id="chatMessages" style="flex:1 1 auto; overflow:auto; border:1px solid #e9ecef; border-radius:6px; padding:10px; background:#fff; min-height:0;">
                     <div style="opacity:.6; font-size:12px;">No messages yet</div>
                 </div>
                 <div style="display:flex; gap:8px; align-items:flex-start;">
-                    <textarea id="chatInput" rows="2" placeholder="Type a message..." style="flex:1 1 auto; resize:vertical; border:1px solid #dee2e6; border-radius:6px; padding:8px; font-size:13px;"></textarea>
+                    <textarea id="chatInput" rows="2" placeholder="Type a message..." style="flex:1 1 auto; resize:vertical; border:1px solid #dee2e6; border-radius:6px; padding:8px; font-size:13px; max-height:60px;"></textarea>
                     <button id="chatSend" class="shared-dropdown" style="min-width:90px;">Send</button>
                 </div>
             </div>
