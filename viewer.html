@@ -1858,6 +1858,30 @@
             background: #006cbe !important;
             border-color: #00518c !important;
         }
+
+        .controls-grid { display: grid; grid-template-columns: 1fr 1fr; grid-template-rows: auto; gap: 12px; padding: 0 20px; align-items: start; }
+
+        .grid-card { background: #ffffff; border: 1px solid #e9ecef; border-radius: 8px; padding: 10px; }
+
+        .grid-title { font-weight: 600; margin-bottom: 6px; color: #495057; font-size: 13px; }
+
+        .grid-actions { display: flex; gap: 6px; flex-wrap: wrap; }
+
+        /* Normalize button baseline */
+
+        .grid-actions * { box-sizing: border-box; }
+
+        .grid-notifications { grid-column: 2; grid-row: 1 / span 2; display: flex; flex-direction: column; }
+
+        .status-bar { font-size: 14px; margin-bottom: 6px; color: #495057; }
+
+        .title-banner-stack { padding: 0.8px 20px 0 20px; }
+        .title-banner-stack .document-title { margin: 4px 0 6px 0; font-weight: 600; font-size: 16px; color: #343a40; text-align:center; }
+
+        .title-banner-stack #viewerMessage { margin: 0 0 6px 0; }
+
+        .title-banner-stack #checkoutStatus { margin: 0 0 10px 0; text-align:center; }
+
     </style>
 
     <script>
@@ -1957,477 +1981,7 @@
 
     </script>
 
-    <style>
 
-        .controls-grid { display: grid; grid-template-columns: 1fr 1fr; grid-template-rows: auto auto; gap: 12px; padding: 0 20px; align-items: stretch; }
-
-        .grid-card { background: #ffffff; border: 1px solid #e9ecef; border-radius: 8px; padding: 10px; }
-
-        .grid-title { font-weight: 600; margin-bottom: 6px; color: #495057; font-size: 13px; }
-
-        .grid-actions { display: flex; gap: 6px; flex-wrap: wrap; }
-
-        /* Normalize button baseline */
-
-        .grid-actions * { box-sizing: border-box; }
-
-        .grid-notifications { grid-column: 2; grid-row: 1 / span 2; display: flex; flex-direction: column; }
-
-        .status-bar { font-size: 14px; margin-bottom: 6px; color: #495057; }
-
-        .title-banner-stack { padding: 0.8px 20px 0 20px; }
-        .title-banner-stack .document-title { margin: 4px 0 6px 0; font-weight: 600; font-size: 16px; color: #343a40; text-align:center; }
-
-        .title-banner-stack #viewerMessage { margin: 0 0 6px 0; }
-
-        .title-banner-stack #checkoutStatus { margin: 0 0 10px 0; text-align:center; }
-
-    </style>
-
-
-
-    <script>
-
-        // Load theme from server and set CSS variables
-
-        (async function applyServerTheme(){
-
-            try {
-
-                const r = await fetch('http://localhost:3001/api/theme');
-
-                const j = await r.json();
-
-                const c = j && j.theme && j.theme.colors;
-
-                if (!c) return;
-
-                const root = document.documentElement;
-
-                Object.entries({
-
-                    '--bg-surface': c.bgSurface,
-
-                    '--bg-muted': c.bgMuted,
-
-                    '--text-primary': c.textPrimary,
-
-                    '--text-muted': c.textMuted,
-
-                    '--border': c.border,
-
-                    '--accent': c.accent,
-
-                    '--status-bg': c.statusBg,
-
-                    '--status-text': c.statusText,
-
-                    '--pill-blue-bg': c.pillBg,
-
-                    '--pill-blue-text': c.pillText,
-
-                    '--viewer-bg': c.viewerBg,
-
-                    '--viewer-text': c.viewerText
-
-                }).forEach(([k,v]) => { if (v) root.style.setProperty(k, v); });
-
-            } catch(_) {}
-
-        })();
-
-    </script>
-
-
-
-    <!-- Title + banners above the two-column grid -->
-
-    <div class="title-banner-stack">
-
-        
-        <p class="document-title" id="document-title" style="margin-bottom:6px; text-align:center;">Title: No document loaded</p>
-
-        <div id="viewerMessage" class="viewer-message" style="display: none;"></div>
-
-        <div id="checkoutStatus" class="checkout-status" style="display: none;"></div>
-
-        <div id="checkoutBanner" class="checkout-banner" style="display: none;"></div>
-
-    </div>
-
-
-
-    <div class="controls-grid">
-
-        <!-- Left: Users + Actions -->
-
-        <div id="leftActionsCard" class="grid-card" style="grid-column:1; grid-row:1; background:#fff3cd; border:1px solid #ffeaa7; border-radius:6px;">
-
-
-            <div class="grid-actions" style="align-items:center; gap:8px; padding:8px;">
-
-                <div class="current-user">
-                    <span class="user-label">User:</span>
-                    <span id="currentUserDisplay" class="user-name">Loading...</span>
-                    <span id="currentUserRole" class="user-role">(editor)</span>
-                    <span id="approvalsPillWeb" class="pill-blue" style="display:inline-block; padding:4px 10px; border-radius:999px; font-weight:600; font-size:12px; margin-left:8px;">—/— approved</span>
-                    <button id="btnNotificationBell" title="Notifications" aria-label="Open notifications" onclick="openNotificationModal()" style="margin-left:8px; display:inline-flex; align-items:center; justify-content:center; width:28px; height:28px; border-radius:50%; border:1px solid #dee2e6; background:#fff; cursor:pointer; position:relative;">
-                        <span style="font-size:14px;">🔔</span>
-                        <span id="notificationBellBadge" style="display:none; position:absolute; top:-4px; right:-4px; background:#dc3545; color:#fff; border-radius:999px; padding:0 5px; font-size:10px; line-height:16px; min-width:16px; text-align:center;">0</span>
-                    </button>
-                </div>
-                 <div class="section-body" style="display:flex; flex-direction:column; gap:8px;">
-                     <div style="display:flex; align-items:center; gap:8px; margin-left:-3px;">
-                         <label for="userSwitcher" style="width:120px;">Switch user:</label>
-                         <select id="userSwitcher" class="shared-dropdown user-select" onchange="switchUser(this.value)" style="width:200px;">
-                            <option value="">no change</option>
-                </select>
-                        <button id="templatesBtnWeb" onclick="openTemplatesModal()" class="shared-dropdown" style="margin-left:8px; cursor:pointer; background:#fff !important; color:#111 !important; border:1px solid #dee2e6 !important; border-radius:6px !important; padding:8px 12px !important; display:inline-flex; align-items:center; justify-content:flex-start; text-align:left; width:200px;">Templates</button>
-            </div>
-                     <div style="display:flex; align-items:center; gap:8px;">
-                         <label for="webDocActionsSelect" style="width:115px;">Document actions:</label>
-                         <select id="webDocActionsSelect" class="shared-dropdown user-select" style="width:200px; margin-left:5px;" onfocus="refreshWebDropdownFromMatrix()" onchange="onWebDocActionChange(this.value)">
-                             <option value="">select</option>
-                             <option value="compile">Compile</option>
-                         </select>
-                         <button id="backToOpenGovBtn" class="shared-dropdown" onclick="window.openOpenGovModal && window.openOpenGovModal();" style="margin-left:8px; cursor:pointer; background:#fff !important; color:#111 !important; border:1px solid #dee2e6 !important; border-radius:6px !important; padding:8px 12px !important; display:inline-flex; align-items:center; justify-content:flex-start; text-align:left; width:200px;">Take Me Back to OpenGov</button>
-                     </div>
-                 </div>
-             </div>
-
-            <div id="docActionsDropdown_grid" class="dropdown" style="display:none;"></div>
-
-        </div>
-
-
-
-        <!-- Right: Chat (span 2 rows) -->
-        <div id="chatCard" class="grid-card" style="grid-column:2; grid-row:1; display:flex; flex-direction:column; min-height:0; overflow:hidden;">
-            <div style="display:flex; align-items:center; justify-content:space-between; padding:8px 10px; border-bottom:1px solid #e9ecef; flex:0 0 auto;">
-                <div class="grid-title" style="margin:0;">💬 Chat</div>
-                <div style="font-size:12px; color:#6c757d;">experimental</div>
-            </div>
-            <div id="chatPanel" style="display:flex; flex-direction:column; gap:8px; padding:10px; height:100%; min-height:0; overflow:hidden;">
-                <div id="chatMessages" style="flex:1 1 auto; overflow:auto; border:1px solid #e9ecef; border-radius:6px; padding:10px; background:#fff; min-height:0;">
-                    <div style="opacity:.6; font-size:12px;">No messages yet</div>
-                </div>
-                <div style="display:flex; gap:8px; align-items:flex-start;">
-                    <textarea id="chatInput" rows="2" placeholder="Type a message..." style="flex:0 0 auto; resize:vertical; border:1px solid #dee2e6; border-radius:6px; padding:8px; font-size:13px; width:100%; max-height:120px;"></textarea>
-                    <button id="chatSend" class="shared-dropdown" style="min-width:90px;">Send</button>
-                </div>
-            </div>
-        </div>
-
-    </div>
-
-
-
-    <!-- CLEAN 3-COLUMN LAYOUT (legacy center banners removed; single source above) -->
-
-    <div class="main-content-3col" style="display: flex !important; flex-direction: row !important; gap: 20px; padding: 20px; align-items: flex-start !important; width: 100% !important; box-sizing: border-box !important;">
-
-        <div class="left-column buttons-column" style="width: 0 !important; flex-shrink: 0 !important; display: flex !important; flex-direction: column !important; gap: 5px;"></div>
-
-        <div class="right-column" style="display:none;"></div>
-
-    </div>
-
-
-
-
-
-
-    
-    <!-- Hidden file input -->
-
-    <input type="file" id="fileInput" accept=".docx,.doc" style="display: none;" onchange="handleFileSelect(event)">
-
-
-
-    <div class="viewer-container">
-
-        <div id="superdoc-toolbar"></div>
-
-
-
-        <div id="superdoc">
-
-            <div class="empty-state">
-
-                <h2>Welcome to OpenGov Contract Redlining</h2>
-
-                <p>Real-time collaboration and redlining - the future of contracting!</p>
-
-                <p>Ready for document collaboration workflow.</p>
-
-            </div>
-
-        </div>
-
-    </div>
-
-    <!-- COMPILE modal (full) -->
-    <div id="compileModal" style="display:none; position:fixed; inset:0; z-index:2147483647;">
-        <div onclick="closeCompileModal()" style="position:absolute; inset:0; background: rgba(0,0,0,0.35);"></div>
-        <div style="position:absolute; top:50%; left:50%; transform: translate(-50%, -50%); background:#fff; border-radius:10px; width:min(640px, 92vw); max-height:80vh; overflow:auto; padding:16px; box-shadow:0 8px 24px rgba(0,0,0,0.25);">
-            <div style="display:flex; align-items:center; justify-content:space-between; margin-bottom:10px;">
-                <div style="font-size:16px; font-weight:600;">Compile</div>
-            </div>
-            <div id="compileBodyWeb"></div>
-        </div>
-    </div>
-
-
-
-    <!-- Notification Modal -->
-
-    <div id="notificationModal" class="notification-modal" style="display: none;">
-
-        <div class="notification-modal-backdrop" onclick="closeNotificationModal()"></div>
-
-        <div class="notification-modal-content">
-
-            <div class="notification-modal-header">
-
-                <h3 class="notification-modal-title">🔔 Notifications</h3>
-
-                <button class="notification-modal-close" onclick="closeNotificationModal()">×</button>
-
-            </div>
-
-            <div class="notification-modal-body" id="notificationModalBody">
-
-                <div class="no-notifications">
-
-                    No notifications yet
-
-                </div>
-
-            </div>
-
-        </div>
-
-    </div>
-
-
-
-    <!-- Send to Vendor Modal -->
-
-    <div id="vendorModal" class="notification-modal" style="display: none;">
-
-        <div class="notification-modal-backdrop" onclick="closeVendorModal()"></div>
-
-        <div class="notification-modal-content">
-
-            <div class="notification-modal-header">
-
-                <h3 class="notification-modal-title">📤 Send to Vendor</h3>
-
-                <button class="notification-modal-close" onclick="closeVendorModal()">×</button>
-
-                </div>
-
-            <div class="notification-modal-body" style="max-height:70vh; overflow:auto;">
-
-                <form id="vendorForm" onsubmit="sendToVendor(event)">
-
-                    <div style="margin-bottom: 15px;">
-
-                        <label style="display: block; margin-bottom: 5px; font-weight: 600;">Vendor:</label>
-
-                        <input type="text" id="vendorCompany" value="Moti's Builders" readonly 
-
-                               style="width: 100%; padding: 8px; border: 1px solid #ccc; border-radius: 4px; background: #f5f5f5;">
-
-                </div>
-
-                    <div style="margin-bottom: 15px;">
-
-                        <label style="display: block; margin-bottom: 5px; font-weight: 600;">Contact Name:</label>
-
-                        <input type="text" id="vendorName" value="Hoo R. U" required
-
-                               style="width: 100%; padding: 8px; border: 1px solid #ccc; border-radius: 4px;">
-
-                </div>
-
-                    <div style="margin-bottom: 15px;">
-
-                        <label style="display: block; margin-bottom: 5px; font-weight: 600;">Email:</label>
-
-                        <input type="email" id="vendorEmail" value="moti@real.builders" required
-
-                               style="width: 100%; padding: 8px; border: 1px solid #ccc; border-radius: 4px;">
-
-                </div>
-
-                    <div style="margin-bottom: 20px;">
-
-                        <label style="display: block; margin-bottom: 5px; font-weight: 600;">Notes (optional):</label>
-
-                        <textarea id="vendorNotes" placeholder="Add any notes or instructions for the vendor..."
-
-                               style="width: 100%; padding: 8px; border: 1px solid #ccc; border-radius: 4px; resize: vertical; min-height: 80px; font-family: inherit;"></textarea>
-
-                </div>
-
-                    <div style="position:sticky; bottom:0; background:#fff; padding-top:10px; display: flex; gap: 10px; justify-content: flex-end; border-top: 1px solid #e5e7eb; z-index:2;">
-
-                        <button type="button" onclick="closeVendorModal()" 
-
-                                style="padding: 8px 16px !important; border: 1px solid #cbd5e1 !important; background: #ffffff !important; color:#111 !important; border-radius: 4px !important; cursor: pointer !important;">
-
-                            Cancel
-
-                        </button>
-
-                        <button type="submit" 
-
-                                style="padding: 8px 16px !important; border: 1px solid #005ea2 !important; background: #0078d4 !important; color: #ffffff !important; border-radius: 4px !important; cursor: pointer !important;">
-
-                            Send to Vendor
-
-                        </button>
-
-                </div>
-
-                </form>
-
-            </div>
-
-    </div>
-
-
-
-    <!-- Vendor Confirmation Modal -->
-
-    <div id="vendorConfirmationModal" class="notification-modal" style="display: none;">
-
-        <div class="notification-modal-backdrop" onclick="closeVendorConfirmationModal()"></div>
-
-        <div class="notification-modal-content">
-
-            <div class="notification-modal-header">
-
-                <h3 class="notification-modal-title">✅ Confirmation</h3>
-
-                <button class="notification-modal-close" onclick="closeVendorConfirmationModal()">×</button>
-
-            </div>
-
-            <div class="notification-modal-body">
-
-                <p style="text-align: center; font-size: 16px; margin: 20px 0;">Your vendor has been emailed</p>
-
-                <div style="display: flex; justify-content: center;">
-
-                    <button onclick="closeVendorConfirmationModal()" 
-
-                            style="padding: 10px 20px; background: #0078d4; color: white; border: none; border-radius: 4px; cursor: pointer; font-size: 14px;">
-
-                        OK
-
-                    </button>
-
-                </div>
-
-            </div>
-
-        </div>
-
-    </div>
-
-
-
-    <!-- Users Modal -->
-
-    <div id="usersModal" class="notification-modal" style="display:none;">
-
-        <div class="notification-modal-backdrop" onclick="closeUsersModal()"></div>
-
-        <div class="notification-modal-content" style="max-width:700px; width:90%;">
-
-            <div class="notification-modal-header">
-
-                <h3 class="notification-modal-title">👥 Users</h3>
-
-                <button class="notification-modal-close" onclick="closeUsersModal()">×</button>
-
-            </div>
-
-            <div class="notification-modal-body">
-
-                <div id="usersModalBody">
-
-                    <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:8px;">
-
-                        <div style="font-weight:600;">Approval details</div>
-
-                        <button class="btn btn-secondary" onclick="refreshUsersModal()">Refresh</button>
-
-                    </div>
-
-                    <div style="overflow:auto; max-height:50vh; border:1px solid #e9ecef; border-radius:6px;">
-
-                        <table style="width:100%; border-collapse:collapse; font-size:14px;">
-
-                            <thead style="position:sticky; top:0; background:#f8f9fa;">
-
-                                <tr id="approvalsHeaderRowWeb">
-
-                                    <th style="text-align:left; padding:8px; border-bottom:1px solid #e9ecef;" data-col="user">User</th>
-
-                                    <th style="text-align:left; padding:8px; border-bottom:1px solid #e9ecef;" data-col="role">Role</th>
-
-                                    <th style="text-align:left; padding:8px; border-bottom:1px solid #e9ecef; width:110px;" data-col="status">Approved</th>
-
-                                    <th style="text-align:left; padding:8px; border-bottom:1px solid #e9ecef;" data-col="actions">Action</th>
-
-                                </tr>
-
-                            </thead>
-
-                            <tbody id="usersTableBody"></tbody>
-
-                        </table>
-
-                    </div>
-
-                </div>
-
-            </div>
-
-        </div>
-
-    </div>
-
-
-
-    <!-- Load SuperDoc from local node_modules -->
-
-    <script>
-
-        window.testModeToggle = function() {
-
-            console.log(" TESTING MODE TOGGLE...");
-
-            const role = getCurrentUserRole();
-
-            const superdoc = window.currentSuperdoc;
-
-            const toolbar = document.querySelector("#superdoc-toolbar");
-
-            console.log("Role:", role, "Expected:", getSuperdocMode(role));
-
-            console.log("SuperDoc Mode:", superdoc && superdoc.getMode ? superdoc.getMode() : (superdoc && superdoc.mode ? superdoc.mode : "unknown"));
-
-            console.log("Toolbar:", !!toolbar);
-
-            return { role, expectedMode: getSuperdocMode(role), currentMode: superdoc ? superdoc.getDocumentMode() : "none" };
-
-        };
-
-    </script>
 
     <script src="./node_modules/@harbour-enterprises/superdoc/dist/superdoc.umd.js"></script>
 
@@ -4371,6 +3925,22 @@
                 const messagesEl = document.getElementById('chatMessages');
                 const inputEl = document.getElementById('chatInput');
                 const sendBtn = document.getElementById('chatSend');
+                const leftCard = document.getElementById('leftActionsCard');
+                const chatCard = document.getElementById('chatCard');
+                function ensureChatHeightMatchesLeft(){
+                    try {
+                        if (!leftCard || !chatCard) return;
+                        const h = leftCard.offsetHeight;
+                        if (h && h > 0) {
+                            chatCard.style.height = h + 'px';
+                            chatCard.style.maxHeight = h + 'px';
+                            chatCard.style.minHeight = h + 'px';
+                        }
+                    } catch(_) {}
+                }
+                // initial sizing and on resize
+                ensureChatHeightMatchesLeft();
+                window.addEventListener('resize', ensureChatHeightMatchesLeft);
                 if (!messagesEl || !inputEl || !sendBtn) return;
                 function appendMessage(text, role){
                     const row = document.createElement('div');
@@ -4388,7 +3958,11 @@
                     else { bubble.style.background = '#f8f9fa'; bubble.style.marginRight = 'auto'; }
                     bubble.textContent = text;
                     row.appendChild(bubble);
-                    messagesEl.insertBefore(row, messagesEl.firstChild);
+                    messagesEl.appendChild(row);
+                    // keep scroll at bottom
+                    try { messagesEl.scrollTop = messagesEl.scrollHeight; } catch(_) {}
+                    // maintain fixed container height
+                    ensureChatHeightMatchesLeft();
                 }
                 function send(){
                     const text = (inputEl.value || '').trim();
