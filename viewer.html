@@ -2255,7 +2255,7 @@
 
         <div class="notification-modal-backdrop" onclick="closeNotificationModal()"></div>
 
-        <div class="notification-modal-content">
+        <div class="notification-modal-content" onclick="event.stopPropagation()">
 
             <div class="notification-modal-header">
 
@@ -4468,14 +4468,19 @@
 
             console.log('🔔 Opening notification modal...');
 
-            const modal = document.getElementById('notificationModal');
+            // Use unified modal opener to ensure z-index and pointer-events are correct
+            try { window.openModalById && window.openModalById('notificationModal'); } catch(_) {
+                const modal = document.getElementById('notificationModal');
+                if (modal) {
+                    modal.style.setProperty('display','flex','important');
+                    modal.style.setProperty('position','fixed','important');
+                    modal.style.setProperty('inset','0','important');
+                    modal.style.setProperty('z-index','2147483647','important');
+                    modal.style.setProperty('pointer-events','auto','important');
+                }
+            }
 
-            modal.style.display = 'flex';
-
-             
-            
             // Render current notifications
-
             renderNotifications();
 
         }
@@ -4489,6 +4494,7 @@
             const modal = document.getElementById('notificationModal');
 
             modal.style.display = 'none';
+            try { modal.style.setProperty('pointer-events','none','important'); } catch(_) {}
 
              
             
@@ -7454,8 +7460,8 @@
             const addBtn2 = document.getElementById('approvalsAddUserWeb');
             if (addBtn2) {
                 addBtn2.onclick = async () => {
-                    const name = prompt('Name'); if (!name) return; const email = prompt('Email'); if (!email) return;
-                    try { const did = await getWebCurrentDocId(); await ApprovalsClient.addUser({ documentId: did, name, email, actorId: actorId }); const st = await ApprovalsClient.getState({ documentId: did }); renderApprovalsTableWeb(st, opts); } catch(e){ alert((e && e.message) || 'Add user failed'); }
+                    const name = prompt('Name'); if (!name) return;
+                    try { const did = await getWebCurrentDocId(); await ApprovalsClient.addUser({ documentId: did, name, actorId: actorId }); const st = await ApprovalsClient.getState({ documentId: did }); renderApprovalsTableWeb(st, opts); } catch(e){ alert((e && e.message) || 'Add user failed'); }
                 };
             }
         }

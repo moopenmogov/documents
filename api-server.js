@@ -1616,22 +1616,21 @@ app.post('/api/approvals/remind', (req, res) => {
 });
 
 // Add user (editor only)
-// POST /api/approvals/add-user { documentId, name, email, actorId }
+// POST /api/approvals/add-user { documentId, name, email?, actorId }
 app.post('/api/approvals/add-user', (req, res) => {
     try {
         const { documentId, name, email, actorId } = req.body || {};
         const actor = webUsers[actorId] || wordUsers[actorId] || allUsers[actorId];
         if (!actor) return res.status(404).json({ error: 'actor_not_found' });
         if (actor.role !== 'editor') return res.status(403).json({ error: 'forbidden' });
-        // Basic email validation (very loose): must contain @ and a dot after @
-        if (typeof email !== 'string' || !/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(email)) {
-            return res.status(400).json({ error: 'invalid_email' });
-        }
+        // Email is optional; when provided, keep as-is (light validation removed)
         const docId = seedApprovalsListIfMissing(documentId || currentDocument.id || 'default-doc');
         const state = approvalsByDocument[docId];
         const userId = `user_${Date.now().toString(36)}_${Math.random().toString(36).slice(2,6)}`;
         const order = state.approvers.length + 1;
-        state.approvers.push({ userId, name, email, order, status: 'none', updatedBy: actor.id, updatedAt: new Date().toISOString(), notes: '' });
+        const approver = { userId, name, order, status: 'none', updatedBy: actor.id, updatedAt: new Date().toISOString(), notes: '' };
+        if (email) approver.email = email;
+        state.approvers.push(approver);
         saveApprovalsState();
         try { const summary = computeApprovedSummary(docId); const { approvedCount, totalUsers } = summary; broadcastSSE({ type: 'approvals-list-updated', documentId: docId, action: 'added', userId, approved: approvedCount, total: totalUsers, timestamp: new Date().toISOString() }); } catch(_){ }
         res.json({ success: true, approver: state.approvers.find(a => a.userId === userId) });
