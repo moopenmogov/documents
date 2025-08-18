@@ -193,7 +193,7 @@ window.refreshActionsDropdownFromMatrix = function(selectId, config) {
 
     // Build by server-provided order when available, else fallback
     const order = Array.isArray(config.dropdown?.order) ? config.dropdown.order : [
-        'viewOnlyBtn','shareToWebBtn','checkoutBtn','checkinBtn','cancelBtn','saveProgressBtn','overrideBtn','sendVendorBtn','replaceDefaultBtn','compile','approvalsBtn','finalize','unfinalize'
+        'viewOnlyBtn','shareToWebBtn','templatesBtn','openGovBtn','checkoutBtn','checkinBtn','cancelBtn','saveProgressBtn','overrideBtn','sendVendorBtn','replaceDefaultBtn','compile','approvalsBtn','finalize','unfinalize'
     ];
 
     const map = {
@@ -205,6 +205,8 @@ window.refreshActionsDropdownFromMatrix = function(selectId, config) {
         saveProgressBtn: () => add('saveProgressBtn', 'Save Progress', window.saveProgress, !!b.checkedInBtns),
         overrideBtn: () => add('overrideBtn', 'Override Check-out', window.overrideCheckout, !!b.overrideBtn),
         sendVendorBtn: () => add('sendVendorBtn', 'Send to Vendor', window.openVendorModal, !!b.sendVendorBtn),
+        templatesBtn: () => add('templatesBtn', 'Templates', () => { try { (window.openTemplatesModal && window.openTemplatesModal()) || (window.openTemplatesModalWeb && window.openTemplatesModalWeb()); } catch(_) {} }, !!b.templatesBtn),
+        openGovBtn: () => add('openGovBtn', 'Take Me Back to OpenGov', () => { try { window.openOpenGovModal && window.openOpenGovModal(); } catch(_) {} }, !!b.openGovBtn),
         replaceDefaultBtn: () => add('replaceDefaultBtn', 'Open new document', () => {
             try {
                 const fileEl = document.getElementById('fileInput') || document.getElementById('replaceCurrentDocFileInput') || document.getElementById('inputReplaceCurrent');

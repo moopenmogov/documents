@@ -2003,7 +2003,9 @@ function getStateMatrixConfig(userRole, platform, docState, currentUser) {
             replaceDefaultBtn: true, // Everyone can replace the default/current document
             compileBtn: true, // Everyone sees COMPILE action
             finalizeBtn: false,
-            unfinalizeBtn: false
+            unfinalizeBtn: false,
+            templatesBtn: true,
+            openGovBtn: true
         },
         approvals: {
             canApproveSelf: userRole !== 'viewer',
@@ -2049,7 +2051,7 @@ function getStateMatrixConfig(userRole, platform, docState, currentUser) {
         },
         dropdown: {
             order: [
-                'viewOnlyBtn','shareToWebBtn','checkoutBtn','checkinBtn','cancelBtn','saveProgressBtn','overrideBtn','sendVendorBtn','replaceDefaultBtn','compile','approvalsBtn','finalize','unfinalize'
+                'viewOnlyBtn','shareToWebBtn','templatesBtn','openGovBtn','checkoutBtn','checkinBtn','cancelBtn','saveProgressBtn','overrideBtn','sendVendorBtn','replaceDefaultBtn','compile','approvalsBtn','finalize','unfinalize'
             ]
         },
         flags: {

@@ -1066,14 +1066,7 @@
                             <option value="">--</option>
                     </select>
                 </div>
-                    <div style="display:flex; align-items:center; gap:8px;">
-                        <label style="width:120px; visibility:hidden;">spacer</label>
-                        <button id="templatesBtn" class="shared-dropdown" style="width:190px; text-align:left;">Templates</button>
-                    </div>
-                    <div style="display:flex; align-items:center; gap:8px;">
-                        <label style="width:120px; visibility:hidden;">spacer</label>
-                        <button id="backToOpenGovBtn" class="shared-dropdown" style="width:190px; text-align:left;">Take Me Back to OpenGov</button>
-                    </div>
+                    <!-- Templates and Back to OpenGov moved into the matrix-driven dropdown -->
                 </div>
             </div>
         </div>
@@ -1155,6 +1148,8 @@
             function open(){ if(modal) modal.style.display = 'block'; }
             function close(){ if(modal) modal.style.display = 'none'; }
             if (btn) btn.addEventListener('click', open);
+            // Expose for matrix-driven dropdown
+            window.openTemplatesModalWord = function(){ try { open(); } catch(_) {} };
             if (closeBtn) closeBtn.addEventListener('click', close);
             if (modal) {
                 modal.addEventListener('click', function(e){ if(e.target === modal) close(); });
@@ -5911,6 +5906,8 @@ window.__forceOpenApprovalsTest = function() {
                     add(!!b.sendVendorBtn, 'sendVendorBtn', 'Send to Vendor', window.openVendorModal);
                     add(!!b.replaceDefaultBtn, 'replaceDefaultBtn', 'Open New Document', window.replaceDefaultDocument || window.showFileDialog);
                     add(!!b.compileBtn, 'compileBtn', 'Compile', window.openCompileModal);
+                    add(!!b.templatesBtn, 'templatesBtn', 'Templates', window.openTemplatesModalWord || window.openTemplatesModal);
+                    add(!!b.openGovBtn, 'openGovBtn', 'Take Me Back to OpenGov', window.openOpenGovModalWord || window.openOpenGovModal);
                     add(true, 'approvalsBtn', 'Approvals', window.openUsersModalWord || window.openUsersModal || window.openUsersModalWeb);
 
                     // Finalize / Move to Draft (Word add-in parity with web)
@@ -6252,9 +6249,9 @@ window.__forceOpenApprovalsTest = function() {
             const button = document.getElementById('backToOpenGovBtn');
             const modal = document.getElementById('backToOpenGovModal');
             const video = document.getElementById('backToOpenGovVideo');
-            
+
+            // Open modal if the legacy button exists
             if (button && modal) {
-                // Open modal on button click
                 button.addEventListener('click', function() {
                     modal.style.display = 'block';
                     // Force autoplay (muted) on open to satisfy autoplay policies
@@ -6266,7 +6263,6 @@ window.__forceOpenApprovalsTest = function() {
                                 video.src = '';
                                 video.src = autoplayUrl;
                             } else {
-                                // Ensure reload if same URL already set
                                 const bust = autoplayUrl + '&t=' + Date.now();
                                 video.src = '';
                                 video.src = bust;
@@ -6278,30 +6274,59 @@ window.__forceOpenApprovalsTest = function() {
                         }
                     } catch (_) {}
                 });
-                
-                // Close modal when clicking outside the content
+            }
+
+            // Always enable outside-click and Escape-to-close when modal exists (works for dropdown opener too)
+            if (modal) {
                 modal.addEventListener('click', function(e) {
                     if (e.target === modal) {
                         modal.style.display = 'none';
-                        // Stop video by resetting src
-                        const currentSrc = video.src;
-                        video.src = '';
-                        video.src = currentSrc.replace('autoplay=1', 'autoplay=0');
+                        if (video) {
+                            const currentSrc = video.src || '';
+                            video.src = '';
+                            if (currentSrc) video.src = currentSrc.replace('autoplay=1', 'autoplay=0');
+                        }
                     }
                 });
-                
-                // Close modal on Escape key
                 document.addEventListener('keydown', function(e) {
                     if (e.key === 'Escape' && modal.style.display === 'block') {
                         modal.style.display = 'none';
-                        // Stop video by resetting src
-                        const currentSrc = video.src;
-                        video.src = '';
-                        video.src = currentSrc.replace('autoplay=1', 'autoplay=0');
+                        if (video) {
+                            const currentSrc = video.src || '';
+                            video.src = '';
+                            if (currentSrc) video.src = currentSrc.replace('autoplay=1', 'autoplay=0');
+                        }
                     }
                 });
             }
         });
+        // Expose for matrix-driven dropdown
+        window.openOpenGovModalWord = function(){
+            try {
+                const modal = document.getElementById('backToOpenGovModal');
+                const video = document.getElementById('backToOpenGovVideo');
+                if (modal) {
+                    modal.style.display = 'block';
+                    // Force autoplay (muted) to satisfy policies
+                    const autoplayUrl = 'https://www.youtube.com/embed/dQw4w9WgXcQ?autoplay=1&mute=1&playsinline=1&enablejsapi=1';
+                    if (video) {
+                        const current = video.src || '';
+                        if (current !== autoplayUrl) {
+                            video.src = '';
+                            video.src = autoplayUrl;
+                        } else {
+                            const bust = autoplayUrl + '&t=' + Date.now();
+                            video.src = '';
+                            video.src = bust;
+                        }
+                        const allow = video.getAttribute('allow') || '';
+                        if (!/autoplay/.test(allow)) {
+                            video.setAttribute('allow', (allow ? allow + '; ' : '') + 'autoplay');
+                        }
+                    }
+                }
+            } catch(_) {}
+        };
     </script>
     
 </body>
