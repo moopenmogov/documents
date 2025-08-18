@@ -52,7 +52,20 @@
         "notes": ""
       }
     ],
-    "history": []
+    "history": [
+      {
+        "type": "remind",
+        "by": "user3",
+        "target": "user3",
+        "at": "2025-08-18T17:06:41.677Z"
+      },
+      {
+        "type": "remind",
+        "by": "user3",
+        "target": "user5",
+        "at": "2025-08-18T17:06:43.832Z"
+      }
+    ]
   },
   "default-doc": {
     "approvers": [
