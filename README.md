@@ -1,4 +1,5 @@
-## Product vision: Next Generation Contract Authoring
+## Product vision: Next Generation Contract Authoring and Prototype
+
 
 This README is a collaboration between AI and Moti: the AI is the primary author; Moti is the editor. For materials authored purely by Moti, see the `READmeHUMAN` folder.
 
@@ -15,22 +16,49 @@ This README is a collaboration between AI and Moti: the AI is the primary author
 
 ## Summary
 
-This system delivers a streamlined contract redlining workflow across a web viewer and a Microsoft Word add‑in. It supports approvals, finalize/draft state toggles, notifications, and a matrix‑driven “Document actions” dropdown that keeps UX consistent in both clients.
+This is a working prototype of a contract authoring system with bidirectional sync between the web viewer and the Word add‑in. It supports end‑to‑end redlining workflows (check‑out/check‑in, finalize/unfinalize), approvals, templates, compile, notifications, and a vendor handoff. 
 
 ### Key capabilities
-- **Approvals**: per‑user approve/reject, ordering, and notes; live status indicators
-- **Finalize / Move to Draft**: role‑ and state‑aware actions with server validation and SSE refresh
-- **Notifications**: a lightweight bell + modal in the web, with events mirrored to the add‑in
+- **Bidirectional sync**: file alignment in a Word-native environment syncs with a web experience
+- **Check-in and Check-out system**: role‑ and state‑aware actions with server validation and SSE refresh
 - **Shared logic**: a single state matrix client configures both UIs for parity
+- **Approvals**: per‑user approve/reject, ordering, and notes; live status indicators
+- **Notifications**: a lightweight bell + modal in the web, with events mirrored to the add‑in
+- **Compile**: generate a contract packet by compiling with exhibits
+- **Templates**: view existing templates and check-out / modify them
 
 ---
 
-## Development timeline (high‑level)
+## Release process
 
-- Early prototypes established real‑time flows and editor/role semantics.
-- Centralization phase moved visibility/labels/order into a shared state matrix client.
-- Parity phase aligned web and add‑in dropdowns, banners, and approvals behaviors.
-- Recent work focused on reliability: SSE updates, document id pinning, and finalize/unfinalize UX.
+### Release phase definition
+
+| Phase           | Description                                                                          | Access                           | Optional | Timing   |
+|-----------------|--------------------------------------------------------------------------------------|----------------------------------|----------|----------|
+| Prototype       | This gnarly thing, styled to OpenGov’s standard, aligned to the feature set          | Phased; internal, then external  | Yes      | ASAP     |
+| Private Preview | Unlocks redlining and customer value (+GTM)                                          | Phased; internal, then external  | Yes      | End of Year |
+| MVP             | Complete redlining experience with some traditional OG                               | All opt‑in                       | Yes      | 2026     |
+| Transition      | Fully independent contract document experience                                       | All                              | No       | 2026     |
+
+### Release plan
+
+| Name                     | Prototype | Private Preview | MVP | Transition |
+|--------------------------|-----------|-----------------|-----|------------|
+| Core infra** – add‑in    | No        | Yes             | Yes | Yes        |
+| Core infra** – web‑page  | No        | Yes             | Yes | Yes        |
+| Okta + user management   | No        | Yes             | Yes | Yes        |
+| Website integration      | No        | Yes             | Yes | Yes        |
+| File management          | No        | Yes             | Yes | Yes        |
+| Basic AI integration     | No        | Yes             | Yes | Yes        |
+| Check‑in / check‑out     | Yes       | Yes             | Yes | Yes        |
+| Email automation         | No        | No              | Yes | Yes        |
+| Variables                | No        | No              | Yes | Yes        |
+| Signatures               | No        | No              | Yes | Yes        |
+| Lock sections            | No        | No              | Yes | Yes        |
+| Vendor experience        | No        | No              | Yes | Yes        |
+| Compile                  | Yes       | No              | No  | Yes        |
+| Approvals                | Yes       | No              | No  | Yes        |
+| Templates                | Yes       | No              | No  | Yes        |
 
 ---
 
