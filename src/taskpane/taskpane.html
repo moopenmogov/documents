@@ -331,7 +331,7 @@
             border-radius: 4px;
             background: white;
             font-size: 11px;
-            font-weight: 600;
+            font-weight: 400;
             transition: background-color 0.2s;
             -ms-flex-positive: 1; /* Vendor prefix for IE10+ */
             flex-grow: 1;
@@ -5891,7 +5891,7 @@ window.__forceOpenApprovalsTest = function() {
                     while (select.options.length) select.remove(0);
                     const placeholder = document.createElement('option');
                     placeholder.value = '';
-                    placeholder.textContent = 'select';
+                    placeholder.textContent = '--';
                     select.appendChild(placeholder);
 
                     if (!config || !config.buttons) return;
@@ -5921,7 +5921,9 @@ window.__forceOpenApprovalsTest = function() {
                                 const meta = fin.confirm || {};
                                 const title = meta.title || "Please confirm you'd like to finalize.";
                                 const body = meta.body || 'After finalizing, the document is locked and the first approver is notified.';
-                                const ok = window.confirm(`${title}\n\n${body}`);
+                                const ok = (typeof window.openFinalizeToggleModal === 'function')
+                                    ? await window.openFinalizeToggleModal('finalize', { title, body, confirmLabel: (meta.confirmLabel || 'Finalize'), toneColor: meta.toneColor, toneTextColor: meta.toneTextColor })
+                                    : false;
                                 if (!ok) return;
                                 const actorId = (window.getCurrentUser && window.getCurrentUser().id) || 'user1';
                                 const r = await fetch('http://localhost:3001/api/finalize', { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({ actorId }) });
@@ -5941,7 +5943,9 @@ window.__forceOpenApprovalsTest = function() {
                                 const meta = fin.unfinalize || {};
                                 const title = meta.title || 'Move back to Draft?';
                                 const body = meta.body || 'Editors can edit again; approvals may need to be re-requested.';
-                                const ok = window.confirm(`${title}\n\n${body}`);
+                                const ok = (typeof window.openFinalizeToggleModal === 'function')
+                                    ? await window.openFinalizeToggleModal('unfinalize', { title, body, confirmLabel: (meta.confirmLabel || 'Move to Draft'), toneColor: meta.toneColor, toneTextColor: meta.toneTextColor })
+                                    : false;
                                 if (!ok) return;
                                 const actorId = (window.getCurrentUser && window.getCurrentUser().id) || 'user1';
                                 const r = await fetch('http://localhost:3001/api/unfinalize', { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({ actorId }) });
