@@ -155,7 +155,7 @@
 
             padding: 8px 12px !important;
 
-            font-weight: 600 !important;
+            font-weight: 400 !important;
 
             box-shadow: none !important;
 
@@ -2218,14 +2218,14 @@
                      <div style="display:flex; align-items:center; gap:8px; margin-left:-3px;">
                          <label for="userSwitcher" style="width:120px;">Switch user:</label>
                          <select id="userSwitcher" class="shared-dropdown user-select" onchange="switchUser(this.value)" style="width:200px;">
-                            <option value="">no change</option>
+                            <option value="">--</option>
                 </select>
                         <button id="templatesBtnWeb" onclick="openTemplatesModal()" class="shared-dropdown" style="margin-left:8px; cursor:pointer; background:#fff !important; color:#111 !important; border:1px solid #dee2e6 !important; border-radius:6px !important; padding:8px 12px !important; display:inline-flex; align-items:center; justify-content:flex-start; text-align:left; width:200px;">Templates</button>
             </div>
                      <div style="display:flex; align-items:center; gap:8px;">
                          <label for="webDocActionsSelect" style="width:115px;">Document actions:</label>
                          <select id="webDocActionsSelect" class="shared-dropdown user-select" style="width:200px; margin-left:5px;" onfocus="refreshWebDropdownFromMatrix()" onchange="onWebDocActionChange(this.value)">
-                             <option value="">select</option>
+                             <option value="">--</option>
                              <option value="compile">Compile</option>
                          </select>
                          <button id="backToOpenGovBtn" class="shared-dropdown" onclick="window.openOpenGovModal && window.openOpenGovModal();" style="margin-left:8px; cursor:pointer; background:#fff !important; color:#111 !important; border:1px solid #dee2e6 !important; border-radius:6px !important; padding:8px 12px !important; display:inline-flex; align-items:center; justify-content:flex-start; text-align:left; width:200px;">Take Me Back to OpenGov</button>
@@ -2248,7 +2248,7 @@
                 <div style="display:flex; gap:8px; align-items:flex-start;">
                     <textarea id="chatInput" rows="2" placeholder="Type a message..." style="flex:1 1 auto; resize:vertical; border:1px solid #dee2e6; border-radius:6px; padding:8px; font-size:13px; max-height:60px;"></textarea>
                     <button id="chatSend" class="shared-dropdown" style="min-width:90px;">Send</button>
-                </div>
+            </div>
             </div>
         </div>
 
@@ -2258,7 +2258,7 @@
 
     <!-- CLEAN 3-COLUMN LAYOUT (legacy center banners removed; single source above) -->
 
-    <div class="main-content-3col" style="display: flex !important; flex-direction: row !important; gap: 20px; padding: 20px; align-items: flex-start !important; width: 100% !important; box-sizing: border-box !important;">
+    <div class="main-content-3col" style="display: flex !important; flex-direction: row !important; gap: 20px; padding: 1px; align-items: flex-start !important; width: 100% !important; box-sizing: border-box !important;">
 
         <div class="left-column buttons-column" style="width: 0 !important; flex-shrink: 0 !important; display: flex !important; flex-direction: column !important; gap: 5px;"></div>
 
@@ -2351,7 +2351,7 @@
 
         <div class="notification-modal-backdrop" onclick="closeVendorModal()"></div>
 
-        <div class="notification-modal-content">
+        <div class="notification-modal-content" style="position:absolute; top:50%; left:50%; transform: translate(-50%, -50%); width:min(700px, 92vw); max-height:80vh; overflow:auto;">
 
             <div class="notification-modal-header">
 
@@ -3002,7 +3002,7 @@
              // Add default "no change" option
              const defaultOption = document.createElement('option');
              defaultOption.value = '';
-             defaultOption.textContent = 'no change';
+             defaultOption.textContent = '--';
              switcher.appendChild(defaultOption);
 
 
@@ -3594,7 +3594,8 @@
 
         function addButtonClickAnimation() {
 
-            let activeAnimations = new Map();
+            let activeAnimations = 
+            new Map();
 
              
             
@@ -4534,7 +4535,7 @@
 
             // Use unified modal opener to ensure z-index and pointer-events are correct
             try { window.openModalById && window.openModalById('notificationModal'); } catch(_) {
-                const modal = document.getElementById('notificationModal');
+            const modal = document.getElementById('notificationModal');
                 if (modal) {
                     modal.style.setProperty('display','flex','important');
                     modal.style.setProperty('position','fixed','important');
@@ -4543,7 +4544,7 @@
                     modal.style.setProperty('pointer-events','auto','important');
                 }
             }
-
+            
             // Render current notifications
             renderNotifications();
 
@@ -4600,6 +4601,8 @@
              modal.style.setProperty('position','fixed','important');
              modal.style.setProperty('inset','0','important');
              modal.style.setProperty('z-index','2147483647','important');
+             modal.style.setProperty('justify-content','center','important');
+             modal.style.setProperty('align-items','center','important');
              modal.style.setProperty('pointer-events','auto','important');
          };
 
@@ -5834,7 +5837,7 @@
                     const canonical = (matrixUsers || []).find(mu => mu.id === a.userId) || {};
                     const u = { id: a.userId, name: a.name || a.userId, role: canonical.role || '' };
                     const tr = document.createElement('tr');
-                    tr.setAttribute('data-user-id', u.id);
+                     tr.setAttribute('data-user-id', u.id);
                     tr.setAttribute('data-userid', u.id);
                     tr.setAttribute('data-user-name', u.name);
                     const row = matrix && matrix[u.id] ? matrix[u.id] : { status: 'no', showButtons: true, approveEnabled: true, rejectEnabled: true };

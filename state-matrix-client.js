@@ -205,7 +205,7 @@ window.refreshActionsDropdownFromMatrix = function(selectId, config) {
         saveProgressBtn: () => add('saveProgressBtn', 'Save Progress', window.saveProgress, !!b.checkedInBtns),
         overrideBtn: () => add('overrideBtn', 'Override Check-out', window.overrideCheckout, !!b.overrideBtn),
         sendVendorBtn: () => add('sendVendorBtn', 'Send to Vendor', window.openVendorModal, !!b.sendVendorBtn),
-        replaceDefaultBtn: () => add('replaceDefaultBtn', '⬆️ Replace default document', () => {
+        replaceDefaultBtn: () => add('replaceDefaultBtn', 'Open new document', () => {
             try {
                 const fileEl = document.getElementById('fileInput') || document.getElementById('replaceCurrentDocFileInput') || document.getElementById('inputReplaceCurrent');
                 if (fileEl && typeof fileEl.click === 'function') fileEl.click();
@@ -214,7 +214,7 @@ window.refreshActionsDropdownFromMatrix = function(selectId, config) {
         compile: () => add('compile', 'Compile', () => {
             try { (window.onWebDocActionChange && window.onWebDocActionChange('compile')) || (window.openCompileModal && window.openCompileModal()); } catch(_){}
         }, !!b.compileBtn),
-        approvalsBtn: () => add('approvalsBtn', 'Approval details', () => {
+        approvalsBtn: () => add('approvalsBtn', 'Approvals', () => {
             const fn = (window.openApprovalsModalWord || window.openApprovalsModal || window.openApprovalsModalWeb);
             if (typeof fn === 'function') {
                 try { fn(); } catch (e) { console.error('Approvals open error:', e); }
@@ -223,7 +223,7 @@ window.refreshActionsDropdownFromMatrix = function(selectId, config) {
             }
         }, true),
         finalize: () => add('finalize', 'Finalize', async () => { try { window.onWebDocActionChange && window.onWebDocActionChange('finalize'); } catch(_) {} }, !!b.finalizeBtn),
-        unfinalize: () => add('unfinalize', 'Move to Draft', async () => { try { window.onWebDocActionChange && window.onWebDocActionChange('unfinalize'); } catch(_) {} }, !!b.unfinalizeBtn)
+        unfinalize: () => add('unfinalize', 'Unlock', async () => { try { window.onWebDocActionChange && window.onWebDocActionChange('unfinalize'); } catch(_) {} }, !!b.unfinalizeBtn)
     };
 
     order.forEach(key => { if (map[key]) map[key](); });
@@ -276,3 +276,42 @@ function refreshActionsDropdown(selectId) {
         select.value = '';
     };
 }
+
+/**
+ * Shared finalize/unfinalize confirmation modal for both web and add-in
+ * Usage: await window.openFinalizeToggleModal('finalize'|'unfinalize', meta)
+ * Returns: Promise<boolean> (true when confirmed)
+ */
+window.openFinalizeToggleModal = function openFinalizeToggleModal(mode, meta) {
+    try {
+        const isUn = (mode === 'unfinalize');
+        const title = (meta && meta.title) || (isUn ? 'Move back to Draft?' : "Please confirm you'd like to finalize.");
+        const body = (meta && meta.body) || (isUn ? 'Editors can edit again; approvals may need to be re-requested.' : 'After finalizing, the document is locked and the first approver is notified.');
+        const label = (meta && meta.confirmLabel) || (isUn ? 'Move to Draft' : 'Finalize');
+        const tone = (meta && meta.toneColor) || '#fff3cd';
+        const toneText = (meta && meta.toneTextColor) || '#111827';
+
+        return new Promise((resolve) => {
+            const host = document.body;
+            const overlay = document.createElement('div');
+            overlay.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,0.35);z-index:2147483646;display:flex;align-items:center;justify-content:center;';
+            const modal = document.createElement('div');
+            modal.id = 'ogFinalize';
+            modal.style.cssText = 'background:#fff;border-radius:8px;min-width:360px;max-width:520px;padding:14px 16px;box-shadow:0 8px 30px rgba(0,0,0,0.2);';
+            const style = document.createElement('style');
+            style.textContent = '#ogFinalize .btn{background:#1f2937 !important;color:#fff !important;border:none !important;border-radius:6px !important;padding:8px 12px !important;} #ogFinalize .btn-cancel{background:#e5e7eb !important;color:#000 !important;border:1px solid #d1d5db !important;border-radius:6px !important;padding:8px 12px !important;}';
+            const hdr = document.createElement('div'); hdr.textContent = title; hdr.style.cssText='font-weight:600;font-size:16px;margin-bottom:8px;';
+            const msg = document.createElement('div'); msg.textContent = body; msg.style.cssText='border-radius:6px;padding:8px 10px;margin-bottom:10px;'; msg.style.background = tone; msg.style.color = toneText;
+            const actions = document.createElement('div'); actions.style.cssText='display:flex;gap:8px;justify-content:flex-end;';
+            const btnCancel = document.createElement('button'); btnCancel.textContent = 'Cancel'; btnCancel.className='btn-cancel';
+            const btnConfirm = document.createElement('button'); btnConfirm.textContent = label; btnConfirm.className='btn';
+            actions.appendChild(btnCancel); actions.appendChild(btnConfirm);
+            modal.appendChild(style); modal.appendChild(hdr); modal.appendChild(msg); modal.appendChild(actions); overlay.appendChild(modal); host.appendChild(overlay);
+            const cleanup = (val) => { try { overlay.remove(); } catch(_) {} resolve(val); };
+            btnCancel.onclick = () => cleanup(false);
+            btnConfirm.onclick = () => cleanup(true);
+        });
+    } catch(_) {
+        return Promise.resolve(false);
+    }
+};

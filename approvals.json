@@ -36,23 +36,13 @@
   "doc-current": {
     "user1": {
       "status": "approved",
-      "approvedBy": "user1",
-      "approvedAt": "2025-08-17T07:26:15.038Z"
-    },
-    "user3": {
-      "status": "rejected",
-      "approvedBy": "user1",
-      "approvedAt": "2025-08-17T07:34:55.079Z"
+      "approvedBy": "user3",
+      "approvedAt": "2025-08-17T22:09:29.376Z"
     },
     "vendor1": {
       "status": "approved",
-      "approvedBy": "user1",
-      "approvedAt": "2025-08-17T07:30:56.029Z"
-    },
-    "user2": {
-      "status": "approved",
-      "approvedBy": "user1",
-      "approvedAt": "2025-08-17T07:38:36.913Z"
+      "approvedBy": "user3",
+      "approvedAt": "2025-08-17T22:09:32.418Z"
     }
   },
   "doc-1755272017511": {

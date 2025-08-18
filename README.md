@@ -1,69 +1,116 @@
-# Contract Document System (Web + Word Add-in)
+## Product vision: Next Generation Contract Authoring and Prototype
 
-This repository contains a web viewer and a Microsoft Word add‑in for a contract redlining workflow. It includes real‑time approvals, finalize/draft states, notifications, and a lightweight chat assistant.
 
-## Quick start
+This README is a collaboration between AI and Moti: the AI is the primary author; Moti is the editor. For materials authored purely by Moti, see the `READmeHUMAN` folder.
 
-Prerequisites:
-- Node.js 18+
-- Word (desktop) if you plan to run the add‑in
+### What’s inside (overview)
+- **Summary**: what the product does and why it exists
+- **Development timeline**: a brief history based on GitHub activity
+- **Technical architecture**: HTML-first clients (no React), shared logic between web and add‑in, backend, and how we integrate SuperDoc
+- **Installation**: friendly guide for non‑technical readers
+- **Lessons learned**: five takeaways from the build
 
-Install deps and start the API + web app:
+![Clippy](https://upload.wikimedia.org/wikipedia/en/5/5f/Clippy-letter.png)
 
+---
+
+## Summary
+
+This is a working prototype of a contract authoring system with bidirectional sync between the web viewer and the Word add‑in. It supports end‑to‑end redlining workflows (check‑out/check‑in, finalize/unfinalize), approvals, templates, compile, notifications, and a vendor handoff. 
+
+### Key capabilities
+- **Bidirectional sync**: file alignment in a Word-native environment syncs with a web experience
+- **Check-in and Check-out system**: role‑ and state‑aware actions with server validation and SSE refresh
+- **Shared logic**: a single state matrix client configures both UIs for parity
+- **Approvals**: per‑user approve/reject, ordering, and notes; live status indicators
+- **Notifications**: a lightweight bell + modal in the web, with events mirrored to the add‑in
+- **Compile**: generate a contract packet by compiling with exhibits
+- **Templates**: view existing templates and check-out / modify them
+
+---
+
+## Release process
+
+### Release phase definition
+
+| Phase           | Description                                                                          | Access                           | Optional | Timing   |
+|-----------------|--------------------------------------------------------------------------------------|----------------------------------|----------|----------|
+| Prototype       | This gnarly thing, styled to OpenGov’s standard, aligned to the feature set          | Phased; internal, then external  | Yes      | ASAP     |
+| Private Preview | Unlocks redlining and customer value (+GTM)                                          | Phased; internal, then external  | Yes      | End of Year |
+| MVP             | Complete redlining experience with some traditional OG                               | All opt‑in                       | Yes      | 2026     |
+| Transition      | Fully independent contract document experience                                       | All                              | No       | 2026     |
+
+### Release plan
+
+| Name                     | Prototype | Private Preview | MVP | Transition |
+|--------------------------|-----------|-----------------|-----|------------|
+| Core infra** – add‑in    | No        | Yes             | Yes | Yes        |
+| Core infra** – web‑page  | No        | Yes             | Yes | Yes        |
+| Okta + user management   | No        | Yes             | Yes | Yes        |
+| Website integration      | No        | Yes             | Yes | Yes        |
+| File management          | No        | Yes             | Yes | Yes        |
+| Basic AI integration     | No        | Yes             | Yes | Yes        |
+| Check‑in / check‑out     | Yes       | Yes             | Yes | Yes        |
+| Email automation         | No        | No              | Yes | Yes        |
+| Variables                | No        | No              | Yes | Yes        |
+| Signatures               | No        | No              | Yes | Yes        |
+| Lock sections            | No        | No              | Yes | Yes        |
+| Vendor experience        | No        | No              | Yes | Yes        |
+| Compile                  | Yes       | No              | No  | Yes        |
+| Approvals                | Yes       | No              | No  | Yes        |
+| Templates                | Yes       | No              | No  | Yes        |
+
+---
+
+## Technical architecture (high‑level)
+
+### Clients: HTML‑first, no React
+- We intentionally use plain HTML/JS to keep UX flexible and easily embeddable (especially in Office add‑ins), reduce tooling overhead, and speed up iteration.
+
+### Web viewer and Word add‑in
+- A significant portion of behavior is shared via the state matrix (visibility, order, and labels for actions). Roughly 50–60% of interaction logic is shared, with platform‑specific rendering kept thin.
+- Shared dropdown builder and state application live in `state-matrix-client.js`.
+
+### Backend
+- `api-server.js` provides approvals, finalize/unfinalize, compile health checks, document upload/replace, and SSE event streams.
+- The server enforces business rules (e.g., finalize requires self‑checkout by an editor) and pushes updates via SSE to keep UIs in sync.
+
+### SuperDoc integration
+- The project includes SuperDoc for rich‑text editing foundations and examples; our viewer and add‑in integrate around document transport and workflow instead of bundling a full editor here.
+
+---
+
+## Installation (friendly guide)
+
+You don’t need to be a developer to try this locally.
+
+1) Install prerequisites
+- Install Node.js 18+.
+- If you want the Word add‑in, ensure you have desktop Word.
+
+2) Start the local server
 ```bash
 npm install
 node api-server.js
 ```
 
-Open the web viewer:
-- Navigate to `http://localhost:3001/viewer.html`
+3) Open the web viewer
+- Visit `http://localhost:3001/viewer.html` in your browser.
 
-Start the Word add‑in (basic steps):
-- Open the Word add‑in taskpane HTML `src/taskpane/taskpane.html` via your preferred sideloading method (Office Add‑ins dev flow). The add‑in talks to the same local API at `http://localhost:3001`.
+4) Open the Word add‑in (optional)
+- Sideload `src/taskpane/taskpane.html` via the Office Add‑ins developer flow. The add‑in uses the same `http://localhost:3001` API.
 
-## Key features
+---
 
-- Approvals (web + add‑in)
-  - Per‑user approve/reject, order, and notes
-  - Live pill and table kept in sync across web and add‑in
-  - Stable docId pinning in the web to avoid racey 0/5 states
+## Lessons learned (top 5)
 
-- Finalize / Move to Draft (web + add‑in)
-  - Web: available via “Document actions” dropdown
-  - Add‑in: available in the matrix‑driven dropdown (Finalize when self‑checked‑out editor; Move to Draft when finalized)
-  - SSE event `document-finalize-updated` keeps the add‑in’s banner and dropdown up‑to‑date when changes happen on the web
+- **Centralize state**: a shared state matrix eliminates duplicated conditionals and keeps platforms in lock‑step.
+- **Prefer SSE for parity**: events drive consistent banners and dropdowns across clients.
+- **Office constraints matter**: avoid `window.confirm` in add‑ins; use a consistent in‑app modal.
+- **Pin identities early**: pinning document ids prevents cross‑document approval glitches.
+- **Keep platforms thin**: renderers should stay small; shared logic does the heavy lifting.
 
-- Notifications
-  - Small bell next to the current user in the web
-  - Notifications are rendered in a modal; unread badge increments when modal closed
-  - Transported to the add‑in via SSE (and shown in its taskpane list)
-
-- Chat assistant (web)
-  - Simple, fixed‑reply chat UI to prototype a future ChatGPT integration
-  - Compact panel with pre‑seeded greeting and typing indicator
-
-## Architecture overview
-
-- `api-server.js` — Node API for approvals, finalize, SSE, and document endpoints
-- `viewer.html` — web UI (approvals modal, notifications bell + modal, chat)
-- `src/taskpane/taskpane.html` — Word add‑in UI (state matrix‑driven dropdown, SSE, approvals)
-- `shared/approvals-client.js` — client wrapper for approvals endpoints
-
-## Development notes
-
-### Running the server
-- Start with `node api-server.js` (listens on `http://localhost:3001`)
-- SSE events drive live UI updates in both web and add‑in
-
-### Web viewer tips
-- Approvals are now “pinned” to a single document id per session. This prevents mixed document lookups and eliminates 0/5 reverts after confirm.
-- If there is no real document id yet, reads are skipped until one is resolved.
-
-### Word add‑in tips
-- The dropdown is built from the server’s state matrix. For “Finalize” to appear:
-  - User must be an editor
-  - The add‑in must have the document self‑checked‑out (per server rules)
-- Finalize/Move to Draft actions call the server and then refresh the matrix/banners.
+---
 
 ## API reference (local)
 
@@ -74,23 +121,15 @@ Start the Word add‑in (basic steps):
 - POST `/api/approvals/approve|reject|add-user|reorder|update-notes`
 - POST `/api/finalize` | `/api/unfinalize` (editor‑only; finalize requires self‑checkout)
 
-## Troubleshooting
-
-- Web approvals show 0/5 intermittently:
-  - Ensure the web server is running on `:3001` and the web viewer loaded the latest `viewer.html`.
-  - The build pins the docId early and rewrites approvals calls; a hard reload (Ctrl+F5) may be needed after changes.
-
-- Finalize doesn’t appear in the add‑in dropdown:
-  - Confirm you’re an editor and the add‑in has the document self‑checked‑out.
-  - Check DevTools console for “WORD finalize flags” and “buttons” to verify server signals.
+---
 
 ## Branches
 
-- `main` — stable branch
-- `notification-bell` — recent work: notifications bell + chat, approvals docId pinning, add‑in finalize wiring
+- **main**: stable
+- See feature branches in Git history for milestones (notifications, approvals pinning, add‑in parity).
+
+---
 
 ## License
 
 AGPLv3 (matches SuperDoc license used in this project).
-
-

@@ -140,7 +140,8 @@
       }
       /* Use extreme z-index to appear above any stacking contexts */
       .nfb-modal-backdrop { position: fixed; inset: 0; background: rgba(0,0,0,0.35); display: none; z-index: 2147483646; }
-      .nfb-modal { position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%); background: #fff; border-radius: 10px; width: min(700px, 92vw); max-height: 80vh; overflow: auto; padding: 16px; box-shadow: 0 8px 24px rgba(0,0,0,0.25); display: none; z-index: 2147483647; opacity: 1; }
+      /* Match approvals modal sizing/style */
+      .nfb-modal { position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%); background: #fff; border-radius: 8px; width: min(900px, 92vw); max-height: 88vh; overflow: auto; padding: 16px; box-shadow: 0 10px 30px rgba(0,0,0,0.25); display: none; z-index: 2147483647; opacity: 1; }
       /* Force-open safety (if other code toggles display) */
       html.nfb-is-open .nfb-modal { display: block !important; }
       html.nfb-is-open .nfb-modal-backdrop { display: block !important; }
@@ -179,7 +180,8 @@
     modal.className = 'nfb-modal';
     modal.id = 'nfbModal';
     // Use compact mode universally for consistent layout across platforms
-    modal.classList.add('nfb-compact');
+    // Use compact layout only outside the web viewer
+    if (platform !== 'web') modal.classList.add('nfb-compact');
 
     const title = document.createElement('div');
     title.className = 'nfb-modal-title';
