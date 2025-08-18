@@ -1,6 +1,6 @@
 ## Product vision: Next Generation Contract Authoring
 
-This README is a collaboration between AI and Moti: the AI is the primary author; Moti is the editor. For materials authored purely by Moti, see the `productus-maximus` folder.
+This README is a collaboration between AI and Moti: the AI is the primary author; Moti is the editor. For materials authored purely by Moti, see the `READmeHUMAN` folder.
 
 ### What’s inside (overview)
 - **Summary**: what the product does and why it exists
