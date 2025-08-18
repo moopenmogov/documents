@@ -205,7 +205,7 @@ window.refreshActionsDropdownFromMatrix = function(selectId, config) {
         saveProgressBtn: () => add('saveProgressBtn', 'Save Progress', window.saveProgress, !!b.checkedInBtns),
         overrideBtn: () => add('overrideBtn', 'Override Check-out', window.overrideCheckout, !!b.overrideBtn),
         sendVendorBtn: () => add('sendVendorBtn', 'Send to Vendor', window.openVendorModal, !!b.sendVendorBtn),
-        replaceDefaultBtn: () => add('replaceDefaultBtn', '⬆️ Replace default document', () => {
+        replaceDefaultBtn: () => add('replaceDefaultBtn', 'Open new document', () => {
             try {
                 const fileEl = document.getElementById('fileInput') || document.getElementById('replaceCurrentDocFileInput') || document.getElementById('inputReplaceCurrent');
                 if (fileEl && typeof fileEl.click === 'function') fileEl.click();
@@ -214,7 +214,7 @@ window.refreshActionsDropdownFromMatrix = function(selectId, config) {
         compile: () => add('compile', 'Compile', () => {
             try { (window.onWebDocActionChange && window.onWebDocActionChange('compile')) || (window.openCompileModal && window.openCompileModal()); } catch(_){}
         }, !!b.compileBtn),
-        approvalsBtn: () => add('approvalsBtn', 'Approval details', () => {
+        approvalsBtn: () => add('approvalsBtn', 'Approvals', () => {
             const fn = (window.openApprovalsModalWord || window.openApprovalsModal || window.openApprovalsModalWeb);
             if (typeof fn === 'function') {
                 try { fn(); } catch (e) { console.error('Approvals open error:', e); }
@@ -223,7 +223,7 @@ window.refreshActionsDropdownFromMatrix = function(selectId, config) {
             }
         }, true),
         finalize: () => add('finalize', 'Finalize', async () => { try { window.onWebDocActionChange && window.onWebDocActionChange('finalize'); } catch(_) {} }, !!b.finalizeBtn),
-        unfinalize: () => add('unfinalize', 'Move to Draft', async () => { try { window.onWebDocActionChange && window.onWebDocActionChange('unfinalize'); } catch(_) {} }, !!b.unfinalizeBtn)
+        unfinalize: () => add('unfinalize', 'Unlock', async () => { try { window.onWebDocActionChange && window.onWebDocActionChange('unfinalize'); } catch(_) {} }, !!b.unfinalizeBtn)
     };
 
     order.forEach(key => { if (map[key]) map[key](); });
