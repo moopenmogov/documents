@@ -167,6 +167,46 @@ Why: editor owns the checkout, so finalize is allowed; check‑in/cancel visible
 
 Why: vendors do not get checkout or finalize controls.
 
+### 4) Approvals – what the matrix conveys and what the endpoint returns
+
+Approvals have two layers of data:
+- In the state matrix: a simple enable/disable signal and lightweight summary so the UI knows to show the Approvals entry points.
+- From the approvals API: the detailed list (order, status, notes) used to render the table and pills.
+
+State‑matrix signals (typical):
+```json
+{
+  "approvals": {
+    "enabled": true,
+    "summary": { "approved": 2, "total": 5 }
+  }
+}
+```
+
+Detailed list (from the approvals API, summarized):
+```json
+{
+  "documentId": "doc-current",
+  "approvers": [
+    { "userId": "user1", "name": "Warren Peace", "order": 1, "status": "approved", "notes": "LGTM" },
+    { "userId": "user2", "name": "Fun E. Guy",   "order": 2, "status": "approved", "notes": "" },
+    { "userId": "user3", "name": "Gettysburger", "order": 3, "status": "none",     "notes": "" },
+    { "userId": "user4", "name": "Yuri Lee",      "order": 4, "status": "none",     "notes": "" },
+    { "userId": "vendor1","name": "Hoo R. U",     "order": 5, "status": "none",     "notes": "" }
+  ]
+}
+```
+
+Rules in plain English:
+- Editors see Approvals enabled; vendors typically do not (read‑only experience).
+- Reordering is allowed for editors; the backend normalizes the order (1..N) and broadcasts updates.
+- Status values are `none`, `approved`, or `rejected`. Changing a status updates the summary counters the server sends back (e.g., approved 2 of 5).
+- Notes can be attached/updated per row (audit/history stored on the server).
+
+UI outcomes:
+- If `approvals.enabled` is false, the Approvals button is hidden/disabled in the dropdown.
+- If true, the UI shows the Approvals panel; the pill in the taskpane/web header can display `2/5 approved` using the summary.
+
 ## Where this is implemented (for reference only)
 - Server logic: `api-server.js` computes flags (roles, checkout ownership, isFinal, feature toggles) and returns the matrix.
 - API surface: `state_matrix_api.js` contains helper/contract notes for the matrix (naming/shape utilities).
