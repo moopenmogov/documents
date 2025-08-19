@@ -1,8 +1,3 @@
-1) 
-notification about that the document was saved
--When a document is updated, give a badge to the other platform saying "document is updated -- update it dog!"
-
-
 2)
 the file names don't match and it's confusing
 --web says "contract for contracts" even when uploading a new file from the add-in

@@ -1735,6 +1735,121 @@ app.post('/api/unfinalize', (req, res) => {
     } catch (e) { res.status(500).json({ error: 'unfinalize_failed' }); }
 });
 
+// --- Basic health/version/self-test endpoints (installer-friendly) ---
+app.get('/api/health', (req, res) => {
+    try {
+        res.json({ ok: true, uptimeSec: Math.round(process.uptime()), timestamp: new Date().toISOString() });
+    } catch (e) { res.status(500).json({ ok: false }); }
+});
+
+// Static version string for prototype; adjust as needed
+const PROTOTYPE_VERSION = '0.1.0';
+app.get('/api/version', (req, res) => {
+    res.json({ version: PROTOTYPE_VERSION });
+});
+
+// Latest release metadata for in-app update checks
+// Tries to read a local latest.json at repo root; falls back to current version
+app.get('/api/latest', (req, res) => {
+    try {
+        const fs = require('fs');
+        const path = require('path');
+        const p = path.join(process.cwd(), 'latest.json');
+        if (fs.existsSync(p)) {
+            try {
+                const data = JSON.parse(fs.readFileSync(p, 'utf8')) || {};
+                // Ensure version present
+                if (!data.version) data.version = PROTOTYPE_VERSION;
+                return res.json(data);
+            } catch (_) { /* fallthrough */ }
+        }
+    } catch (_) {}
+    res.json({ version: PROTOTYPE_VERSION });
+});
+
+// Lightweight self-test: filesystem write + compile health (optional)
+app.get('/api/selftest', async (req, res) => {
+    const result = { ok: true, checks: {} };
+    try {
+        // FS write test (OS temp dir)
+        const os = require('os');
+        const fs = require('fs');
+        const path = require('path');
+        const p = path.join(os.tmpdir(), `ogc-selftest-${Date.now()}.tmp`);
+        try {
+            fs.writeFileSync(p, 'ok');
+            result.checks.tempWrite = { ok: true, path: p };
+            try { fs.unlinkSync(p); } catch(_) {}
+        } catch (e) {
+            result.ok = false;
+            result.checks.tempWrite = { ok: false, error: 'fs_write_failed' };
+        }
+        // Compile health (if available)
+        try {
+            const r = await fetch('http://localhost:3001/api/health/compile').then(x => x.json()).catch(() => ({ ok:false }));
+            result.checks.compile = r;
+            if (r && r.ok === false) { /* non-fatal */ }
+        } catch(_) {}
+        res.json(result);
+    } catch (e) {
+        res.status(500).json({ ok: false, error: 'selftest_failed' });
+    }
+});
+
+// --- Minimal logging and troubleshooting support ---
+try {
+    const fs = require('fs');
+    const path = require('path');
+    const os = require('os');
+    const LOG_DIR = process.env.LOG_DIR || path.join(process.cwd(), 'logs');
+    const LOG_FILE = path.join(LOG_DIR, 'server.log');
+    if (!fs.existsSync(LOG_DIR)) {
+        try { fs.mkdirSync(LOG_DIR, { recursive: true }); } catch(_) {}
+    }
+    function logLine(message, meta) {
+        try {
+            const line = JSON.stringify({ ts: new Date().toISOString(), msg: message, ...(meta || {}) }) + os.EOL;
+            fs.appendFile(LOG_FILE, line, () => {});
+        } catch(_) {}
+    }
+    // Basic request logger (only path + method)
+    app.use((req, _res, next) => {
+        if (!req.path.startsWith('/api/health')) {
+            logLine('req', { method: req.method, path: req.path });
+        }
+        next();
+    });
+    logLine('server_start', { version: PROTOTYPE_VERSION });
+    // Expose simple troubleshoot text for copy/paste
+    app.get('/api/troubleshoot', async (req, res) => {
+        try {
+            const health = await fetch(`http://localhost:${process.env.PORT || 3001}/api/health`).then(r => r.json()).catch(() => ({}));
+            const version = { version: PROTOTYPE_VERSION };
+            let tail = '';
+            try {
+                if (fs.existsSync(LOG_FILE)) {
+                    const data = fs.readFileSync(LOG_FILE, 'utf8');
+                    const lines = data.trim().split(/\r?\n/);
+                    tail = lines.slice(-200).join(os.EOL);
+                }
+            } catch(_) {}
+            const text = [
+                'OpenGov Contract Prototype – Troubleshoot',
+                `Timestamp: ${new Date().toISOString()}`,
+                `Version: ${version.version}`,
+                `Health: ${JSON.stringify(health)}`,
+                `Log file: ${LOG_FILE}`,
+                '',
+                '=== Last 200 log lines ===',
+                tail
+            ].join(os.EOL);
+            res.type('text/plain').send(text);
+        } catch (e) {
+            res.status(500).json({ ok: false, error: 'troubleshoot_failed' });
+        }
+    });
+} catch(_) {}
+
 // Compile health check
 app.get('/api/health/compile', (req, res) => {
     try {

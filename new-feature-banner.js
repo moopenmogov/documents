@@ -22,6 +22,8 @@
     log('NOTIFY:', message);
   }
 
+  // Update check removed from feature banner; now handled by update-check.js
+
   async function loadStrings() {
     const candidates = [
       // viewer.html direct file path
@@ -158,6 +160,8 @@
       .nfb-actions { display: flex; gap: 8px; flex-direction: column; align-items: stretch; }
       .nfb-footer { display: flex; justify-content: space-between; margin-top: 12px; }
       .nfb-pill { display: inline-block; padding: 2px 8px; border-radius: 999px; font-size: 12px; font-weight: 600; background: #f1f3f5; color: #495057; }
+      .nfb-update { background: #fff8e1; border: 1px solid #ffe08a; color: #5c4400; padding: 8px; border-radius: 6px; margin: 8px 0; }
+      .nfb-update a { color: #3b82f6; text-decoration: underline; }
     `;
     document.head.appendChild(style);
     log('styles-injected');
@@ -261,6 +265,12 @@
 
     modal.appendChild(title);
     modal.appendChild(sub);
+    // Update notice area (hidden if none)
+    const updateDiv = document.createElement('div');
+    updateDiv.className = 'nfb-update';
+    updateDiv.style.display = 'none';
+    updateDiv.id = 'nfbUpdateNotice';
+    modal.appendChild(updateDiv);
     modal.appendChild(table);
 
     document.body.appendChild(backdrop);
@@ -361,6 +371,8 @@
       log('button-created');
 
       const { showModal, featureState } = renderModal(strings, platform);
+
+      // Update notice is no longer controlled here.
 
       // Load initial feature states from API and apply
       try {

@@ -56,7 +56,21 @@ Fifth, it loves to do everything custom. Custom banners, custom tables, custom f
 
 Sixth, be patient when you use it. Sometimes (usually) it needs hyper-specific instructions, and if you're not prepared to give it that, it's a crap shot what it will build. Go slow to go fast.
 
+Seventh, protect your documentation. In between this and the previous bullet, Claude decided to delete all my docs. Thanks Claude.
 
+Eighth, serialize multi-tasking with the LLM, parallelize it with yourself. You'll work on one thing with an LLM for a while, and it often makes mistakes. If you one-shot something and it's not trivial, disconnecting is a recipe for tech debt. So engage in the details.
+
+That process can take a while, and it's often demotivating. I found it helpful to context switch to something I was doing more independently, like envisioning a feature. Giving that to the LLM would be disruptive, but I could make progress independently.
+
+Ninth, commit everything. It took me a while to realize this but the LLM's can be pretty aggressive with commits. That's fine if you're expecting it, and it's a helpful way to mitigate their bad habits. Because...use them. When something breaks unexpectedly you can ask them to find out when they break out.
+
+Similarly, the LLM will repeat the same mistakes. For example, it was striking how often it woudl emplace invisible UI elements. Often layer issues but there were also often CSS. I probably had Claude write too much of the front-end, in addition to emojis, our CSS is very !important. And !perfect, and !amazing...
+
+I can see how it might be tough having tons and tons of micro-commits, especially when you try and contextualize something you're building from a while ago. But an LLM makes it trivial.
+
+Tenth, remember your context window. Performance can degrade in the 50's.
+
+Eleventh, 
 
 
 

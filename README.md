@@ -1,7 +1,7 @@
 ## Product vision: Next Generation Contract Authoring and Prototype 
 
 
-This README is a collaboration between AI and Moti: the AI is the primary author; Moti is the editor. For materials authored purely by Moti, see the `READmeHUMAN` folder.
+This README is a collaboration between AI and Moti: the AI is the primary author; Moti is the editor. For materials authored purely by Moti, see the `READmeHUMAN` folder (minus the install-automation-eli5).
 
 ### What’s inside (overview)
 - **Summary**: what the product does and why it exists
@@ -140,6 +140,35 @@ Tips for add‑in:
 
 - **main**: stable
 - See feature branches in Git history for milestones (notifications, approvals pinning, add‑in parity).
+
+---
+
+## Developer: backend install scripts and smoke test
+
+For backend‑only testing (no MSI yet), use the PowerShell scripts under `scripts/`.
+
+- Per‑user auto‑start (Scheduled Task):
+  - Run: `powershell -NoProfile -ExecutionPolicy Bypass -File scripts/install-per-user-task.ps1 -Port 3001`
+  - On next logon the server starts automatically. To start now in the current console: `powershell -NoProfile -ExecutionPolicy Bypass -File scripts/start-server.ps1 -Port 3001`
+
+- Smoke test:
+  - `powershell -NoProfile -ExecutionPolicy Bypass -File scripts/smoke-test.ps1 -Port 3001`
+  - Prints PASS/FAIL for `/api/health`, `/api/version`, and `/api/troubleshoot`. If failing, open `/api/troubleshoot` and email contents to `msorkin@opengov.com`.
+
+- Uninstall per‑user task:
+  - `powershell -NoProfile -ExecutionPolicy Bypass -File scripts/uninstall-per-user-task.ps1`
+
+- Repair (non‑destructive re‑seed if missing):
+  - `powershell -NoProfile -ExecutionPolicy Bypass -File scripts/repair.ps1 -Port 3001`
+
+- Update in place (backend‑only):
+  - Stop, backup binaries, copy new build, preserve `.env`/data, restart.
+  - Dry‑run: `powershell -NoProfile -ExecutionPolicy Bypass -File scripts/update-in-place.ps1 -SourceDir C:\path\to\new -DryRun`
+  - Apply: `powershell -NoProfile -ExecutionPolicy Bypass -File scripts/update-in-place.ps1 -SourceDir C:\path\to\new`
+
+Notes:
+- These scripts are for developer iteration. The end‑user path will be a signed MSI/EXE installer as described in `READmeHUMAN/specs/install-automation-eli5.md`.
+- If Node is not in PATH, `start-server.ps1` will error (for dev). The MSI will bundle the server.
 
 ---
 
