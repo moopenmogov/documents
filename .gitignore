@@ -4,3 +4,5 @@ uploads/
 .env
 .DS_Store
 dist/
+default-document/~$*.docx
+default-document/~WRL*.tmp
