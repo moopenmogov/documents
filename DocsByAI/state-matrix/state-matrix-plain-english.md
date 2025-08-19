@@ -207,6 +207,43 @@ UI outcomes:
 - If `approvals.enabled` is false, the Approvals button is hidden/disabled in the dropdown.
 - If true, the UI shows the Approvals panel; the pill in the taskpane/web header can display `2/5 approved` using the summary.
 
+## Action reference (what the button does in practice)
+
+- Check‑out / Check‑in / Cancel
+  - Matrix flags: `checkoutBtn`, `checkinBtn`, `cancelBtn`, `checkedInBtns` (group)
+  - Client: shows the right group based on ownership of the checkout; calls the server to update checkout state; UI refreshes via SSE/matrix reload
+  - Server: tracks `documentState.isCheckedOut` and the `checkedOutUserId`; enforces “self‑checkout only” rules for privileged actions
+
+- View Latest (read‑only)
+  - Matrix flag: `viewOnlyBtn`
+  - Client (Word): `cleanViewLatest()` / `viewLatestSafe()` load the latest DOCX
+  - Server endpoints: `GET /api/get-updated-docx` (base64) or `GET /api/document/:id(.docx)` (bytes)
+
+- Finalize / Unlock
+  - Matrix flags: `finalizeBtn`, `unfinalizeBtn`; `finalize.isFinal` drives state
+  - Client: shared confirm modal (`openFinalizeToggleModal`) then calls the server
+  - Server endpoints: `POST /api/finalize`, `POST /api/unfinalize` (editor‑only; finalize clears checkout)
+
+- Replace default document
+  - Matrix flag: `replaceDefaultBtn`
+  - Client: upload/replace flow in viewer/add‑in; atomic write on Windows to avoid file‑in‑use errors
+  - Server: receives DOCX upload via multer storage and consolidates to `default-document/current.docx`
+
+- Compile (exhibits/packet)
+  - Matrix entry: `compile` in dropdown order; `compileBtn` flag
+  - Client: invokes compile; shows health status if LibreOffice isn’t configured
+  - Server: compile health at `GET /api/health/compile` (LibreOffice `soffice --version`)
+
+- Approvals
+  - Matrix: `approvals.enabled` + summary (optional)
+  - Client: shows approvals panel and summary pill (e.g., `2/5 approved`); reorders and updates statuses
+  - Server: stores per‑document approver list, normalizes order, and broadcasts changes; reset via `POST /api/approvals/reset`
+
+- Templates / “Take me back to OpenGov” / Share to Web
+  - Matrix flags: `templatesBtn`, `openGovBtn`, `shareToWebBtn`
+  - Client: opens the corresponding modals or navigations; purely UI in this prototype
+  - Server: can expose feature toggles to enable/disable these entries
+
 ## Where this is implemented (for reference only)
 - Server logic: `api-server.js` computes flags (roles, checkout ownership, isFinal, feature toggles) and returns the matrix.
 - API surface: `state_matrix_api.js` contains helper/contract notes for the matrix (naming/shape utilities).
