@@ -1,7 +1,7 @@
-## Product vision: Next Generation Contract Authoring and Prototype 
+## Product vision: Next Generation Contract Authoring and Prototype (now with 100% more dad jokes) 
 
 
-This README is a collaboration between AI and Moti: the AI is the primary author; Moti is the editor. For materials authored purely by Moti, see the `READmeHUMAN` folder (minus the install-automation-eli5).
+This README is a collaboration between AI and Moti: the AI types fast and tells questionable jokes; Moti edits and keeps the ship pointed at land. For materials authored purely by Moti, see the `READmeHUMAN` folder (minus the install-automation-eli5). 
 
 ### What’s inside (overview)
 - **Summary**: what the product does and why it exists
@@ -14,9 +14,9 @@ This README is a collaboration between AI and Moti: the AI is the primary author
 
 ## Summary
 
-This is a working prototype of a contract authoring system with bidirectional sync between the web viewer and the Word add‑in. It supports end‑to‑end redlining workflows (check‑out/check‑in, finalize/unfinalize), approvals, templates, compile, notifications, and a vendor handoff. 
+This is a working prototype of a contract authoring system with bidirectional sync between the web viewer and the Word add‑in. It supports end‑to‑end redlining workflows (check‑out/check‑in, finalize/unfinalize), approvals, templates, compile, notifications, and a vendor handoff. It does everything except make coffee; that’s in the 2031 roadmap. 
 
-### Key capabilities
+### Key capabilities (the greatest hits tour)
 - **Bidirectional sync**: file alignment in a Word-native environment syncs with a web experience
 - **Check-in and Check-out system**: role‑ and state‑aware actions with server validation and SSE refresh
 - **Shared logic**: a single state matrix client configures both UIs for parity
@@ -24,6 +24,7 @@ This is a working prototype of a contract authoring system with bidirectional sy
 - **Notifications**: a lightweight bell + modal in the web, with events mirrored to the add‑in
 - **Compile**: generate a contract packet by compiling with exhibits
 - **Templates**: view existing templates and check-out / modify them
+ - **Dad‑mode**: if something fails, we give you a friendly message instead of a cryptic stack trace. (We still keep the trace—behind the fridge.)
 
 ---
 
@@ -78,7 +79,7 @@ This is a working prototype of a contract authoring system with bidirectional sy
 
 ---
 
-## Installation (friendly guide)
+## Installation (friendly guide with friendly vibes)
 
 You don’t need to be a developer to try this locally.
 
@@ -87,7 +88,7 @@ You don’t need to be a developer to try this locally.
 - Git (optional but recommended)
 - Microsoft Word (desktop) if you want to try the add‑in
 
-### 2) Single-click start (end user)
+### 2) Single‑click start (end user)
 - Double-click `Click--Me--To--Install--The--Application--On--My--Computer--Please.bat`
 - What it does:
   - Installs a portable Node runtime if missing
@@ -100,30 +101,30 @@ You don’t need to be a developer to try this locally.
 ### 3) Open the web viewer
 - Visit `http://localhost:3001/viewer.html`
 
-### 3) Open the web viewer
+### 3) Open the web viewer (ta‑da!)
 - Visit `http://localhost:3001/viewer.html`
 - Switch user (top left), use the “Document actions” dropdown, and try approvals and notifications
 
-### 4) Open the Word add‑in (one-time user action)
-- In Word, go to: Insert → My Add‑ins → Shared Folder → select “OpenGov Contracting”
-- If you don’t see it, click Refresh. If still missing, close and reopen Word once to pick up the catalog.
+### 4) Open the Word add‑in (one‑time user action)
+- In Word, go to: Insert → My Add‑ins → Shared Folder → select “OpenGov Contracting”.
+- If you don’t see it, click Refresh. If it’s playing hide‑and‑seek, close and reopen Word once so it remembers where we put things.
 
 Tips for add‑in:
 - If “Finalize” doesn’t appear, check out the document first as an editor
 - If a modal doesn’t appear, ensure the server is running and hard‑reload the taskpane
 
-### 5) Troubleshooting
-- Port is busy: change the port in `api-server.js` (PORT) and update references if needed
-- CORS/Network: this prototype serves everything from the same origin; reload if you change server code
-- Word autoplay: videos auto‑play muted due to host policies; unmute in the player
- - Server diagnostics: open `http://localhost:3001/api/troubleshoot` and share the text if setup fails
+### 5) Troubleshooting (turn it off and on again, but with style)
+- **Port is busy**: something else parked on 3001. Change `PORT` in `api-server.js` (we recommend 3007, because 7 is lucky) and retry.
+- **CORS/Network**: we serve everything from the same origin—refresh and you should be golden.
+- **Word autoplay**: videos autoplay muted (it’s a policy thing). Tap the mute icon and pretend it was your idea.
+- **Diagnostics**: open `http://localhost:3001/api/troubleshoot`, copy the text, and send it to support (or Moti). We read logs so you don’t have to.
 
 ---
 
-## Lessons learned (top 5)
+## Lessons learned (top 5, no spoilers)
 
 - **Centralize state**: a shared state matrix eliminates duplicated conditionals and keeps platforms in lock‑step.
-- **Prefer SSE for parity**: events drive consistent banners and dropdowns across clients.
+- **Prefer SSE for parity**: events drive consistent banners and dropdowns across clients. WebSockets are cool too—we’re just into minimalism.
 - **Office constraints matter**: avoid `window.confirm` in add‑ins; use a consistent in‑app modal.
 - **Pin identities early**: pinning document ids prevents cross‑document approval glitches.
 - **Keep platforms thin**: renderers should stay small; shared logic does the heavy lifting.
