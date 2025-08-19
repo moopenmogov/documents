@@ -24,7 +24,7 @@ This is a working prototype of a contract authoring system with bidirectional sy
 - **Notifications**: a lightweight bell + modal in the web, with events mirrored to the add‑in
 - **Compile**: generate a contract packet by compiling with exhibits
 - **Templates**: view existing templates and check-out / modify them
- - **Dad‑mode**: if something fails, we give you a friendly message instead of a cryptic stack trace. (We still keep the trace—behind the fridge.)
+
 
 ---
 
@@ -100,7 +100,7 @@ This is a working prototype of a contract authoring system with bidirectional sy
 - Prepare store metadata (name, descriptions, screenshots, privacy/security answers).
 - Validate with the Office Add‑in validator.
 - Submit in Partner Center and track certification.
-- Ownership: this is normally PM territory — Moti, your PM should take this and run with it. We’ll support with the manifest and technical Q&A.
+- Ownership: this is normally PM territory — your PM should take this and run with it. We’ll support with the manifest and technical Q&A.
 
 ### How this add‑in is built in this repo (and why it’s reusable)
 - HTML‑first UI: `src/taskpane/taskpane.html` (no framework lock‑in; loads fast in Office WebView).
