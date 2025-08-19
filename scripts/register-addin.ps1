@@ -1,5 +1,6 @@
 param(
-	[int]$Port = 3001
+	[int]$Port = 3001,
+	[string]$AddinBase = 'https://localhost:3000'
 )
 
 $ErrorActionPreference = 'Stop'
@@ -11,17 +12,11 @@ try {
 	$catalog = Join-Path $env:LOCALAPPDATA 'OpenGovContractPrototype\\addin-catalog'
 	if (-not (Test-Path $catalog)) { New-Item -ItemType Directory -Path $catalog -Force | Out-Null }
 
-	# Build a local manifest pointing to the API server (http://localhost:$Port) or optional HTTPS clone on 3003
+	# Build a local manifest pointing to the requested add-in base (defaults to dev server on 3000)
 	$src = Join-Path $repoRoot 'manifest.xml'
 	if (-not (Test-Path $src)) { throw "manifest.xml not found at $src" }
 	$xml = Get-Content -Raw -Path $src
-	$httpBase = ("http://localhost:{0}" -f $Port)
-	$httpsBase = 'https://localhost:3003'
-	try {
-		$probe = Invoke-WebRequest -UseBasicParsing -Uri ($httpsBase + '/api/health') -TimeoutSec 2 -ErrorAction SilentlyContinue
-		if ($probe -and $probe.StatusCode -ge 200 -and $probe.StatusCode -lt 400) { $xml = $xml -replace 'https://localhost:3000', $httpsBase }
-		else { $xml = $xml -replace 'https://localhost:3000', $httpBase }
-	} catch { $xml = $xml -replace 'https://localhost:3000', $httpBase }
+	$xml = $xml -replace 'https://localhost:3000', $AddinBase
 	$dest = Join-Path $catalog 'OpenGovContractPrototype.manifest.xml'
 	Set-Content -Path $dest -Value $xml -Encoding UTF8
 	Write-Info ("Wrote local manifest: " + $dest)
