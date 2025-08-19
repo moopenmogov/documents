@@ -54,8 +54,35 @@ try {
 	Write-Info 'Registering Office add-in (trusted catalog + sideload)'
 	& (Join-Path $repoRoot 'scripts\register-addin.ps1') -Port $Port
 
+	# Visible end-user guidance
+	try {
+		Add-Type -AssemblyName PresentationFramework | Out-Null
+		# Guide assets available if you ever want to re-enable them:
+		$helpImage = "http://localhost:$Port/assets/addin-open-shared-folder.png"
+		$helpImageLocal = Join-Path $repoRoot 'assets\addin-open-shared-folder.png'
+		$body = @"
+Congratulations, you made it!
+
+Now you should have the web experience available in one of your tabs. The URL will say "localhost" and it will likely be 3002.
+
+That's not the best part though. Open Word and look for something called "Add-Ins." You may need to enable that, but it's just a one-time setup. Find your favorite internet pathway to enabling Add-Ins.
+
+Once that's done, click it and you'll see the OpenGov add-in. Click on it, and voila!
+
+And that's it. Now, have fun! And share feedback please!!!
+
+If you're stuck here frustrated, send Moti a note.
+"@
+		[System.Windows.MessageBox]::Show($body, "Enable the Word add-in", 'OK', 'Information') | Out-Null
+	} catch {}
+
 	Write-Host 'Bootstrap completed.'
 } catch {
+	try {
+		Add-Type -AssemblyName PresentationFramework | Out-Null
+		$err = ("Setup failed: {0}\n\nOpen http://localhost:{1}/api/troubleshoot and send the text to support." -f ($_.Exception.Message), $Port)
+		[System.Windows.MessageBox]::Show($err, 'Setup failed', 'OK', 'Error') | Out-Null
+	} catch {}
 	Write-Error $_
 	exit 1
 }

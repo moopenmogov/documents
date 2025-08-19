@@ -87,22 +87,26 @@ You don’t need to be a developer to try this locally.
 - Git (optional but recommended)
 - Microsoft Word (desktop) if you want to try the add‑in
 
-### 2) Install and start the server
-```bash
-npm install
-node api-server.js
-```
-By default the API listens on `http://localhost:3001`.
+### 2) Single-click start (end user)
+- Double-click `Click--Me--To--Install--The--Application--On--My--Computer--Please.bat`
+- What it does:
+  - Installs a portable Node runtime if missing
+  - Starts the backend API and serves the web UI from the same origin
+  - Registers a Word add-in via a Trusted Catalog (user-level)
+  - Opens the web viewer
+- Where it runs:
+  - API and web UI: `http://localhost:3001`
+
+### 3) Open the web viewer
+- Visit `http://localhost:3001/viewer.html`
 
 ### 3) Open the web viewer
 - Visit `http://localhost:3001/viewer.html`
 - Switch user (top left), use the “Document actions” dropdown, and try approvals and notifications
 
-### 4) Open the Word add‑in (optional)
-The add‑in is pure HTML/JS for demo. The quickest way to sideload:
-- Enable Word to trust local files (Office add‑in dev setting, if needed)
-- Open the file `src/taskpane/taskpane.html` directly in Word via your dev sideload method (see Office Add‑ins docs)
-- The add‑in will talk to the same `http://localhost:3001` API
+### 4) Open the Word add‑in (one-time user action)
+- In Word, go to: Insert → My Add‑ins → Shared Folder → select “OpenGov Contracting”
+- If you don’t see it, click Refresh. If still missing, close and reopen Word once to pick up the catalog.
 
 Tips for add‑in:
 - If “Finalize” doesn’t appear, check out the document first as an editor
@@ -112,6 +116,7 @@ Tips for add‑in:
 - Port is busy: change the port in `api-server.js` (PORT) and update references if needed
 - CORS/Network: this prototype serves everything from the same origin; reload if you change server code
 - Word autoplay: videos auto‑play muted due to host policies; unmute in the player
+ - Server diagnostics: open `http://localhost:3001/api/troubleshoot` and share the text if setup fails
 
 ---
 
