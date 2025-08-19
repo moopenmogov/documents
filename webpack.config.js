@@ -59,49 +59,45 @@ module.exports = async (env, options) => {
         templateContent: () => fs.readFileSync(path.resolve(__dirname, "./src/taskpane/taskpane.html"), "utf8"),
         chunks: ["polyfill", "taskpane"],
       }),
-      new CopyWebpackPlugin({
-        patterns: [
-          {
-            from: "assets/*",
-            to: "assets/[name][ext][query]",
+      (() => {
+        // Build CopyWebpackPlugin patterns dynamically, only including files that exist
+        const patterns = [
+          { from: "assets/*", to: "assets/[name][ext][query]" },
+          { from: "state-matrix-client.js", to: "[name][ext]" },
+          { from: "new-feature-banner.js", to: "[name][ext]" },
+        ];
+
+        const bannerJsonPath = pick(
+          path.resolve(__dirname, "new-feature-banner-text.json"),
+          path.resolve(__dirname, "src", "new-feature-banner-text.json"),
+          path.resolve(__dirname, "scripts", "new-feature-banner-text.json")
+        );
+        if (bannerJsonPath) {
+          patterns.push({ from: bannerJsonPath, to: "new-feature-banner-text.json" });
+        }
+
+        const approvalsJsonPath = pick(
+          path.resolve(__dirname, "approvals-ui.json"),
+          path.resolve(__dirname, "src", "approvals-ui.json")
+        );
+        if (approvalsJsonPath) {
+          patterns.push({ from: approvalsJsonPath, to: "approvals-ui.json" });
+        }
+
+        patterns.push({
+          from: "manifest*.xml",
+          to: "[name]" + "[ext]",
+          transform(content) {
+            if (dev) {
+              return content;
+            } else {
+              return content.toString().replace(new RegExp(urlDev, "g"), urlProd);
+            }
           },
-          {
-            from: "state-matrix-client.js",
-            to: "[name][ext]",
-          },
-          {
-            from: "new-feature-banner.js",
-            to: "[name][ext]",
-          },
-          {
-            // Prefer root canonical JSON; fall back to src/scripts copies if present
-            from: () => pick(
-              path.resolve(__dirname, "new-feature-banner-text.json"),
-              path.resolve(__dirname, "src", "new-feature-banner-text.json"),
-              path.resolve(__dirname, "scripts", "new-feature-banner-text.json")
-            ),
-            to: "new-feature-banner-text.json",
-          },
-          {
-            from: () => pick(
-              path.resolve(__dirname, "approvals-ui.json"),
-              path.resolve(__dirname, "src", "approvals-ui.json")
-            ),
-            to: "approvals-ui.json",
-          },
-          {
-            from: "manifest*.xml",
-            to: "[name]" + "[ext]",
-            transform(content) {
-              if (dev) {
-                return content;
-              } else {
-                return content.toString().replace(new RegExp(urlDev, "g"), urlProd);
-              }
-            },
-          },
-        ],
-      }),
+        });
+
+        return new CopyWebpackPlugin({ patterns });
+      })(),
       new HtmlWebpackPlugin({
         filename: "commands.html",
         templateContent: () => fs.readFileSync(path.resolve(__dirname, "./src/commands/commands.html"), "utf8"),
