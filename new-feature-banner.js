@@ -349,23 +349,38 @@
       btn.style.zIndex = '2147483647';
       btn.style.pointerEvents = 'auto';
       
+      // Random helpers for more organic timing
+      function randomBetween(minMs, maxMs) {
+        return Math.random() * (maxMs - minMs) + minMs;
+      }
+      // Exponential-like delay (feels less regular). meanMs is the average before clamping
+      function sampleExponentialMs(minMs, maxMs, meanMs) {
+        const u = Math.random();
+        const x = -Math.log(1 - u) * meanMs; // exponential with mean meanMs
+        return Math.max(minMs, Math.min(maxMs, x));
+      }
+
       // Set up random pulse intervals
       function scheduleNextPulse() {
         // Trigger the pulse animation
         btn.classList.add('nfb-pulse');
-        
-        // Remove the class after animation completes (2s)
+
+        // Vary pulse duration subtly (1.6s – 2.4s)
+        const durationMs = randomBetween(1600, 2400);
         setTimeout(() => {
           btn.classList.remove('nfb-pulse');
-        }, 2000);
-        
-        // Random delay between 3 and 20 seconds for next pulse
-        const randomDelay = (Math.random() * 17 + 3) * 1000; // Convert to milliseconds
-        setTimeout(scheduleNextPulse, randomDelay);
+        }, durationMs);
+
+        // Next delay: exponential distribution clamped to 3s–40s, plus tiny jitter
+        const baseDelay = sampleExponentialMs(3000, 40000, 10000);
+        const microJitter = (Math.random() * 250) - 125; // ±125ms
+        const nextDelay = Math.max(0, baseDelay + microJitter);
+        setTimeout(scheduleNextPulse, nextDelay);
       }
-      
-      // Start with a random initial delay
-      const initialDelay = (Math.random() * 17 + 3) * 1000; // 3-20 seconds
+
+      // Start with a desynchronized initial delay (exponential in 3s–40s, plus seed jitter)
+      const seedJitter = (performance && typeof performance.now === 'function') ? (performance.now() % 500) : 0;
+      const initialDelay = sampleExponentialMs(3000, 40000, 10000) + seedJitter;
       setTimeout(scheduleNextPulse, initialDelay);
       
       log('button-created');
