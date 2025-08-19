@@ -16,6 +16,12 @@ app.use(express.json({ limit: '50mb' }));
 // Serve static files for exhibits (repo-seeded and user uploads of PDFs)
 app.use('/exhibits', express.static(path.join(__dirname, 'exhibits')));
 
+// Serve repo root statics so non-technical users can access viewer.html without extra servers
+try {
+    const rootDir = process.cwd();
+    app.use(express.static(rootDir));
+} catch (_) {}
+
 // Create directories if they don't exist
 const defaultDocDir = './default-document';
 const exhibitsDir = './exhibits';
@@ -1767,6 +1773,20 @@ app.get('/api/latest', (req, res) => {
     res.json({ version: PROTOTYPE_VERSION });
 });
 
+// Serve update-check.js for the add-in (dev server cannot serve from repo root reliably)
+app.get('/update-check.js', (req, res) => {
+    try {
+        const fs = require('fs');
+        const path = require('path');
+        const p = path.join(process.cwd(), 'update-check.js');
+        if (fs.existsSync(p)) {
+            res.type('application/javascript').send(fs.readFileSync(p, 'utf8'));
+            return;
+        }
+    } catch (_) {}
+    res.status(404).send('Not found');
+});
+
 // Lightweight self-test: filesystem write + compile health (optional)
 app.get('/api/selftest', async (req, res) => {
     const result = { ok: true, checks: {} };
@@ -2239,6 +2259,28 @@ if (require.main === module) {
     app.listen(PORT, () => {
         console.log(`🔧 API Server running on http://localhost:${PORT}`);
     });
+    // Optionally start HTTPS on 3003 using Office dev certs if available
+    try {
+        const https = require('https');
+        const os = require('os');
+        const path = require('path');
+        const fs = require('fs');
+        const certDir = path.join(os.homedir(), '.office-addin-dev-certs');
+        const keyPath = path.join(certDir, 'localhost.key');
+        const crtPath = path.join(certDir, 'localhost.crt');
+        if (fs.existsSync(keyPath) && fs.existsSync(crtPath)) {
+            const key = fs.readFileSync(keyPath);
+            const cert = fs.readFileSync(crtPath);
+            const httpsPort = 3003;
+            https.createServer({ key, cert }, app).listen(httpsPort, () => {
+                console.log(`🔒 API Server (static UI) also on https://localhost:${httpsPort}`);
+            });
+        } else {
+            console.log('ℹ️ Dev certs not found; HTTPS endpoint (3003) not started');
+        }
+    } catch (e) {
+        console.log('⚠️ Failed to start optional HTTPS server:', e && e.message);
+    }
 }
 
 module.exports = app;
