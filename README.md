@@ -6,7 +6,7 @@ This README is a collaboration between AI and Moti: the AI types fast and tells 
 ### What’s inside (overview)
 - **Summary**: what the product does and why it exists
 - **Development timeline**: a brief history based on GitHub activity
-- **Technical architecture**: HTML-first clients (no React), shared logic between web and add‑in, backend, and how we integrate SuperDoc
+- **Technical architecture**: HTML-first clients, shared logic between web and add‑in, backend, and how we integrate SuperDoc
 - **Installation**: friendly guide for non‑technical readers
 - **Lessons learned**: five takeaways from the build
 
@@ -14,7 +14,7 @@ This README is a collaboration between AI and Moti: the AI types fast and tells 
 
 ## Summary
 
-This is a working prototype of a contract authoring system with bidirectional sync between the web viewer and the Word add‑in. It supports end‑to‑end redlining workflows (check‑out/check‑in, finalize/unfinalize), approvals, templates, compile, notifications, and a vendor handoff. It does everything except make coffee; that’s in the 2031 roadmap. 
+This is a working prototype of a contract authoring system with bidirectional sync between the web viewer and the Word add‑in. It supports end‑to‑end redlining workflows (check‑out/check‑in, finalize/unfinalize), approvals, templates, compile, notifications, and a vendor handoff. It does everything except make coffee; that’s in the 2031 roadmap. And of course, beware the fake doors and easter eggs.
 
 ### Key capabilities (the greatest hits tour)
 - **Bidirectional sync**: file alignment in a Word-native environment syncs with a web experience
@@ -78,8 +78,52 @@ This is a working prototype of a contract authoring system with bidirectional sy
 - The project includes SuperDoc for rich‑text editing foundations and examples; our viewer and add‑in integrate around document transport and workflow instead of bundling a full editor here.
 
 ---
+## Working with the Word add‑in
 
-## Installation (friendly guide with friendly vibes)
+### The 60‑second primer (what an Office taskpane add‑in is)
+- A taskpane add‑in is just a web app (HTML/JS/CSS) hosted in an Edge WebView inside Word.
+- Word loads your add‑in via a manifest (XML) that points to your pages (HTTPS or trusted local HTTP for dev).
+- You talk to the document via Office JS APIs (e.g., `Word.run(...)`). Everything else is standard web.
+
+### Creating one (the basics)
+- Scaffold: use the OfficeDev templates (this repo originated from one) or any web stack.
+- Entry points:
+  - `manifest.xml` → Word reads this to find `taskpane.html` and command surfaces.
+  - `src/taskpane/taskpane.html` → the UI; includes our shared scripts.
+  - `webpack.config.js` → bundles and serves the dev build on `https://localhost:3000/`.
+- Dev loop options:
+  - `npm start` launches the dev server and sideloads into Word (accept the cert prompt on first run).
+  - Or use our single‑click flow and then manually open the add‑in from Insert → My Add‑ins → Shared Folder.
+
+### Publishing to the Partner Center (super short version)
+- Build a production site (HTTPS) and set those URLs in the manifest.
+- Prepare store metadata (name, descriptions, screenshots, privacy/security answers).
+- Validate with the Office Add‑in validator.
+- Submit in Partner Center and track certification.
+- Ownership: this is normally PM territory — Moti, your PM should take this and run with it. We’ll support with the manifest and technical Q&A.
+
+### How this add‑in is built in this repo (and why it’s reusable)
+- HTML‑first UI: `src/taskpane/taskpane.html` (no framework lock‑in; loads fast in Office WebView).
+- Shared logic used by both web and add‑in:
+  - `state-matrix-client.js` drives labels, visibility, and ordering of actions.
+  - `new-feature-banner.js` + `update-check.js` for the banner and update notices.
+  - API contracts from `api-server.js` (same endpoints for both clients).
+- Build/dev:
+  - `webpack.config.js` serves the dev add‑in on `https://localhost:3000/` and copies canonical JSON from the repo root.
+  - Our single‑click `Click--Me--To--Install--...bat` starts the API on `http://localhost:3001`, registers a local Trusted Catalog, and opens the web viewer.
+
+### Reuse with the web experience (the big win)
+- UI parity comes from shared scripts, not duplicated logic. The dropdown, finalize/unfinalize modal, approvals state, and banner/update code are the same files.
+- If you improve the web UI logic in a shared file, the add‑in benefits with zero extra work.
+- Conversely, add‑in‑only constraints (e.g., no `window.confirm`) are wrapped once in shared helpers and used by both.
+
+Tips:
+- Prefer adding features in shared files first; then keep platform‑specific glue minimal.
+- Keep endpoints identical for web and add‑in; version them behind `/api/*` and feature‑flag in one place.
+
+---
+
+## Installation (friendly guide with friendly vibes who's friendly and perfect and awesome and amazing)
 
 You don’t need to be a developer to try this locally.
 
@@ -117,7 +161,7 @@ Tips for add‑in:
 - **Port is busy**: something else parked on 3001. Change `PORT` in `api-server.js` (we recommend 3007, because 7 is lucky) and retry.
 - **CORS/Network**: we serve everything from the same origin—refresh and you should be golden.
 - **Word autoplay**: videos autoplay muted (it’s a policy thing). Tap the mute icon and pretend it was your idea.
-- **Diagnostics**: open `http://localhost:3001/api/troubleshoot`, copy the text, and send it to support (or Moti). We read logs so you don’t have to.
+- **Diagnostics**: open `http://localhost:3001/api/troubleshoot`, copy the text, and send it to Moti. We read logs so you don’t have to.
 
 ---
 
