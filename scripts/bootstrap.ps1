@@ -8,6 +8,24 @@ function Write-Info($m){ Write-Host "[bootstrap] $m" }
 
 try {
 	$repoRoot = (Resolve-Path (Join-Path $PSScriptRoot '..')).Path
+
+	# If this script is shipped standalone (no repo around), fetch the app ZIP from GitHub
+	if (-not (Test-Path (Join-Path $repoRoot 'api-server.js'))) {
+		Write-Info 'Local repo not found. Downloading application package...'
+		$installBase = Join-Path $env:LOCALAPPDATA 'OpenGovContractPrototype'
+		if (-not (Test-Path $installBase)) { New-Item -ItemType Directory -Path $installBase -Force | Out-Null }
+		$zipPath = Join-Path $env:TEMP ('ogc-app-' + [Guid]::NewGuid().ToString('N') + '.zip')
+		$zipUrl  = 'https://github.com/moti-og/Contract-Document-System-V2/archive/refs/heads/main.zip'
+		Invoke-WebRequest -Uri $zipUrl -OutFile $zipPath -UseBasicParsing
+		Write-Info 'Extracting application package...'
+		Expand-Archive -Path $zipPath -DestinationPath $installBase -Force
+		try { Remove-Item -Force $zipPath -ErrorAction SilentlyContinue } catch {}
+		# GitHub zips into a single subfolder like Contract-Document-System-V2-main
+		$extracted = Get-ChildItem -Directory $installBase | Where-Object { $_.Name -like 'Contract-Document-System-V2-*' } | Sort-Object LastWriteTime -Descending | Select-Object -First 1
+		if (-not $extracted) { throw 'Failed to locate extracted application folder' }
+		$repoRoot = $extracted.FullName
+		Write-Info ("Using application folder: " + $repoRoot)
+	}
 	$node = (Get-Command node -ErrorAction SilentlyContinue)
 	if (-not $node) {
 		Write-Info 'Node.js not found – downloading portable runtime...'
@@ -34,7 +52,7 @@ try {
 	Set-Content -Path $envPath -Value ("PORT={0}`nDATA_DIR={1}`nLOG_DIR={2}" -f $Port, $dataDir, $logDir) -Encoding ASCII
 
 	Write-Info 'Starting API server...'
-	Start-Process -FilePath 'node' -ArgumentList 'api-server.js' -WindowStyle Hidden
+	Start-Process -FilePath 'node' -ArgumentList 'api-server.js' -WorkingDirectory $repoRoot -WindowStyle Hidden
 
 	# Wait for health
 	Write-Info 'Waiting for server health...'
