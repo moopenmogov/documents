@@ -63,8 +63,8 @@ try {
 		Start-Sleep -Seconds 1
 	}
 
-	# Open viewer from the same server (no extra dev server needed)
-	$viewer = "http://localhost:{0}/viewer.html" -f $Port
+	# Open viewer on the dedicated web server port (3002)
+	$viewer = "http://localhost:3002/viewer.html"
 	Write-Info ("Opening viewer: " + $viewer)
 	Start-Process $viewer
 
