@@ -56,8 +56,9 @@ module.exports = async (env, options) => {
     plugins: [
       new HtmlWebpackPlugin({
         filename: "taskpane.html",
-        templateContent: () => fs.readFileSync(path.resolve(__dirname, "./src/taskpane/taskpane.html"), "utf8"),
-        chunks: ["polyfill", "taskpane"],
+        // Serve the root taskpane.html so the add-in shows the intended page
+        templateContent: () => fs.readFileSync(path.resolve(__dirname, "./taskpane.html"), "utf8"),
+        inject: false,
       }),
       (() => {
         // Build CopyWebpackPlugin patterns dynamically, only including files that exist
