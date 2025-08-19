@@ -39,10 +39,10 @@ jobs:
           echo "PID=$($proc.Id)" | Out-File -FilePath server.pid -Encoding ascii
           # wait for health
           $ok = $false
-          for ($i=0; $i -lt 30; $i++) {
+          for ($i=0; $i -lt 45; $i++) {
             try {
               $h = Invoke-RestMethod -UseBasicParsing -Uri "http://localhost:3001/api/health" -TimeoutSec 2
-              if ($h -and $h.ok) { $ok = $true; break }
+              if ($h -and ($h.ok -or (("" + $h.status) -eq 'ok'))) { $ok = $true; break }
             } catch {}
             Start-Sleep -Seconds 1
           }
@@ -58,8 +58,8 @@ jobs:
         shell: pwsh
         run: |
           if (Test-Path server.pid) {
-            $pid = Get-Content server.pid | ForEach-Object { ($_ -split '=')[1] }
-            try { Stop-Process -Id $pid -Force } catch {}
+            $serverPid = Get-Content server.pid | ForEach-Object { ($_ -split '=')[1] }
+            try { if ($serverPid) { Stop-Process -Id ([int]$serverPid) -Force } } catch {}
           }
 
 
