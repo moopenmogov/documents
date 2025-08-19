@@ -1,0 +1,13 @@
+# Require maintainer review on critical runtime/config files
+
+* @moopenmogov
+
+# Critical ports/config and startup scripts
+manifest.xml @moopenmogov
+webpack.config.js @moopenmogov
+api-server.js @moopenmogov
+viewer.html @moopenmogov
+src/taskpane/* @moopenmogov
+scripts/* @moopenmogov
+
+

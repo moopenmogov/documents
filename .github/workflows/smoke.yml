@@ -1,0 +1,44 @@
+name: smoke
+
+on:
+  pull_request:
+    branches: [ main ]
+  push:
+    branches: [ main ]
+
+jobs:
+  windows-smoke:
+    runs-on: windows-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 18
+
+      - name: Install deps
+        run: npm ci --no-audit --no-fund
+
+      - name: Start API (3001)
+        run: |
+          powershell -Command "Start-Process -FilePath node -ArgumentList 'api-server.js'"
+
+      - name: Wait for API health
+        run: |
+          powershell -Command "for ($i=0; $i -lt 30; $i++){ try { $r=Invoke-WebRequest -UseBasicParsing -TimeoutSec 2 -Uri 'http://localhost:3001/api/health'; if($r.StatusCode -eq 200){ exit 0 } } catch { } Start-Sleep -Seconds 1 }; exit 1"
+
+      - name: Start web (3002)
+        run: |
+          npx http-server . -p 3002 --cors &
+
+      - name: Verify viewer served
+        run: |
+          powershell -Command "for ($i=0; $i -lt 15; $i++){ try { $r=Invoke-WebRequest -UseBasicParsing -TimeoutSec 2 -Uri 'http://localhost:3002/viewer.html'; if($r.StatusCode -eq 200){ exit 0 } } catch { } Start-Sleep -Seconds 1 }; exit 1"
+
+      - name: Verify add-in manifest exists (static copy)
+        run: |
+          if (!(Test-Path 'manifest.xml')) { echo 'manifest.xml missing' ; exit 1 }
+
+
