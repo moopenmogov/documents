@@ -16,6 +16,7 @@ async function getHttpsOptions() {
 
 module.exports = async (env, options) => {
   const dev = options.mode === "development";
+  const pick = (...p) => p.find((q) => fs.existsSync(q));
   const config = {
     devtool: "source-map",
     entry: {
@@ -73,11 +74,19 @@ module.exports = async (env, options) => {
             to: "[name][ext]",
           },
           {
-            from: path.resolve(__dirname, "scripts", "new-feature-banner-text.json"),
+            // Prefer root canonical JSON; fall back to src/scripts copies if present
+            from: () => pick(
+              path.resolve(__dirname, "new-feature-banner-text.json"),
+              path.resolve(__dirname, "src", "new-feature-banner-text.json"),
+              path.resolve(__dirname, "scripts", "new-feature-banner-text.json")
+            ),
             to: "new-feature-banner-text.json",
           },
           {
-            from: path.resolve(__dirname, "src", "approvals-ui.json"),
+            from: () => pick(
+              path.resolve(__dirname, "approvals-ui.json"),
+              path.resolve(__dirname, "src", "approvals-ui.json")
+            ),
             to: "approvals-ui.json",
           },
           {
