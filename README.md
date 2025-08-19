@@ -1,4 +1,4 @@
-## Product vision: Next Generation Contract Authoring and Prototype
+## Product vision: Next Generation Contract Authoring and Prototype 
 
 
 This README is a collaboration between AI and Moti: the AI is the primary author; Moti is the editor. For materials authored purely by Moti, see the `READmeHUMAN` folder.
@@ -9,8 +9,6 @@ This README is a collaboration between AI and Moti: the AI is the primary author
 - **Technical architecture**: HTML-first clients (no React), shared logic between web and add‑in, backend, and how we integrate SuperDoc
 - **Installation**: friendly guide for non‑technical readers
 - **Lessons learned**: five takeaways from the build
-
-![Clippy](https://upload.wikimedia.org/wikipedia/en/5/5f/Clippy-letter.png)
 
 ---
 
@@ -84,21 +82,36 @@ This is a working prototype of a contract authoring system with bidirectional sy
 
 You don’t need to be a developer to try this locally.
 
-1) Install prerequisites
-- Install Node.js 18+.
-- If you want the Word add‑in, ensure you have desktop Word.
+### 1) Prerequisites
+- Node.js 18+ (verify with `node -v`)
+- Git (optional but recommended)
+- Microsoft Word (desktop) if you want to try the add‑in
 
-2) Start the local server
+### 2) Install and start the server
 ```bash
 npm install
 node api-server.js
 ```
+By default the API listens on `http://localhost:3001`.
 
-3) Open the web viewer
-- Visit `http://localhost:3001/viewer.html` in your browser.
+### 3) Open the web viewer
+- Visit `http://localhost:3001/viewer.html`
+- Switch user (top left), use the “Document actions” dropdown, and try approvals and notifications
 
-4) Open the Word add‑in (optional)
-- Sideload `src/taskpane/taskpane.html` via the Office Add‑ins developer flow. The add‑in uses the same `http://localhost:3001` API.
+### 4) Open the Word add‑in (optional)
+The add‑in is pure HTML/JS for demo. The quickest way to sideload:
+- Enable Word to trust local files (Office add‑in dev setting, if needed)
+- Open the file `src/taskpane/taskpane.html` directly in Word via your dev sideload method (see Office Add‑ins docs)
+- The add‑in will talk to the same `http://localhost:3001` API
+
+Tips for add‑in:
+- If “Finalize” doesn’t appear, check out the document first as an editor
+- If a modal doesn’t appear, ensure the server is running and hard‑reload the taskpane
+
+### 5) Troubleshooting
+- Port is busy: change the port in `api-server.js` (PORT) and update references if needed
+- CORS/Network: this prototype serves everything from the same origin; reload if you change server code
+- Word autoplay: videos auto‑play muted due to host policies; unmute in the player
 
 ---
 

@@ -6249,7 +6249,7 @@ window.__forceOpenApprovalsTest = function() {
             const button = document.getElementById('backToOpenGovBtn');
             const modal = document.getElementById('backToOpenGovModal');
             const video = document.getElementById('backToOpenGovVideo');
-
+            
             // Open modal if the legacy button exists
             if (button && modal) {
                 button.addEventListener('click', function() {
@@ -6275,7 +6275,7 @@ window.__forceOpenApprovalsTest = function() {
                     } catch (_) {}
                 });
             }
-
+                
             // Always enable outside-click and Escape-to-close when modal exists (works for dropdown opener too)
             if (modal) {
                 modal.addEventListener('click', function(e) {
@@ -6283,7 +6283,7 @@ window.__forceOpenApprovalsTest = function() {
                         modal.style.display = 'none';
                         if (video) {
                             const currentSrc = video.src || '';
-                            video.src = '';
+                        video.src = '';
                             if (currentSrc) video.src = currentSrc.replace('autoplay=1', 'autoplay=0');
                         }
                     }
@@ -6293,7 +6293,7 @@ window.__forceOpenApprovalsTest = function() {
                         modal.style.display = 'none';
                         if (video) {
                             const currentSrc = video.src || '';
-                            video.src = '';
+                        video.src = '';
                             if (currentSrc) video.src = currentSrc.replace('autoplay=1', 'autoplay=0');
                         }
                     }
