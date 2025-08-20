@@ -1,5 +1,6 @@
 param(
-	[int]$Port = 3001
+	[int]$Port = 3001,
+	[switch]$ForceCacheClear
 )
 
 $ErrorActionPreference = 'Stop'
@@ -11,20 +12,26 @@ try {
 	$catalog = Join-Path $env:LOCALAPPDATA 'OpenGovContractPrototype\\addin-catalog'
 	if (-not (Test-Path $catalog)) { New-Item -ItemType Directory -Path $catalog -Force | Out-Null }
 
-	# Build a local manifest pointing to the API server (http://localhost:$Port) or optional HTTPS clone on 3003
+	# Build a local manifest that ALWAYS points to the dev add-in server on https://localhost:3000
 	$src = Join-Path $repoRoot 'manifest.xml'
 	if (-not (Test-Path $src)) { throw "manifest.xml not found at $src" }
 	$xml = Get-Content -Raw -Path $src
-	$httpBase = ("http://localhost:{0}" -f $Port)
-	$httpsBase = 'https://localhost:3003'
-	try {
-		$probe = Invoke-WebRequest -UseBasicParsing -Uri ($httpsBase + '/api/health') -TimeoutSec 2 -ErrorAction SilentlyContinue
-		if ($probe -and $probe.StatusCode -ge 200 -and $probe.StatusCode -lt 400) { $xml = $xml -replace 'https://localhost:3000', $httpsBase }
-		else { $xml = $xml -replace 'https://localhost:3000', $httpBase }
-	} catch { $xml = $xml -replace 'https://localhost:3000', $httpBase }
+	# Normalize any lingering alternate bases back to 3000
+	$xml = $xml -replace 'https://localhost:3003', 'https://localhost:3000'
+	$xml = $xml -replace 'http://localhost:[0-9]+', 'https://localhost:3000'
+	$xml = $xml -replace 'https://localhost:3000/taskpane.html', 'https://localhost:3000/src/taskpane/taskpane.html'
+	$xml = $xml -replace 'https://localhost:3000/commands.html', 'https://localhost:3000/src/commands/commands.html'
 	$dest = Join-Path $catalog 'OpenGovContractPrototype.manifest.xml'
 	Set-Content -Path $dest -Value $xml -Encoding UTF8
 	Write-Info ("Wrote local manifest: " + $dest)
+
+	# Optional: clear Word's WEF cache if requested
+	if ($ForceCacheClear) {
+		try {
+			$wef = Join-Path $env:LOCALAPPDATA 'Microsoft\\Office\\16.0\\Wef'
+			if (Test-Path $wef) { Write-Info 'Clearing Word WEF cache...'; Remove-Item $wef -Recurse -Force }
+		} catch { Write-Info 'WEF cache clear failed or not needed.' }
+	}
 
 	# Register Trusted Catalog (HKCU)
 	$regBase = 'HKCU:Software\\Microsoft\\Office\\16.0\\WEF\\TrustedCatalogs'
