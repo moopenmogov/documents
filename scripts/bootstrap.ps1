@@ -51,7 +51,20 @@ try {
 	if (-not (Test-Path $dataDir)) { New-Item -ItemType Directory -Path $dataDir -Force | Out-Null }
 	Set-Content -Path $envPath -Value ("PORT={0}`nDATA_DIR={1}`nLOG_DIR={2}" -f $Port, $dataDir, $logDir) -Encoding ASCII
 
-	Write-Info 'Starting API server...'
+	# Preflight: kill stale processes on our invariant ports and Word
+	Write-Info 'Killing stale processes (WINWORD, node on 3000/3001/3002)...'
+	try { Get-Process WINWORD -ErrorAction SilentlyContinue | Stop-Process -Force } catch {}
+	$ports = @(3000,3001,3002)
+	foreach($p in $ports){
+		try {
+			$own = (Get-NetTCPConnection -LocalPort $p -State Listen -ErrorAction SilentlyContinue).OwningProcess | Select-Object -Unique
+			foreach($pid in $own){ try { Stop-Process -Id $pid -Force } catch {} }
+		} catch {}
+	}
+	try { Get-Process node -ErrorAction SilentlyContinue | Stop-Process -Force } catch {}
+
+	Write-Info 'Starting API server (NO_STATIC_ROOT=1 to avoid double-hosting)...'
+	$env:NO_STATIC_ROOT = '1'
 	Start-Process -FilePath 'node' -ArgumentList 'api-server.js' -WorkingDirectory $repoRoot -WindowStyle Hidden
 
 	# Wait for health
@@ -63,8 +76,42 @@ try {
 		Start-Sleep -Seconds 1
 	}
 
-	# Open viewer from the same server (no extra dev server needed)
-	$viewer = "http://localhost:{0}/viewer.html" -f $Port
+	# Start Web viewer server on 3002
+	Write-Info 'Starting Web viewer server on http://localhost:3002 ...'
+	# Prefer npx.cmd to avoid broken .ps1 associations
+	$npx = (Get-Command npx.cmd -ErrorAction SilentlyContinue).Path
+	if (-not $npx) { $npx = (Join-Path $env:ProgramFiles 'nodejs\npx.cmd') }
+	if (-not (Test-Path $npx)) { $npx = (Join-Path $env:APPDATA 'npm\npx.cmd') }
+	Start-Process -FilePath $npx -ArgumentList 'http-server . -p 3002 --cors --gzip --brotli' -WorkingDirectory $repoRoot -WindowStyle Hidden
+
+	# Start Add-in HTTPS server on 3000
+	$certDir = Join-Path $env:USERPROFILE '.office-addin-dev-certs'
+	$crt = Join-Path $certDir 'localhost.crt'
+	$key = Join-Path $certDir 'localhost.key'
+	try { & $npx office-addin-dev-certs install | Out-Null } catch {}
+	Write-Info 'Starting Add-in server on https://localhost:3000 ...'
+	$addinArgs = ('http-server . -p 3000 --cors -S --cert "{0}" --key "{1}"' -f $crt, $key)
+	Start-Process -FilePath $npx -ArgumentList $addinArgs -WorkingDirectory $repoRoot -WindowStyle Hidden
+
+	# Basic health checks before opening
+	Write-Info 'Waiting for API (3001), Web (3002), Add-in (3000) ...'
+	$deadline = (Get-Date).AddSeconds(30)
+	[System.Net.ServicePointManager]::ServerCertificateValidationCallback = { $true }
+	while((Get-Date) -lt $deadline){
+		$okApi=$false; $okWeb=$false; $okAddin=$false
+		try { $r = Invoke-WebRequest -UseBasicParsing -Uri ('http://localhost:{0}/api/health' -f $Port) -TimeoutSec 2; if($r.StatusCode -ge 200){ $okApi=$true } } catch {}
+		try { $r = Invoke-WebRequest -UseBasicParsing -Uri 'http://localhost:3002/viewer.html' -TimeoutSec 2; if($r.StatusCode -ge 200){ $okWeb=$true } } catch {}
+		try {
+			[System.Net.ServicePointManager]::ServerCertificateValidationCallback = { $true }
+			$r = Invoke-WebRequest -UseBasicParsing -Uri 'https://localhost:3000/src/taskpane/taskpane.html' -TimeoutSec 2
+			if($r.StatusCode -ge 200){ $okAddin=$true }
+		} catch {}
+		if($okApi -and $okWeb -and $okAddin){ break }
+		Start-Sleep -Milliseconds 500
+	}
+
+	# Open the web viewer on the dedicated web port (3002)
+	$viewer = "http://localhost:3002/viewer.html"
 	Write-Info ("Opening viewer: " + $viewer)
 	Start-Process $viewer
 

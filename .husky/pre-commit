@@ -1,0 +1,10 @@
+#!/usr/bin/env pwsh
+$ErrorActionPreference='Stop'
+try {
+    pwsh -NoProfile -File "scripts/smoke-test.ps1" | Out-Host
+} catch {
+    Write-Host "pre-commit failed: $_" -ForegroundColor Red
+    exit 1
+}
+exit 0
+

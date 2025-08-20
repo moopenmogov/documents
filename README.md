@@ -133,20 +133,19 @@ You don’t need to be a developer to try this locally.
 - Microsoft Word (desktop) if you want to try the add‑in
 
 ### 2) Single‑click start (end user)
-- Double-click `Click--Me--To--Install--The--Application--On--My--Computer--Please.bat`
+- Double-click `Start-App.cmd` (top-level)
 - What it does:
-  - Installs a portable Node runtime if missing
-  - Starts the backend API and serves the web UI from the same origin
-  - Registers a Word add-in via a Trusted Catalog (user-level)
-  - Opens the web viewer
-- Where it runs:
-  - API and web UI: `http://localhost:3001`
+  - Kills stale Word/Node processes on 3000/3001/3002
+  - Starts API (3001), Web viewer (3002), Add‑in HTTPS (3000)
+  - Waits for health and opens the web viewer
+  - Sideloads the add‑in manifest if needed
+  
 
 ### 3) Open the web viewer
-- Visit `http://localhost:3001/viewer.html`
+- Visit `http://localhost:3002/viewer.html`
 
 ### 3) Open the web viewer (ta‑da!)
-- Visit `http://localhost:3001/viewer.html`
+- Visit `http://localhost:3002/viewer.html`
 - Switch user (top left), use the “Document actions” dropdown, and try approvals and notifications
 
 ### 4) Open the Word add‑in (one‑time user action)
