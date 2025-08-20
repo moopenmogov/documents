@@ -1,0 +1,33 @@
+name: Smoke
+on:
+  pull_request:
+    branches: [ main ]
+jobs:
+  smoke:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '18'
+      - name: Install deps
+        run: npm ci --no-audit --no-fund
+      - name: Start API (3001)
+        shell: pwsh
+        run: |
+          $env:NO_STATIC_ROOT='1'
+          Start-Job -Name API -ScriptBlock { node api-server.js } | Out-Null
+          1..40 | % { try { if((Invoke-WebRequest http://localhost:3001/api/health -UseBasicParsing -TimeoutSec 2).StatusCode -eq 200){break} } catch {}; Start-Sleep -Milliseconds 300 }
+      - name: Start Web (3002)
+        run: Start-Job -Name Web -ScriptBlock { npx http-server . -p 3002 --cors } | Out-Null
+        shell: pwsh
+      - name: Start Add-in (3000)
+        shell: pwsh
+        run: |
+          npx office-addin-dev-certs install
+          Start-Job -Name Addin -ScriptBlock { npx http-server . -p 3000 --cors -S --cert "$env:USERPROFILE\.office-addin-dev-certs\localhost.crt" --key "$env:USERPROFILE\.office-addin-dev-certs\localhost.key" } | Out-Null
+          [System.Net.ServicePointManager]::ServerCertificateValidationCallback = { $true }
+      - name: Smoke test
+        shell: pwsh
+        run: pwsh -NoProfile -File scripts/smoke-test.ps1
+
