@@ -2,54 +2,62 @@
   "doc-current": {
     "approvers": [
       {
-        "userId": "user_mei99j7d_o7f3",
-        "name": "K-Swish",
-        "order": 3,
-        "status": "none",
-        "updatedBy": "user3",
-        "updatedAt": "2025-08-19T08:01:55.321Z",
+        "userId": "user1",
+        "name": "Warren Peace",
+        "email": "warren@opengov.com",
+        "order": 1,
+        "status": "approved",
+        "updatedBy": "user1",
+        "updatedAt": "2025-08-20T16:27:32.907Z",
         "notes": ""
       },
       {
-        "userId": "user_mei9bamt_2jl3",
-        "name": "C-Breezy",
+        "userId": "user3",
+        "name": "Fun E. Guy",
+        "email": "funguy@opengov.com",
         "order": 2,
         "status": "none",
-        "updatedBy": "user3",
-        "updatedAt": "2025-08-19T08:03:17.525Z",
+        "updatedBy": "user1",
+        "updatedAt": "2025-08-20T15:20:48.307Z",
         "notes": ""
       },
       {
-        "userId": "user_mei9bi3p_3x65",
-        "name": "The Notorious J.E.N.",
-        "order": 1,
-        "status": "none",
-        "updatedBy": "user3",
-        "updatedAt": "2025-08-19T08:03:27.205Z",
+        "userId": "user2",
+        "name": "Gettysburger King",
+        "email": "gettysburger@opengov.com",
+        "order": 3,
+        "status": "rejected",
+        "updatedBy": "user2",
+        "updatedAt": "2025-08-20T18:07:11.668Z",
         "notes": ""
       },
       {
-        "userId": "user_mei9bn76_s60j",
-        "name": "D-Geezy",
+        "userId": "user5",
+        "name": "Yuri Lee Laffed",
+        "email": "reese@opengov.com",
         "order": 4,
-        "status": "none",
-        "updatedBy": "user3",
-        "updatedAt": "2025-08-19T08:03:33.810Z",
+        "status": "approved",
+        "updatedBy": "user1",
+        "updatedAt": "2025-08-20T16:29:12.457Z",
+        "notes": ""
+      },
+      {
+        "userId": "vendor1",
+        "name": "Hoo R. U",
+        "email": "moti@real.builders",
+        "order": 5,
+        "status": "approved",
+        "updatedBy": "user1",
+        "updatedAt": "2025-08-20T16:27:39.542Z",
         "notes": ""
       }
     ],
     "history": [
       {
         "type": "remind",
-        "by": "user3",
+        "by": "user1",
         "target": "user3",
-        "at": "2025-08-18T17:06:41.677Z"
-      },
-      {
-        "type": "remind",
-        "by": "user3",
-        "target": "user5",
-        "at": "2025-08-18T17:06:43.832Z"
+        "at": "2025-08-20T18:07:21.756Z"
       }
     ]
   },

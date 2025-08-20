@@ -17,9 +17,15 @@ app.use(express.json({ limit: '50mb' }));
 app.use('/exhibits', express.static(path.join(__dirname, 'exhibits')));
 
 // Serve repo root statics so non-technical users can access viewer.html without extra servers
+// During development, this can inadvertently "double-host" the web UI on 3001.
+// Set NO_STATIC_ROOT=1 to disable this behavior in dev startup scripts.
 try {
     const rootDir = process.cwd();
-    app.use(express.static(rootDir));
+    if (!process.env.NO_STATIC_ROOT) {
+        app.use(express.static(rootDir));
+    } else {
+        try { console.log('ℹ️ NO_STATIC_ROOT enabled – skipping express.static for repo root'); } catch(_) {}
+    }
 } catch (_) {}
 
 // Create directories if they don't exist

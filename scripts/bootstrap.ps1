@@ -60,16 +60,20 @@ try {
 
 	# Start Web viewer server on 3002
 	Write-Info 'Starting Web viewer server on http://localhost:3002 ...'
-	Start-Process -FilePath 'npx' -ArgumentList 'http-server . -p 3002 --cors --gzip --brotli' -WindowStyle Hidden
+	# Prefer npx.cmd to avoid broken .ps1 associations
+	$npx = (Get-Command npx.cmd -ErrorAction SilentlyContinue).Path
+	if (-not $npx) { $npx = (Join-Path $env:ProgramFiles 'nodejs\npx.cmd') }
+	if (-not (Test-Path $npx)) { $npx = (Join-Path $env:APPDATA 'npm\npx.cmd') }
+	Start-Process -FilePath $npx -ArgumentList 'http-server . -p 3002 --cors --gzip --brotli' -WindowStyle Hidden
 
 	# Start Add-in HTTPS server on 3000
 	$certDir = Join-Path $env:USERPROFILE '.office-addin-dev-certs'
 	$crt = Join-Path $certDir 'localhost.crt'
 	$key = Join-Path $certDir 'localhost.key'
-	try { & npx office-addin-dev-certs install | Out-Null } catch {}
+	try { & $npx office-addin-dev-certs install | Out-Null } catch {}
 	Write-Info 'Starting Add-in server on https://localhost:3000 ...'
 	$addinArgs = ('http-server . -p 3000 --cors -S --cert "{0}" --key "{1}"' -f $crt, $key)
-	Start-Process -FilePath 'npx' -ArgumentList $addinArgs -WindowStyle Hidden
+	Start-Process -FilePath $npx -ArgumentList $addinArgs -WindowStyle Hidden
 
 	# Basic health checks before opening
 	Write-Info 'Waiting for API (3001), Web (3002), Add-in (3000) ...'
