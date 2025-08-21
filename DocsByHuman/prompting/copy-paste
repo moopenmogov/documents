@@ -1,0 +1,32 @@
+Copy/paste (Windows PowerShell) – hard reset + start all servers + sideload manifest
+
+$ErrorActionPreference='SilentlyContinue'
+
+# 0) Kill Word + anything on 3000/3001/3002 + stray node
+try { Get-Process WINWORD | Stop-Process -Force } catch {}
+(Get-NetTCPConnection -LocalPort 3000,3001,3002 -State Listen -ErrorAction SilentlyContinue).OwningProcess |
+  Select-Object -Unique | ForEach-Object { try { Stop-Process -Id $_ -Force } catch {} }
+try { Get-Process node -ErrorAction SilentlyContinue | Stop-Process -Force } catch {}
+
+# 1) Ensure Office dev certs for HTTPS 3000
+& "$env:AppData\npm\npx.cmd" office-addin-dev-certs install | Out-Null
+
+# 2) Start API (3001) without double-hosting
+$env:NO_STATIC_ROOT='1'
+Start-Job -Name API -ScriptBlock { cd 'C:\Users\msokrin\Document project'; node api-server.js } | Out-Null
+
+# 3) Start Web (3002) from repo root
+Start-Job -Name WEB -ScriptBlock { & "$env:AppData\npm\npx.cmd" http-server 'C:\Users\msokrin\Document project' -p 3002 --cors --gzip --brotli } | Out-Null
+
+# 4) Start Add‑in HTTPS (3000) from repo root
+Start-Job -Name ADDIN -ScriptBlock { & "$env:AppData\npm\npx.cmd" http-server 'C:\Users\msokrin\Document project' -p 3000 --cors -S --cert "$env:USERPROFILE\.office-addin-dev-certs\localhost.crt" --key "$env:USERPROFILE\.office-addin-dev-certs\localhost.key" } | Out-Null
+
+# 5) Quick probes (ignore TLS validation)
+Start-Sleep -Seconds 3
+[System.Net.ServicePointManager]::ServerCertificateValidationCallback = { $true }
+try { (Invoke-WebRequest http://localhost:3001/api/health -UseBasicParsing -TimeoutSec 5).StatusCode } catch {}
+try { (Invoke-WebRequest http://localhost:3002/viewer.html -UseBasicParsing -TimeoutSec 5).StatusCode } catch {}
+try { (Invoke-WebRequest https://localhost:3000/src/taskpane/taskpane.html -UseBasicParsing -TimeoutSec 5).StatusCode } catch {}
+
+# 6) Sideload manifest (force cache clear if pane looks old)
+# & .\scripts\register-addin.ps1 -ForceCacheClear
